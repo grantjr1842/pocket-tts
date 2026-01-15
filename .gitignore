@@ -46,6 +46,7 @@ coverage.json
 .venv
 venv/
 ENV/
+.pixi/
 
 # egs with manifest files
 egs/*

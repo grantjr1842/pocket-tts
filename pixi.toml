@@ -1,0 +1,29 @@
+[workspace]
+name = "pocket-tts"
+version = "1.0.1"
+description = "Kyutai's pocket-sized TTS!"
+channels = ["conda-forge"]
+platforms = ["linux-64"]
+
+[dependencies]
+python = "3.10.*"
+
+[pypi-dependencies]
+pocket-tts = { path = ".", editable = true }
+# Keep uv/uvx available inside the pixi environment.
+uv = "*"
+# Dev/test tooling (mirrors dependency-groups.dev in pyproject.toml).
+coverage = ">=7.6.12"
+line-profiler = ">=5.0.0"
+pytest = ">=9.0.2"
+pytest-xdist = ">=3.8.0"
+
+[pypi-options]
+index-url = "https://pypi.org/simple"
+# Ensure CPU-only torch wheels are preferred when available.
+extra-index-urls = ["https://download.pytorch.org/whl/cpu"]
+
+[tasks]
+generate = "pocket-tts generate"
+serve = "pocket-tts serve"
+tests = "pytest -n 3 -v"
