@@ -118,6 +118,31 @@ voice_state = model.get_state_for_audio_prompt(
 )
 ```
 
+##### `compile_for_inference(backend="inductor", mode="reduce-overhead", fullgraph=False, dynamic=False, targets="all")`
+
+Enable optional `torch.compile` acceleration for inference modules.
+
+**Parameters:**
+- `backend` (str): torch.compile backend (default: "inductor")
+- `mode` (str): torch.compile mode (default: "reduce-overhead")
+- `fullgraph` (bool): Require full graph capture (default: False)
+- `dynamic` (bool): Enable dynamic shapes (default: False)
+- `targets` (Iterable[str] | str): Compile targets ("all", "flow-lm", "mimi-decoder")
+
+**Returns:**
+- `TTSModel`: The same model instance
+
+**Example:**
+```python
+from pocket_tts import TTSModel
+
+model = TTSModel.load_model()
+model.compile_for_inference(mode="reduce-overhead")
+
+voice_state = model.get_state_for_audio_prompt("hf://kyutai/tts-voices/alba-mackenna/casual.wav")
+audio = model.generate_audio(voice_state, "Hello from compiled inference.")
+```
+
 ##### `generate_audio(model_state, text_to_generate, frames_after_eos=None, copy_state=True)`
 
 Generate complete audio tensor from text input.

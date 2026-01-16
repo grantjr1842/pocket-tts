@@ -43,6 +43,7 @@ uvx pocket-tts generate
 # or if you installed it manually with pip:
 pocket-tts generate
 ```
+You can opt into `torch.compile` with `--compile` for CPU speedups at the cost of extra startup time on the first run. If the Mimi decoder does not compile cleanly on your setup, use `--compile-targets flow-lm` to compile only the text model.
 Modify the voice with `--voice` and the text with `--text`. We provide a small catalog of voices.
 
 You can take a look at [this page](https://huggingface.co/kyutai/tts-voices) which details the licenses
@@ -72,6 +73,13 @@ pocket-tts serve
 Navigate to `http://localhost:8000` to try the web interface, it's faster than the command line as the model is kept in memory between requests.
 
 You can check out the [serve documentation](https://github.com/kyutai-labs/pocket-tts/tree/main/docs/serve.md) for more details and examples.
+
+### The `benchmark` command
+
+Use `benchmark` to measure inference speed and real-time factor.
+```bash
+uvx pocket-tts benchmark --compile
+```
 
 ## Using it as a Python library
 
@@ -103,11 +111,71 @@ so we recommend to keep the model and voice states in memory if you can.
 
 You can check out the [Python API documentation](https://github.com/kyutai-labs/pocket-tts/tree/main/docs/python-api.md) for more details and examples.
 
+## Rust Extensions (Optional)
+
+For additional performance gains, pocket-tts includes optional Rust audio processing extensions that provide SIMD-optimized implementations of common audio operations.
+
+### Building Rust Extensions
+
+```bash
+cd training/rust_exts/audio_ds
+./build.sh
+```
+
+Or manually:
+```bash
+cargo build --release
+```
+
+This will create a shared library that Python can automatically detect and use.
+
+### Using Rust-Accelerated Functions
+
+The following functions automatically use Rust when available, with automatic fallback to pure Python:
+
+```python
+from pocket_tts import normalize_audio, apply_gain, resample_audio, apply_fade, compute_audio_metrics
+
+# Normalize audio (Rust-accelerated if available)
+audio = normalize_audio(audio, gain=0.8)
+
+# Apply gain
+audio = apply_gain(audio, 1.5)
+
+# Resample audio (linear or sinc interpolation)
+audio = resample_audio(audio, target_length=48000, method="sinc")
+
+# Apply fade in/out
+audio = apply_fade(audio, fade_in_ms=50, fade_out_ms=100)
+
+# Compute audio metrics
+metrics = compute_audio_metrics(audio)
+# Returns: {"rms": 0.5, "peak": 0.8, "dynamic_range_db": 4.0}
+```
+
+### Benchmark Results
+
+The Rust extensions provide significant speedups for resampling operations:
+
+| Operation     | Python  | Rust    | Speedup |
+|--------------|---------|---------|---------|
+| Resample (4s) | 3.38ms  | 0.33ms  | **10.3x** ⚡ |
+| Resample (1s) | 0.33ms  | 0.05ms  | **6.2x** ⚡  |
+| Normalize     | 0.03ms  | 0.13ms  | 0.3x    |
+| Apply Gain    | 0.00ms  | 0.02ms  | 0.2x    |
+
+**Key Findings:**
+- **Resampling**: Rust is **6-10x faster** for resampling operations
+- **Simple operations**: NumPy is faster for normalize/gain (already optimized C code)
+- **FFI overhead**: ctypes adds overhead that matters for simple operations
+- **Best use case**: Complex custom operations, batch processing, streaming
+
+**Recommendation**: Use Rust extensions for resampling and complex operations. For simple operations like normalize/gain, NumPy is already optimal.
+
 ## Unsupported features
 
 At the moment, we do not support (but would love pull requests adding):
 - [Running the TTS inside a web browser (WebAssembly)](https://github.com/kyutai-labs/pocket-tts/issues/1)
-- [A compiled version with for example `torch.compile()` or `candle`.](https://github.com/kyutai-labs/pocket-tts/issues/2)
 - [Adding silence in the text input to generate pauses.](https://github.com/kyutai-labs/pocket-tts/issues/6)
 - [Quantization to run the computation in int8.](https://github.com/kyutai-labs/pocket-tts/issues/7)
 
