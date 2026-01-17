@@ -18,6 +18,12 @@ This starts a server on `http://localhost:8000` with the default voice model.
 - `--host HOST`: Host to bind to (default: "localhost")
 - `--port PORT`: Port to bind to (default: 8000)
 - `--reload`: Enable auto-reload for development
+- `--compile`: Enable `torch.compile` for inference (default: off)
+- `--compile-backend`: torch.compile backend (default: "inductor")
+- `--compile-mode`: torch.compile mode (default: "reduce-overhead")
+- `--compile-fullgraph`: torch.compile fullgraph (default: false)
+- `--compile-dynamic`: torch.compile dynamic (default: false)
+- `--compile-targets`: Compile targets (all, flow-lm, mimi-decoder)
 
 ## Examples
 

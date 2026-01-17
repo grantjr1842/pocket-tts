@@ -21,7 +21,15 @@ FIRST_CHUNK_LENGTH_SECONDS = float(os.environ.get("FIRST_CHUNK_LENGTH_SECONDS", 
 
 
 def audio_read(filepath: str | Path) -> tuple[torch.Tensor, int]:
-    """Read audio using Python's wave module."""
+    """Read audio using Python's wave module.
+
+    Args:
+        filepath: Path to the WAV audio file.
+
+    Returns:
+        Tuple of (audio_tensor, sample_rate) where audio_tensor is shape [1, num_samples]
+        with values in [-1, 1] range.
+    """
     with wave.open(str(filepath), "rb") as wav_file:
         sample_rate = wav_file.getframerate()
 
@@ -32,6 +40,27 @@ def audio_read(filepath: str | Path) -> tuple[torch.Tensor, int]:
         # Return as mono tensor (channels, samples)
         wav = torch.from_numpy(samples.reshape(1, -1))
         return wav, sample_rate
+
+
+# Industry-standard alias for audio_read (matches Coqui TTS, VITS, etc.)
+def load_wav(filepath: str | Path) -> tuple[torch.Tensor, int]:
+    """Load audio file from path.
+
+    This is an alias for audio_read() to match common TTS library conventions.
+
+    Args:
+        filepath: Path to the WAV audio file.
+
+    Returns:
+        Tuple of (audio_tensor, sample_rate) where audio_tensor is shape [1, num_samples]
+        with values in [-1, 1] range.
+
+    Examples:
+        >>> from pocket_tts.data.audio import load_wav
+        >>> audio, sr = load_wav("voice_sample.wav")
+        >>> print(f"Loaded audio: {audio.shape}, sample rate: {sr}")
+    """
+    return audio_read(filepath)
 
 
 class StreamingWAVWriter:

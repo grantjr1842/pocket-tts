@@ -32,6 +32,12 @@ This will generate a WAV file `./tts_output.wav` with the default text and voice
 ### Performance Options
 
 - `--device DEVICE`: Device to use (default: "cpu", you may not get a speedup by using a gpu since it's a small model)
+- `--compile`: Enable `torch.compile` for inference (default: off)
+- `--compile-backend`: torch.compile backend (default: "inductor")
+- `--compile-mode`: torch.compile mode (default: "reduce-overhead")
+- `--compile-fullgraph`: torch.compile fullgraph (default: false)
+- `--compile-dynamic`: torch.compile dynamic (default: false)
+- `--compile-targets`: Compile targets (all, flow-lm, mimi-decoder)
 - `--quiet`, `-q`: Disable logging output
 
 ## Examples

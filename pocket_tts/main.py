@@ -1,8 +1,10 @@
 import io
 import logging
 import os
+import statistics
 import tempfile
 import threading
+import time
 from pathlib import Path
 from queue import Queue
 
@@ -179,22 +181,32 @@ def serve(
     host: Annotated[str, typer.Option(help="Host to bind to")] = "localhost",
     port: Annotated[int, typer.Option(help="Port to bind to")] = 8000,
     reload: Annotated[bool, typer.Option(help="Enable auto-reload")] = False,
+    compile_model: Annotated[
+        bool, typer.Option("--compile", help="Enable torch.compile for inference")
+    ] = False,
+    compile_backend: Annotated[str, typer.Option(help="torch.compile backend")] = "inductor",
+    compile_mode: Annotated[str, typer.Option(help="torch.compile mode")] = "reduce-overhead",
+    compile_fullgraph: Annotated[bool, typer.Option(help="torch.compile fullgraph")] = False,
+    compile_dynamic: Annotated[bool, typer.Option(help="torch.compile dynamic")] = False,
+    compile_targets: Annotated[
+        str, typer.Option(help="Compile targets: all, flow-lm, mimi-decoder (comma-separated).")
+    ] = "all",
 ):
-    """Start the FastAPI server."""
-
     global tts_model, global_model_state
     tts_model = TTSModel.load_model(DEFAULT_VARIANT)
+    if compile_model:
+        tts_model.compile_for_inference(
+            backend=compile_backend,
+            mode=compile_mode,
+            fullgraph=compile_fullgraph,
+            dynamic=compile_dynamic,
+            targets=compile_targets,
+        )
 
-    # Pre-load the voice prompt
     global_model_state = tts_model.get_state_for_audio_prompt(voice)
     logger.info(f"The size of the model state is {size_of_dict(global_model_state) // 1e6} MB")
 
     uvicorn.run("pocket_tts.main:web_app", host=host, port=port, reload=reload)
-
-
-# ------------------------------------------------------
-# The pocket-tts single generation CLI implementation
-# ------------------------------------------------------
 
 
 @cli_app.command()
@@ -222,6 +234,16 @@ def generate(
         str, typer.Option(help="Output path for generated audio")
     ] = "./tts_output.wav",
     device: Annotated[str, typer.Option(help="Device to use")] = "cpu",
+    compile_model: Annotated[
+        bool, typer.Option("--compile", help="Enable torch.compile for inference")
+    ] = False,
+    compile_backend: Annotated[str, typer.Option(help="torch.compile backend")] = "inductor",
+    compile_mode: Annotated[str, typer.Option(help="torch.compile mode")] = "reduce-overhead",
+    compile_fullgraph: Annotated[bool, typer.Option(help="torch.compile fullgraph")] = False,
+    compile_dynamic: Annotated[bool, typer.Option(help="torch.compile dynamic")] = False,
+    compile_targets: Annotated[
+        str, typer.Option(help="Compile targets: all, flow-lm, mimi-decoder (comma-separated).")
+    ] = "all",
 ):
     """Generate speech using Kyutai Pocket TTS."""
     if "cuda" in device:
@@ -234,9 +256,16 @@ def generate(
             variant, temperature, lsd_decode_steps, noise_clamp, eos_threshold
         )
         tts_model.to(device)
+        if compile_model:
+            tts_model.compile_for_inference(
+                backend=compile_backend,
+                mode=compile_mode,
+                fullgraph=compile_fullgraph,
+                dynamic=compile_dynamic,
+                targets=compile_targets,
+            )
 
         model_state_for_voice = tts_model.get_state_for_audio_prompt(voice)
-        # Stream audio generation directly to file or stdout
         audio_chunks = tts_model.generate_audio_stream(
             model_state=model_state_for_voice,
             text_to_generate=text,
@@ -245,11 +274,102 @@ def generate(
 
         stream_audio_chunks(output_path, audio_chunks, tts_model.config.mimi.sample_rate)
 
-        # Only print the result message if not writing to stdout
         if output_path != "-":
             logger.info("Results written in %s", output_path)
         logger.info(
             "If you want to try multiple voices and prompts quickly, try the `serve` command."
+        )
+
+
+@cli_app.command()
+def benchmark(
+    text: Annotated[
+        str, typer.Option(help="Text to generate")
+    ] = "Hello world. I am Kyutai's Pocket TTS. I'm fast enough to run on small CPUs. I hope you'll like me.",
+    voice: Annotated[
+        str, typer.Option(help="Path to audio conditioning file (voice to clone)")
+    ] = DEFAULT_AUDIO_PROMPT,
+    quiet: Annotated[bool, typer.Option("-q", "--quiet", help="Disable logging output")] = False,
+    variant: Annotated[str, typer.Option(help="Model signature")] = DEFAULT_VARIANT,
+    lsd_decode_steps: Annotated[
+        int, typer.Option(help="Number of generation steps")
+    ] = DEFAULT_LSD_DECODE_STEPS,
+    temperature: Annotated[
+        float, typer.Option(help="Temperature for generation")
+    ] = DEFAULT_TEMPERATURE,
+    noise_clamp: Annotated[float, typer.Option(help="Noise clamp value")] = DEFAULT_NOISE_CLAMP,
+    eos_threshold: Annotated[float, typer.Option(help="EOS threshold")] = DEFAULT_EOS_THRESHOLD,
+    frames_after_eos: Annotated[
+        int, typer.Option(help="Number of frames to generate after EOS")
+    ] = DEFAULT_FRAMES_AFTER_EOS,
+    device: Annotated[str, typer.Option(help="Device to use")] = "cpu",
+    warmup_runs: Annotated[int, typer.Option(help="Warmup runs")] = 1,
+    runs: Annotated[int, typer.Option(help="Timed runs")] = 3,
+    compile_model: Annotated[
+        bool, typer.Option("--compile", help="Enable torch.compile for inference")
+    ] = False,
+    compile_backend: Annotated[str, typer.Option(help="torch.compile backend")] = "inductor",
+    compile_mode: Annotated[str, typer.Option(help="torch.compile mode")] = "reduce-overhead",
+    compile_fullgraph: Annotated[bool, typer.Option(help="torch.compile fullgraph")] = False,
+    compile_dynamic: Annotated[bool, typer.Option(help="torch.compile dynamic")] = False,
+    compile_targets: Annotated[
+        str, typer.Option(help="Compile targets: all, flow-lm, mimi-decoder (comma-separated).")
+    ] = "all",
+):
+    if "cuda" in device:
+        os.environ["NO_CUDA_GRAPH"] = "1"
+
+    log_level = logging.ERROR if quiet else logging.INFO
+    with enable_logging("pocket_tts", log_level):
+        tts_model = TTSModel.load_model(
+            variant, temperature, lsd_decode_steps, noise_clamp, eos_threshold
+        )
+        tts_model.to(device)
+        if compile_model:
+            tts_model.compile_for_inference(
+                backend=compile_backend,
+                mode=compile_mode,
+                fullgraph=compile_fullgraph,
+                dynamic=compile_dynamic,
+                targets=compile_targets,
+            )
+
+        model_state_for_voice = tts_model.get_state_for_audio_prompt(voice)
+
+        for _ in range(max(warmup_runs, 0)):
+            tts_model.generate_audio(
+                model_state_for_voice, text, frames_after_eos=frames_after_eos, copy_state=True
+            )
+
+        elapsed_times = []
+        rtfs = []
+        durations = []
+        for _ in range(max(runs, 1)):
+            start = time.monotonic()
+            audio = tts_model.generate_audio(
+                model_state_for_voice, text, frames_after_eos=frames_after_eos, copy_state=True
+            )
+            elapsed = time.monotonic() - start
+            duration = audio.shape[-1] / tts_model.sample_rate
+            rtf = duration / elapsed if elapsed > 0 else float("inf")
+            elapsed_times.append(elapsed)
+            rtfs.append(rtf)
+            durations.append(duration)
+
+        mean_ms = statistics.mean(elapsed_times) * 1000
+        median_ms = statistics.median(elapsed_times) * 1000
+        mean_rtf = statistics.mean(rtfs)
+        median_rtf = statistics.median(rtfs)
+        mean_duration = statistics.mean(durations)
+
+        logger.info(
+            "Benchmark over %d runs (avg duration %.2fs): mean %.1f ms, median %.1f ms, mean RTF %.2f, median RTF %.2f",
+            len(elapsed_times),
+            mean_duration,
+            mean_ms,
+            median_ms,
+            mean_rtf,
+            median_rtf,
         )
 
 

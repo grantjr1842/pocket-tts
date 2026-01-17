@@ -1,0 +1,41 @@
+services:
+  pocket-tts:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    volumes:
+      # Persist downloaded models to avoid re-downloading on restart
+      - pocket-tts-models:/root/.cache/huggingface
+    environment:
+      # Server configuration
+      - POCKET_TTS_HOST=0.0.0.0
+      - POCKET_TTS_PORT=8000
+      # Optional: Set CORS allowed origins (comma-separated)
+      # - POCKET_TTS_ALLOWED_ORIGINS=http://localhost:3000
+      # Optional: Set log level (DEBUG, INFO, WARNING, ERROR)
+      # - LOG_LEVEL=INFO
+    # Override command to use environment variables
+    command: uv run pocket-tts serve --host 0.0.0.0 --port 8000
+    # Ensure container restarts on failure
+    restart: unless-stopped
+    # Health check for the service
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "uv",
+          "run",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')",
+        ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+volumes:
+  pocket-tts-models:
+    # Named volume for model persistence

@@ -5,6 +5,7 @@ import queue
 import statistics
 import threading
 import time
+from collections.abc import Iterable
 from functools import lru_cache
 from pathlib import Path
 
@@ -40,8 +41,17 @@ from pocket_tts.utils.utils import (
 )
 from pocket_tts.utils.weights_loading import get_flow_lm_state_dict, get_mimi_state_dict
 
-torch.set_num_threads(1)
 logger = logging.getLogger(__name__)
+
+torch.set_num_threads(1)
+interop_threads = os.environ.get("POCKET_TTS_INTEROP_THREADS")
+if interop_threads:
+    try:
+        torch.set_num_interop_threads(int(interop_threads))
+    except ValueError:
+        logger.warning("Invalid POCKET_TTS_INTEROP_THREADS=%s; expected integer.", interop_threads)
+
+PROMPT_CACHE_SIZE = max(1, int(os.environ.get("POCKET_TTS_PROMPT_CACHE_SIZE", "2")))
 
 
 class TTSModel(nn.Module):
@@ -62,6 +72,7 @@ class TTSModel(nn.Module):
         self.eos_threshold = eos_threshold
         self.config = config
         self.has_voice_cloning = True
+        self._compiled_targets = set()
 
     @property
     def device(self) -> str:
@@ -163,12 +174,20 @@ class TTSModel(nn.Module):
 
         return tts_model
 
+    @classmethod
     def load_model(
+        cls,
         variant: str = DEFAULT_VARIANT,
         temp: float | int = DEFAULT_TEMPERATURE,
         lsd_decode_steps: int = DEFAULT_LSD_DECODE_STEPS,
         noise_clamp: float | int | None = DEFAULT_NOISE_CLAMP,
         eos_threshold: float = DEFAULT_EOS_THRESHOLD,
+        compile: bool = False,
+        compile_backend: str = "inductor",
+        compile_mode: str = "reduce-overhead",
+        compile_fullgraph: bool = False,
+        compile_dynamic: bool = False,
+        compile_targets: str | Iterable[str] = "all",
     ) -> Self:
         """Load a pre-trained TTS model with specified configuration.
 
@@ -187,6 +206,13 @@ class TTSModel(nn.Module):
                 is applied. Helps prevent extreme values in generation.
             eos_threshold: Threshold for end-of-sequence detection. Higher values
                 make the model more likely to continue generating.
+            compile: If True, apply torch.compile to the model for faster inference.
+            compile_backend: torch.compile backend (default: "inductor").
+            compile_mode: torch.compile mode (default: "reduce-overhead").
+            compile_fullgraph: torch.compile fullgraph flag (default: False).
+            compile_dynamic: torch.compile dynamic flag (default: False).
+            compile_targets: Compilation targets: "all", "flow-lm", "mimi-decoder",
+                or comma-separated combination. (default: "all")
 
         Returns:
             TTSModel: Fully initialized model with loaded weights on cpu, ready for
@@ -196,12 +222,95 @@ class TTSModel(nn.Module):
             FileNotFoundError: If the specified config file or model weights
                 are not found.
             ValueError: If the configuration is invalid or incompatible.
+            RuntimeError: If torch.compile is not available (requires PyTorch 2.0+).
+
+        Example:
+            >>> model = TTSModel.load_model()
+            >>> # Or with compilation for faster inference:
+            >>> model = TTSModel.load_model(compile=True)
+            >>> # Or with custom compilation settings:
+            >>> model = TTSModel.load_model(
+            ...     compile=True,
+            ...     compile_targets="flow-lm",
+            ...     compile_mode="max-autotune"
+            ... )
         """
         config = load_config(Path(__file__).parents[1] / f"config/{variant}.yaml")
-        tts_model = TTSModel._from_pydantic_config_with_weights(
+        tts_model = cls._from_pydantic_config_with_weights(
             config, temp, lsd_decode_steps, noise_clamp, eos_threshold
         )
+
+        if compile:
+            if not hasattr(torch, "compile"):
+                raise RuntimeError("torch.compile is not available. Requires PyTorch 2.0+.")
+            tts_model.compile_for_inference(
+                backend=compile_backend,
+                mode=compile_mode,
+                fullgraph=compile_fullgraph,
+                dynamic=compile_dynamic,
+                targets=compile_targets,
+            )
+
         return tts_model
+
+    def _normalize_compile_targets(self, targets: Iterable[str] | str) -> set[str]:
+        if isinstance(targets, str):
+            raw_targets = [target.strip() for target in targets.split(",") if target.strip()]
+        else:
+            raw_targets = [str(target).strip() for target in targets if str(target).strip()]
+
+        normalized = {target.replace("_", "-") for target in raw_targets}
+        if not normalized:
+            raise ValueError("compile targets cannot be empty.")
+        if "all" in normalized:
+            normalized = {"flow-lm", "mimi-decoder"}
+
+        invalid = normalized - {"flow-lm", "mimi-decoder"}
+        if invalid:
+            invalid_list = ", ".join(sorted(invalid))
+            raise ValueError(
+                f"Invalid compile targets: {invalid_list}. Use 'all', 'flow-lm', or 'mimi-decoder'."
+            )
+        return normalized
+
+    def compile_for_inference(
+        self,
+        backend: str = "inductor",
+        mode: str = "reduce-overhead",
+        fullgraph: bool = False,
+        dynamic: bool = False,
+        targets: Iterable[str] | str = "all",
+    ) -> Self:
+        if not hasattr(torch, "compile"):
+            raise RuntimeError("torch.compile is not available. Requires PyTorch 2.0+.")
+
+        targets_set = self._normalize_compile_targets(targets)
+        targets_to_compile = targets_set - self._compiled_targets
+        if not targets_to_compile:
+            return self
+
+        compile_kwargs = {
+            "backend": backend,
+            "mode": mode,
+            "fullgraph": fullgraph,
+            "dynamic": dynamic,
+        }
+        logger.info(
+            "Compiling inference targets %s with torch.compile (backend=%s, mode=%s)",
+            ", ".join(sorted(targets_to_compile)),
+            backend,
+            mode,
+        )
+        if "flow-lm" in targets_to_compile:
+            self.flow_lm = torch.compile(self.flow_lm, **compile_kwargs)
+            self._compiled_targets.add("flow-lm")
+        if "mimi-decoder" in targets_to_compile:
+            self.mimi.decoder_transformer = torch.compile(
+                self.mimi.decoder_transformer, **compile_kwargs
+            )
+            self.mimi.decoder = torch.compile(self.mimi.decoder, **compile_kwargs)
+            self._compiled_targets.add("mimi-decoder")
+        return self
 
     def _run_flow_lm_and_increment_step(
         self,
@@ -261,12 +370,13 @@ class TTSModel(nn.Module):
         conditioning = F.linear(latents, self.flow_lm.speaker_proj_weight)
         return conditioning
 
-    @torch.no_grad
-    def _decode_audio_worker(self, latents_queue: queue.Queue, result_queue: queue.Queue):
-        """Worker thread function for decoding audio latents from queue with immediate streaming."""
+    @torch.inference_mode
+    def _decode_audio_worker(
+        self, latents_queue: queue.SimpleQueue, result_queue: queue.SimpleQueue
+    ):
         try:
-            audio_chunks = []
             mimi_state = init_states(self.mimi, batch_size=1, sequence_length=1000)
+
             while True:
                 latent = latents_queue.get()
                 if latent is None:
@@ -298,7 +408,7 @@ class TTSModel(nn.Module):
             # Put error in result queue
             result_queue.put(("error", e))
 
-    @torch.no_grad
+    @torch.inference_mode
     def generate_audio(
         self,
         model_state: dict,
@@ -349,7 +459,7 @@ class TTSModel(nn.Module):
             audio_chunks.append(chunk)
         return torch.cat(audio_chunks, dim=0)
 
-    @torch.no_grad
+    @torch.inference_mode
     def generate_audio_stream(
         self,
         model_state: dict,
@@ -410,18 +520,16 @@ class TTSModel(nn.Module):
                 copy_state=copy_state,
             )
 
-    @torch.no_grad
+    @torch.inference_mode
     def _generate_audio_stream_short_text(
         self, model_state: dict, text_to_generate: str, frames_after_eos: int, copy_state: bool
     ):
         if copy_state:
             model_state = copy.deepcopy(model_state)
 
-        # Set up multithreaded generation and decoding
-        latents_queue = queue.Queue()
-        result_queue = queue.Queue()
+        latents_queue: queue.SimpleQueue = queue.SimpleQueue()
+        result_queue: queue.SimpleQueue = queue.SimpleQueue()
 
-        # Start decoder worker thread
         decoder_thread = threading.Thread(
             target=self._decode_audio_worker, args=(latents_queue, result_queue), daemon=True
         )
@@ -429,7 +537,6 @@ class TTSModel(nn.Module):
         t_generating = time.monotonic()
         decoder_thread.start()
 
-        # Generate latents and add them to queue (decoder processes them in parallel)
         self._generate(
             model_state=model_state,
             text_to_generate=text_to_generate,
@@ -438,30 +545,23 @@ class TTSModel(nn.Module):
             result_queue=result_queue,
         )
 
-        # Stream audio chunks as they become available
         total_generated_samples = 0
         while True:
             result = result_queue.get()
             if result[0] == "chunk":
-                # Audio chunk available immediately for streaming/playback
                 audio_chunk = result[1]
                 total_generated_samples += audio_chunk.shape[-1]
-                yield audio_chunk[0, 0]  # Remove batch, channel
+                yield audio_chunk[0, 0]
             elif result[0] == "done":
-                # Generation complete
                 break
             elif result[0] == "error":
-                # Wait for decoder thread to finish cleanly before propagating error
                 with display_execution_time("Waiting for mimi decoder to finish"):
                     decoder_thread.join()
-                # Propagate error
                 raise result[1]
 
-        # Wait for decoder thread to finish cleanly
         with display_execution_time("Waiting for mimi decoder to finish"):
             decoder_thread.join()
 
-        # Print timing information
         duration_generated_audio = int(
             total_generated_samples * 1000 / self.config.mimi.sample_rate
         )
@@ -475,14 +575,45 @@ class TTSModel(nn.Module):
             real_time_factor,
         )
 
-    @torch.no_grad
+    @torch.inference_mode
+    def _decode_audio_worker(
+        self, latents_queue: queue.SimpleQueue, result_queue: queue.SimpleQueue
+    ):
+        try:
+            mimi_state = init_states(self.mimi, batch_size=1, sequence_length=1000)
+            while True:
+                latent = latents_queue.get()
+                if latent is None:
+                    break
+                mimi_decoding_input = latent * self.flow_lm.emb_std + self.flow_lm.emb_mean
+                transposed = mimi_decoding_input.transpose(-1, -2)
+                quantized = self.mimi.quantizer(transposed)
+
+                t = time.monotonic()
+                audio_frame = self.mimi.decode_from_latent(quantized, mimi_state)
+                increment_steps(self.mimi, mimi_state, increment=16)
+                audio_frame_duration = audio_frame.shape[2] / self.config.mimi.sample_rate
+                logger.debug(
+                    " " * 30 + "Decoded %d ms of audio with mimi in %d ms",
+                    int(audio_frame_duration * 1000),
+                    int((time.monotonic() - t) * 1000),
+                )
+
+                result_queue.put(("chunk", audio_frame))
+
+            result_queue.put(("done", None))
+
+        except Exception as e:
+            result_queue.put(("error", e))
+
+    @torch.inference_mode
     def _generate(
         self,
         model_state: dict,
         text_to_generate: str,
         frames_after_eos: int,
-        latents_queue: queue.Queue,
-        result_queue: queue.Queue,
+        latents_queue: queue.SimpleQueue,
+        result_queue: queue.SimpleQueue,
     ):
         gen_len_sec = len(text_to_generate.split()) * 1 + 2.0
         max_gen_len = int(gen_len_sec * 12.5)
@@ -510,9 +641,13 @@ class TTSModel(nn.Module):
         generation_thread = threading.Thread(target=run_generation, daemon=True)
         generation_thread.start()
 
-    @torch.no_grad
+    @torch.inference_mode
     def _autoregressive_generation(
-        self, model_state: dict, max_gen_len: int, frames_after_eos: int, latents_queue: queue.Queue
+        self,
+        model_state: dict,
+        max_gen_len: int,
+        frames_after_eos: int,
+        latents_queue: queue.SimpleQueue,
     ):
         backbone_input = torch.full(
             (1, 1, self.flow_lm.ldim),
@@ -547,13 +682,13 @@ class TTSModel(nn.Module):
         latents_queue.put(None)
         logger.info("Average generation step time: %d ms", int(statistics.mean(steps_times)))
 
-    @lru_cache(maxsize=2)
+    @lru_cache(maxsize=PROMPT_CACHE_SIZE)
     def _cached_get_state_for_audio_prompt(
         self, audio_conditioning: Path | str | torch.Tensor, truncate: bool = False
     ) -> dict:
         return self.get_state_for_audio_prompt(audio_conditioning, truncate)
 
-    @torch.no_grad
+    @torch.inference_mode
     def get_state_for_audio_prompt(
         self, audio_conditioning: Path | str | torch.Tensor, truncate: bool = False
     ) -> dict:
