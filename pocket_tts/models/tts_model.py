@@ -183,6 +183,9 @@ class TTSModel(nn.Module):
         lsd_decode_steps: int = DEFAULT_LSD_DECODE_STEPS,
         noise_clamp: float | int | None = DEFAULT_NOISE_CLAMP,
         eos_threshold: float = DEFAULT_EOS_THRESHOLD,
+        dtype: str = "float32",
+        quantize: bool = False,
+        quantize_components: str = "all",
         compile: bool = False,
         compile_backend: str = "inductor",
         compile_mode: str = "reduce-overhead",
@@ -207,6 +210,12 @@ class TTSModel(nn.Module):
                 is applied. Helps prevent extreme values in generation.
             eos_threshold: Threshold for end-of-sequence detection. Higher values
                 make the model more likely to continue generating.
+            dtype: Model weight dtype - "float32" (default) or "bfloat16" for
+                reduced memory (~50% savings). bfloat16 may slightly affect quality.
+            quantize: If True, apply int8 dynamic quantization for reduced memory
+                footprint (~75% weight size reduction). May affect audio quality.
+            quantize_components: Which components to quantize - "all", "flow-lm",
+                or "mimi". Only used if quantize=True.
             compile: If True, apply torch.compile to the model for faster inference.
             compile_backend: torch.compile backend (default: "inductor").
             compile_mode: torch.compile mode (default: "reduce-overhead").
@@ -229,17 +238,28 @@ class TTSModel(nn.Module):
             >>> model = TTSModel.load_model()
             >>> # Or with compilation for faster inference:
             >>> model = TTSModel.load_model(compile=True)
-            >>> # Or with custom compilation settings:
-            >>> model = TTSModel.load_model(
-            ...     compile=True,
-            ...     compile_targets="flow-lm",
-            ...     compile_mode="max-autotune"
-            ... )
+            >>> # Or with reduced memory using bfloat16:
+            >>> model = TTSModel.load_model(dtype="bfloat16")
+            >>> # Or with int8 quantization:
+            >>> model = TTSModel.load_model(quantize=True)
         """
         config = load_config(Path(__file__).parents[1] / f"config/{variant}.yaml")
         tts_model = cls._from_pydantic_config_with_weights(
             config, temp, lsd_decode_steps, noise_clamp, eos_threshold
         )
+
+        # Apply dtype conversion for memory optimization
+        if dtype == "bfloat16":
+            logger.info("Converting model to bfloat16 for reduced memory")
+            tts_model = tts_model.to(dtype=torch.bfloat16)
+        elif dtype != "float32":
+            raise ValueError(f"Unsupported dtype: {dtype}. Use 'float32' or 'bfloat16'.")
+
+        # Apply int8 quantization if requested
+        if quantize:
+            from pocket_tts.utils.quantization import quantize_model
+            logger.info("Applying int8 quantization for reduced memory")
+            tts_model = quantize_model(tts_model, components=quantize_components)
 
         if compile:
             if not hasattr(torch, "compile"):
