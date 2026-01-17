@@ -1,0 +1,251 @@
+import torch
+import torch.nn as nn
+from einops import rearrange
+from torch.nn import functional as F
+
+from pocket_tts.modules.rope import RotaryEmbedding
+from pocket_tts.modules.stateful_module import StatefulModule
+
+
+class KVCacheResult:
+    """Result from KV cache completion with keys, values, and position info."""
+    __slots__ = ("keys", "values", "positions")
+
+    def __init__(self, keys: torch.Tensor, values: torch.Tensor, positions: torch.Tensor):
+        self.keys = keys
+        self.values = values
+        self.positions = positions
+
+    @staticmethod
+    def from_kv(keys: torch.Tensor, values: torch.Tensor) -> "KVCacheResult":
+        """Create from K/V tensors without cached history."""
+        B, H, T, D = keys.shape
+        assert tuple(values.shape[:-1]) == (B, H, T)
+        positions = torch.arange(T, device=keys.device, dtype=torch.long)
+        return KVCacheResult(keys, values, positions.expand(B, -1))
+
+
+def _complete_ring_buffer(
+    cache: torch.Tensor, end_offset: torch.Tensor, k: torch.Tensor, v: torch.Tensor
+) -> KVCacheResult:
+    """Complete KV cache using ring buffer for sliding window attention.
+
+    Args:
+        cache: Shape [2, B, H, capacity, D] - ring buffer for keys and values
+        end_offset: Shape [B] - current write position for each batch
+        k: Shape [B, H, T, D] - new keys to add
+        v: Shape [B, H, T, D] - new values to add
+
+    Returns:
+        KVCacheResult with full keys, values, and position info
+    """
+    capacity = cache.shape[3]
+    assert k.shape[:-1] == v.shape[:-1], (k.shape, v.shape)
+    B, H, T, D = k.shape
+    assert T > 0
+
+    # Calculate indices for ring buffer insertion
+    indexes = torch.arange(T, device=end_offset.device, dtype=end_offset.dtype)
+    indexes = indexes + end_offset.view(-1, 1)
+    indexes = indexes % capacity
+
+    # Scatter new K/V into cache
+    this_indexes = indexes.view(B, 1, T, 1).expand(-1, H, T, D)
+    cache[0].scatter_(2, this_indexes, k)
+    cache[1].scatter_(2, this_indexes, v)
+
+    keys = cache[0]
+    values = cache[1]
+
+    # Calculate positions for attention masking
+    indexes = torch.arange(capacity, device=end_offset.device, dtype=torch.long)
+    last_offset = end_offset.view(-1, 1) + T - 1
+    end_index = last_offset % capacity
+    delta = indexes - end_index
+    positions = torch.where(delta <= 0, last_offset + delta, last_offset + delta - capacity)
+
+    end_offset[:] = end_offset + T
+    invalid = indexes >= end_offset.view(-1, 1)
+    positions = torch.where(invalid, torch.full_like(positions, -1), positions)
+
+    return KVCacheResult(keys, values, positions)
+
+
+def _complete_append_buffer(
+    cache: torch.Tensor, current_end: int, k: torch.Tensor, v: torch.Tensor
+) -> tuple[torch.Tensor, torch.Tensor]:
+    """Complete KV cache using simple append for full-sequence attention.
+
+    Args:
+        cache: Shape [2, B, capacity, H, D] - buffer for keys and values
+        current_end: Current length of cached sequence
+        k: Shape [B, T, H, D] - new keys to add
+        v: Shape [B, T, H, D] - new values to add
+
+    Returns:
+        Tuple of (keys, values) including all cached history
+    """
+    cache[0, :, current_end : current_end + k.shape[1]] = k
+    cache[1, :, current_end : current_end + v.shape[1]] = v
+    valid = cache[:, :, : current_end + k.shape[1]]
+    return valid[0], valid[1]
+
+
+def _materialize_causal_mask(
+    shape: tuple[int, ...], shift: int, device: str | torch.device = "cpu"
+) -> torch.Tensor:
+    """Create a causal attention mask."""
+    dtype = torch.float32
+    num_queries, num_keys = shape[-2:]
+    shift = num_keys - num_queries
+    tensor = torch.full(shape, dtype=dtype, fill_value=1, device=device)
+    mask = torch.tril(tensor, diagonal=shift).to(dtype)
+    mask = torch.log(mask)
+    return mask.to(dtype)
+
+
+class StreamingMultiheadAttention(StatefulModule):
+    """Unified streaming multi-head attention with optional context window support.
+
+    This class unifies the previous MimiStreamingMultiheadAttention and
+    StreamingMultiheadAttention implementations. When context is specified,
+    it uses a ring buffer for sliding window attention. Otherwise, it uses
+    full-sequence attention with simple append caching.
+
+    Args:
+        embed_dim: Embedding dimension.
+        num_heads: Number of attention heads.
+        rope: Rotary position embedding module.
+        context: Optional context window size for sliding window attention.
+            If None, uses full-sequence attention.
+    """
+
+    def __init__(
+        self,
+        embed_dim: int,
+        num_heads: int,
+        rope: RotaryEmbedding,
+        context: int | None = None,
+    ):
+        super().__init__()
+
+        self.embed_dim = embed_dim
+        self.num_heads = num_heads
+        self.rope = rope
+        self.context = context
+
+        out_dim = 3 * embed_dim
+        self.in_proj = nn.Linear(embed_dim, out_dim, bias=False)
+        self.out_proj = nn.Linear(embed_dim, embed_dim, bias=False)
+
+    def init_state(self, batch_size: int, sequence_length: int) -> dict[str, torch.Tensor]:
+        dim_per_head = self.embed_dim // self.num_heads
+
+        if self.context is not None:
+            # Ring buffer mode for sliding window attention
+            return {
+                "offset": torch.zeros(batch_size, dtype=torch.long),
+                "cache": torch.zeros(
+                    (2, batch_size, self.num_heads, sequence_length, dim_per_head)
+                ),
+                "end_offset": torch.zeros(batch_size, dtype=torch.long),
+            }
+        else:
+            # Append mode for full-sequence attention
+            initial_current_end = torch.zeros((0,)).to(self.in_proj.weight.device)
+            return {
+                "current_end": initial_current_end,
+                "cache": torch.full(
+                    (2, batch_size, sequence_length, self.num_heads, dim_per_head),
+                    float("NaN"),
+                    device=self.in_proj.weight.device,
+                    dtype=self.in_proj.weight.dtype,
+                ),
+            }
+
+    def increment_step(self, state: dict, increment: int = 1):
+        if self.context is not None:
+            state["offset"] += increment
+        else:
+            new_size = state["current_end"].shape[0] + increment
+            state["current_end"] = torch.zeros((new_size,)).to(state["current_end"].device)
+
+    def forward(self, query: torch.Tensor, model_state: dict | None) -> torch.Tensor:
+        if model_state is None:
+            raise ValueError("model_state must be provided")
+
+        state = self.get_state(model_state)
+        B, T = query.shape[:2]
+
+        projected = self.in_proj(query)
+
+        if self.context is not None:
+            # Ring buffer path (sliding window attention)
+            return self._forward_with_context(projected, state, B, T, query.device)
+        else:
+            # Append path (full-sequence attention)
+            return self._forward_without_context(projected, state, B, T, query.device)
+
+    def _forward_with_context(
+        self, projected: torch.Tensor, state: dict, B: int, T: int, device: torch.device
+    ) -> torch.Tensor:
+        """Forward pass with sliding window attention (ring buffer KV cache)."""
+        offset = state["offset"]
+
+        # Reshape: (b, t, 3*h*d) -> (b, h, t, d) for each of q, k, v
+        q, k, v = rearrange(projected, "b t (p h d) -> p b h t d", p=3, h=self.num_heads)
+
+        # Apply RoPE - requires (b, t, h, d) format
+        q = q.permute(0, 2, 1, 3)  # [B, T, H, D]
+        k = k.permute(0, 2, 1, 3)
+        q, k = self.rope(q, k, offset)
+        q = q.permute(0, 2, 1, 3)  # [B, H, T, D]
+        k = k.permute(0, 2, 1, 3)
+
+        # Complete KV cache
+        kv_result = _complete_ring_buffer(state["cache"], state["end_offset"], k, v)
+        k, v, pos_k = kv_result.keys, kv_result.values, kv_result.positions
+
+        # Build attention bias for sliding window
+        pos_k = pos_k[:, None]
+        pos_q = offset.view(-1, 1, 1) + torch.arange(T, device=device, dtype=torch.long).view(-1, 1)
+        delta = pos_q - pos_k
+        attn_bias = (pos_k >= 0) & (delta >= 0) & (delta < self.context)
+        attn_bias = attn_bias[:, None]
+
+        x = F.scaled_dot_product_attention(q, k, v, attn_bias, dropout_p=0.0)
+        x = rearrange(x, "b h t d -> b t (h d)")
+        x = self.out_proj(x)
+        return x
+
+    def _forward_without_context(
+        self, projected: torch.Tensor, state: dict, B: int, T: int, device: torch.device
+    ) -> torch.Tensor:
+        """Forward pass with full-sequence attention (append KV cache)."""
+        current_end = state["current_end"].shape[0]
+
+        # Reshape: (b, t, 3*h*d) -> (b, t, h, d) for each of q, k, v
+        d = self.embed_dim // self.num_heads
+        packed = projected.view(B, T, 3, self.num_heads, d)
+        q, k, v = torch.unbind(packed, dim=2)
+
+        # Apply RoPE
+        q, k = self.rope(q, k, offset=current_end)
+
+        # Complete KV cache
+        k, v = _complete_append_buffer(state["cache"], current_end, k, v)
+
+        # Build causal mask
+        mask_shape = (T, T + current_end)
+        attn_mask = _materialize_causal_mask(mask_shape, shift=current_end, device=device)
+
+        # Attention computation (need [B, H, T, D] format)
+        q, k, v = [x.transpose(1, 2) for x in (q, k, v)]
+        x = F.scaled_dot_product_attention(q, k, v, attn_mask)
+        x = x.transpose(1, 2)
+
+        # Reshape and project
+        b, t, h, d = x.shape
+        x = x.reshape(b, t, h * d)
+        x = self.out_proj(x)
+        return x

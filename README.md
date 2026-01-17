@@ -46,8 +46,13 @@ uvx pocket-tts generate
 pocket-tts generate
 ```
 
-You can opt into `torch.compile` with `--compile` for CPU speedups at the cost of extra startup time on the first run. If the Mimi decoder does not compile cleanly on your setup, use `--compile-targets flow-lm` to compile only the text model.
-Modify the voice with `--voice` and the text with `--text`. We provide a small catalog of voices.
+<<<<<<< HEAD
+
+=======
+
+> > > > > > > 7a4142b (feat: add compiled models feature and Rust audio processing library)
+> > > > > > > You can opt into `torch.compile` with `--compile` for CPU speedups at the cost of extra startup time on the first run. If the Mimi decoder does not compile cleanly on your setup, use `--compile-targets flow-lm` to compile only the text model.
+> > > > > > > Modify the voice with `--voice` and the text with `--text`. We provide a small catalog of voices.
 
 You can take a look at [this page](https://huggingface.co/kyutai/tts-voices) which details the licenses
 for each voice.
