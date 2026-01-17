@@ -40,6 +40,7 @@ from pocket_tts.utils.utils import (
     size_of_dict,
 )
 from pocket_tts.utils.weights_loading import get_flow_lm_state_dict, get_mimi_state_dict
+from pocket_tts.utils.pause_handler import parse_pause_tags, duration_to_frame_count
 
 logger = logging.getLogger(__name__)
 
@@ -526,21 +527,37 @@ class TTSModel(nn.Module):
             real-time factor (RTF) metrics.
         """
 
+        # Parse pause tags from text (e.g., <pause:500ms>)
+        text_chunks, pause_markers = parse_pause_tags(text_to_generate)
+
+        # Build a lookup of chunk_index -> pause_duration_ms
+        pause_after_chunk = {p.position: p.duration_ms for p in pause_markers}
+
         # This is a very simplistic way of handling long texts. We could do much better
         # by using teacher forcing, but it would be a bit slower.
         # TODO: add the teacher forcing method for long texts where we use the audio of one chunk
         # as conditioning for the next chunk.
-        chunks = split_into_best_sentences(self.flow_lm.conditioner.tokenizer, text_to_generate)
 
-        for chunk in chunks:
-            text_to_generate, frames_after_eos_guess = prepare_text_prompt(chunk)
-            frames_after_eos_guess += 2
-            yield from self._generate_audio_stream_short_text(
-                model_state=model_state,
-                text_to_generate=chunk,
-                frames_after_eos=frames_after_eos_guess,
-                copy_state=copy_state,
-            )
+        for chunk_idx, text_chunk in enumerate(text_chunks):
+            # Further split long chunks into sentences
+            sentences = split_into_best_sentences(self.flow_lm.conditioner.tokenizer, text_chunk)
+
+            for sentence in sentences:
+                text_to_generate, frames_after_eos_guess = prepare_text_prompt(sentence)
+                frames_after_eos_guess += 2
+                yield from self._generate_audio_stream_short_text(
+                    model_state=model_state,
+                    text_to_generate=sentence,
+                    frames_after_eos=frames_after_eos_guess,
+                    copy_state=copy_state,
+                )
+
+            # Insert silence if there's a pause after this chunk
+            if chunk_idx in pause_after_chunk:
+                pause_ms = pause_after_chunk[chunk_idx]
+                silence_samples = int(pause_ms * self.sample_rate / 1000)
+                yield torch.zeros(silence_samples)
+                logger.debug("Inserted %d ms of silence (%d samples)", pause_ms, silence_samples)
 
     @torch.inference_mode
     def _generate_audio_stream_short_text(
