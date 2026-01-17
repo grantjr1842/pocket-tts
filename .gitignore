@@ -89,4 +89,6 @@ QWEN.md
 .claude/
 
 # output
-output/
+output/pocket_tts/rust_libs/
+*.rlib
+*.d
