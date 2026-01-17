@@ -47,16 +47,21 @@ global_model_state = None
 web_app = FastAPI(
     title="Kyutai Pocket TTS API", description="Text-to-Speech generation API", version="1.0.0"
 )
+allowed_origins = [
+    origin.strip()
+    for origin in os.environ.get(
+        "POCKET_TTS_ALLOWED_ORIGINS",
+        "http://localhost:3000,https://pod1-10007.internal.kyutai.org,https://kyutai.org",
+    ).split(",")
+    if origin.strip()
+]
+
 web_app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:3000",
-        "https://pod1-10007.internal.kyutai.org",
-        "https://kyutai.org",
-    ],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_origins=allowed_origins,
+    allow_credentials=False,
+    allow_methods=["GET", "POST"],
+    allow_headers=["Content-Type"],
 )
 
 
@@ -144,7 +149,7 @@ def text_to_speech(
             raise HTTPException(
                 status_code=400, detail="voice_url must start with http://, https://, or hf://"
             )
-        model_state = tts_model._cached_get_state_for_audio_prompt(voice_url, truncate=True)
+        model_state = tts_model.get_state_for_audio_prompt_cached(voice_url, truncate=True)
         logging.warning("Using voice from URL: %s", voice_url)
     elif voice_wav is not None:
         # Use uploaded voice file
@@ -371,6 +376,40 @@ def benchmark(
             mean_rtf,
             median_rtf,
         )
+
+
+@cli_app.command()
+def export(
+    output_dir: Annotated[
+        str, typer.Option(help="Output directory for exported model files")
+    ] = "./exported_model",
+    components: Annotated[
+        str, typer.Option(help="Components to export: all, flow-lm, mimi-decoder")
+    ] = "all",
+    variant: Annotated[str, typer.Option(help="Model variant")] = DEFAULT_VARIANT,
+):
+    """Export model to TorchScript for faster inference.
+
+    This command exports pocket-tts model components to TorchScript format,
+    which can provide faster inference in production environments.
+
+    Example:
+        uvx pocket-tts export --output-dir ./my_model
+    """
+    from pocket_tts.utils.export_model import export_to_torchscript
+
+    logger.info(f"Loading model variant: {variant}")
+    tts_model = TTSModel.load_model(variant)
+
+    logger.info(f"Exporting components: {components} to {output_dir}")
+    results = export_to_torchscript(tts_model, output_dir, components=components)
+
+    if results:
+        logger.info("Export complete!")
+        for component, path in results.items():
+            logger.info(f"  {component}: {path}")
+    else:
+        logger.warning("No components were exported successfully")
 
 
 if __name__ == "__main__":
