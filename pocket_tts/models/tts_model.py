@@ -30,7 +30,7 @@ from pocket_tts.models.mimi import MimiModel
 from pocket_tts.modules import mimi_transformer
 from pocket_tts.modules.dummy_quantizer import DummyQuantizer
 from pocket_tts.modules.seanet import SEANetDecoder, SEANetEncoder
-from pocket_tts.modules.stateful_module import increment_steps, init_states
+from pocket_tts.modules.stateful_module import increment_steps, init_states, trim_model_state
 from pocket_tts.utils.config import Config, load_config
 from pocket_tts.utils.utils import (
     PREDEFINED_VOICES,
@@ -40,6 +40,7 @@ from pocket_tts.utils.utils import (
     size_of_dict,
 )
 from pocket_tts.utils.weights_loading import get_flow_lm_state_dict, get_mimi_state_dict
+from pocket_tts.utils.pause_handler import parse_pause_tags, duration_to_frame_count
 
 logger = logging.getLogger(__name__)
 
@@ -182,6 +183,9 @@ class TTSModel(nn.Module):
         lsd_decode_steps: int = DEFAULT_LSD_DECODE_STEPS,
         noise_clamp: float | int | None = DEFAULT_NOISE_CLAMP,
         eos_threshold: float = DEFAULT_EOS_THRESHOLD,
+        dtype: str = "float32",
+        quantize: bool = False,
+        quantize_components: str = "all",
         compile: bool = False,
         compile_backend: str = "inductor",
         compile_mode: str = "reduce-overhead",
@@ -206,6 +210,12 @@ class TTSModel(nn.Module):
                 is applied. Helps prevent extreme values in generation.
             eos_threshold: Threshold for end-of-sequence detection. Higher values
                 make the model more likely to continue generating.
+            dtype: Model weight dtype - "float32" (default) or "bfloat16" for
+                reduced memory (~50% savings). bfloat16 may slightly affect quality.
+            quantize: If True, apply int8 dynamic quantization for reduced memory
+                footprint (~75% weight size reduction). May affect audio quality.
+            quantize_components: Which components to quantize - "all", "flow-lm",
+                or "mimi". Only used if quantize=True.
             compile: If True, apply torch.compile to the model for faster inference.
             compile_backend: torch.compile backend (default: "inductor").
             compile_mode: torch.compile mode (default: "reduce-overhead").
@@ -228,17 +238,28 @@ class TTSModel(nn.Module):
             >>> model = TTSModel.load_model()
             >>> # Or with compilation for faster inference:
             >>> model = TTSModel.load_model(compile=True)
-            >>> # Or with custom compilation settings:
-            >>> model = TTSModel.load_model(
-            ...     compile=True,
-            ...     compile_targets="flow-lm",
-            ...     compile_mode="max-autotune"
-            ... )
+            >>> # Or with reduced memory using bfloat16:
+            >>> model = TTSModel.load_model(dtype="bfloat16")
+            >>> # Or with int8 quantization:
+            >>> model = TTSModel.load_model(quantize=True)
         """
         config = load_config(Path(__file__).parents[1] / f"config/{variant}.yaml")
         tts_model = cls._from_pydantic_config_with_weights(
             config, temp, lsd_decode_steps, noise_clamp, eos_threshold
         )
+
+        # Apply dtype conversion for memory optimization
+        if dtype == "bfloat16":
+            logger.info("Converting model to bfloat16 for reduced memory")
+            tts_model = tts_model.to(dtype=torch.bfloat16)
+        elif dtype != "float32":
+            raise ValueError(f"Unsupported dtype: {dtype}. Use 'float32' or 'bfloat16'.")
+
+        # Apply int8 quantization if requested
+        if quantize:
+            from pocket_tts.utils.quantization import quantize_model
+            logger.info("Applying int8 quantization for reduced memory")
+            tts_model = quantize_model(tts_model, components=quantize_components)
 
         if compile:
             if not hasattr(torch, "compile"):
@@ -460,6 +481,28 @@ class TTSModel(nn.Module):
         return torch.cat(audio_chunks, dim=0)
 
     @torch.inference_mode
+    def generate_audio_batch(
+        self,
+        model_state: dict,
+        texts_to_generate: Iterable[str],
+        frames_after_eos: int | None = None,
+        copy_state: bool = True,
+    ) -> list[torch.Tensor]:
+        texts = list(texts_to_generate)
+        if not texts:
+            raise ValueError("texts_to_generate cannot be empty")
+
+        return [
+            self.generate_audio(
+                model_state=model_state,
+                text_to_generate=text,
+                frames_after_eos=frames_after_eos,
+                copy_state=copy_state,
+            )
+            for text in texts
+        ]
+
+    @torch.inference_mode
     def generate_audio_stream(
         self,
         model_state: dict,
@@ -504,21 +547,37 @@ class TTSModel(nn.Module):
             real-time factor (RTF) metrics.
         """
 
+        # Parse pause tags from text (e.g., <pause:500ms>)
+        text_chunks, pause_markers = parse_pause_tags(text_to_generate)
+
+        # Build a lookup of chunk_index -> pause_duration_ms
+        pause_after_chunk = {p.position: p.duration_ms for p in pause_markers}
+
         # This is a very simplistic way of handling long texts. We could do much better
         # by using teacher forcing, but it would be a bit slower.
         # TODO: add the teacher forcing method for long texts where we use the audio of one chunk
         # as conditioning for the next chunk.
-        chunks = split_into_best_sentences(self.flow_lm.conditioner.tokenizer, text_to_generate)
 
-        for chunk in chunks:
-            text_to_generate, frames_after_eos_guess = prepare_text_prompt(chunk)
-            frames_after_eos_guess += 2
-            yield from self._generate_audio_stream_short_text(
-                model_state=model_state,
-                text_to_generate=chunk,
-                frames_after_eos=frames_after_eos_guess,
-                copy_state=copy_state,
-            )
+        for chunk_idx, text_chunk in enumerate(text_chunks):
+            # Further split long chunks into sentences
+            sentences = split_into_best_sentences(self.flow_lm.conditioner.tokenizer, text_chunk)
+
+            for sentence in sentences:
+                text_to_generate, frames_after_eos_guess = prepare_text_prompt(sentence)
+                frames_after_eos_guess += 2
+                yield from self._generate_audio_stream_short_text(
+                    model_state=model_state,
+                    text_to_generate=sentence,
+                    frames_after_eos=frames_after_eos_guess,
+                    copy_state=copy_state,
+                )
+
+            # Insert silence if there's a pause after this chunk
+            if chunk_idx in pause_after_chunk:
+                pause_ms = pause_after_chunk[chunk_idx]
+                silence_samples = int(pause_ms * self.sample_rate / 1000)
+                yield torch.zeros(silence_samples)
+                logger.debug("Inserted %d ms of silence (%d samples)", pause_ms, silence_samples)
 
     @torch.inference_mode
     def _generate_audio_stream_short_text(
@@ -682,6 +741,16 @@ class TTSModel(nn.Module):
         latents_queue.put(None)
         logger.info("Average generation step time: %d ms", int(statistics.mean(steps_times)))
 
+    def clear_prompt_cache(self) -> None:
+        self._cached_get_state_for_audio_prompt.cache_clear()
+
+    def get_state_for_audio_prompt_cached(
+        self, audio_conditioning: Path | str | torch.Tensor, truncate: bool = False
+    ) -> dict:
+        if isinstance(audio_conditioning, torch.Tensor):
+            return self.get_state_for_audio_prompt(audio_conditioning, truncate)
+        return self._cached_get_state_for_audio_prompt(audio_conditioning, truncate)
+
     @lru_cache(maxsize=PROMPT_CACHE_SIZE)
     def _cached_get_state_for_audio_prompt(
         self, audio_conditioning: Path | str | torch.Tensor, truncate: bool = False
@@ -767,6 +836,11 @@ class TTSModel(nn.Module):
         with display_execution_time("Prompting audio"):
             self._run_flow_lm_and_increment_step(model_state=model_state, audio_conditioning=prompt)
 
+        # Trim KV caches to actual used length to reduce memory for cached states
+        # This is especially important when caching multiple voice prompts
+        model_state = trim_model_state(model_state)
+        logger.debug("Trimmed model state KV caches to reduce memory usage")
+
         return model_state
 
 
@@ -799,8 +873,22 @@ def prepare_text_prompt(text: str) -> tuple[str, int]:
 
 
 def split_into_best_sentences(tokenizer, text_to_generate: str) -> list[str]:
+    """Split text into sentence-sized chunks for generation.
+
+    This function tokenizes the input text and splits it into chunks
+    that don't exceed a maximum token limit, using sentence boundaries
+    as split points.
+
+    Args:
+        tokenizer: The text tokenizer.
+        text_to_generate: Input text to split.
+
+    Returns:
+        List of text chunks suitable for generation.
+    """
     text_to_generate, _ = prepare_text_prompt(text_to_generate)
-    text_to_generate = text_to_generate.strip()
+    original_text = text_to_generate.strip()
+    text_to_generate = original_text
     tokens = tokenizer(text_to_generate)
     list_of_tokens = tokens.tokens[0].tolist()
 
@@ -820,11 +908,11 @@ def split_into_best_sentences(tokenizer, text_to_generate: str) -> list[str]:
 
     nb_tokens_and_sentences = []
     for i in range(len(end_of_sentences_indices) - 1):
-        # let's print
         start = end_of_sentences_indices[i]
         end = end_of_sentences_indices[i + 1]
         text = tokenizer.sp.decode(list_of_tokens[start:end])
         nb_tokens_and_sentences.append((end - start, text))
+        logger.debug("Sentence %d: %d tokens, text='%s'", i, end - start, text)
 
     max_nb_tokens_in_a_chunk = 50
     chunks = []
@@ -846,5 +934,22 @@ def split_into_best_sentences(tokenizer, text_to_generate: str) -> list[str]:
 
     if current_chunk != "":
         chunks.append(current_chunk.strip())
+
+    # Log and validate chunks
+    if logger.isEnabledFor(logging.DEBUG):
+        for i, chunk in enumerate(chunks):
+            logger.debug("Chunk %d: '%s'", i, chunk)
+
+    # Sanity check: warn if significant content may have been lost
+    # This helps diagnose the sentence skipping issue
+    combined = " ".join(chunks)
+    original_words = set(original_text.lower().split())
+    combined_words = set(combined.lower().split())
+    missing_words = original_words - combined_words
+    if missing_words:
+        logger.warning(
+            "Potential sentence skipping detected! Missing words: %s",
+            ", ".join(sorted(list(missing_words)[:10]))  # Show first 10
+        )
 
     return chunks
