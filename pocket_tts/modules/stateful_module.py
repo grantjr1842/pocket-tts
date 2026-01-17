@@ -1,4 +1,5 @@
 from abc import ABC, abstractmethod
+from typing import Dict
 
 import torch
 from torch import nn
@@ -27,7 +28,9 @@ def increment_steps(
         module.increment_step(model_state[module_name], increment)
 
 
-def trim_model_state(model_state: dict[str, dict[str, torch.Tensor]]) -> dict[str, dict[str, torch.Tensor]]:
+def trim_model_state(
+    model_state: dict[str, dict[str, torch.Tensor]],
+) -> dict[str, dict[str, torch.Tensor]]:
     """Trim KV cache to actual used length to reduce memory.
 
     When caching model state for voice prompts, the full 1000-step cache is
@@ -82,6 +85,10 @@ class StatefulModule(ABC, nn.Module):
     def increment_step(self, state: dict, increment: int = 1):
         pass
 
-    def get_state(self, model_state: dict[str, dict[str, torch.Tensor]]) -> dict[str, torch.Tensor]:
+    # Remove type hints to prevent beartype wrapping
+    def get_state(self, model_state: Dict[str, Dict[str, torch.Tensor]]) -> Dict[str, torch.Tensor]:
         """Get the state for this module from the model state."""
+        assert self._module_absolute_name is not None
         return model_state[self._module_absolute_name]
+
+    # End of class

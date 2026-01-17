@@ -18,6 +18,7 @@ from pathlib import Path
 import torch
 
 from pocket_tts.models.tts_model import TTSModel
+from pocket_tts.utils.export_wrapper import FlowLMExportWrapper
 
 logger = logging.getLogger(__name__)
 
@@ -41,59 +42,29 @@ def export_flow_lm_to_torchscript(model: TTSModel, output_dir: Path) -> Path:
 
     output_path = output_dir / "flow_lm.pt"
 
-    # Use torch.jit.script for better dynamic shape support
-    # Note: torch.jit.trace would be faster but requires fixed shapes
+    # Use FlowLMExportWrapper to handle non-scriptable components and state dictionaries
     try:
-        # First try scripting
-        scripted = torch.jit.script(model.flow_lm)
+    try:
+        # Instantiate Wrapper
+        wrapper = FlowLMExportWrapper(model.flow_lm)
+        wrapper.eval()
+
+        # Scripting
+        logger.info("Scripting FlowLM using ExportWrapper...")
+        scripted = torch.jit.script(wrapper)
         logger.info("Successfully scripted FlowLM model")
+
+        torch.jit.save(scripted, output_path)
+        logger.info("Saved TorchScript FlowLM to %s", output_path)
+
     except Exception as e:
-        logger.warning("TorchScript scripting failed, falling back to tracing: %s", e)
-        # Fallback to tracing with example input
-        # This requires dummy inputs matching the model's expected shapes
-        with torch.no_grad():
-            dummy_sequence = torch.randn((1, 10, model.flow_lm.ldim), dtype=torch.float32)
-            dummy_text_emb = torch.randn((1, 5, model.flow_lm.dim), dtype=torch.float32)
+        import traceback
 
-            # Create a valid dummy model state
-            # FlowLM uses StreamingTransformer -> StreamingMultiheadAttention
-            # We need to initialize state properly so tracing works.
-            # We can use the model's transformer to help, or just pass a dict with correct structure if simple.
-            # But StreamingTransformer.init_state() is available.
-            dummy_state = model.flow_lm.transformer.init_state(1, 10) # B=1, T=10
-
-            # Tracing doesn't handle None well for optionals sometimes, so use a float for noise_clamp
-            dummy_lsd = 10
-            dummy_temp = 0.8
-            dummy_clamp = 10.0
-            dummy_eos = 0.5
-
-            try:
-                # FlowLMModel.forward args:
-                # sequence, text_embeddings, model_state, lsd_decode_steps, temp, noise_clamp, eos_threshold
-                scripted = torch.jit.trace(
-                    model.flow_lm,
-                    example_inputs=(
-                        dummy_sequence,
-                        dummy_text_emb,
-                        dummy_state,
-                        dummy_lsd,
-                        dummy_temp,
-                        dummy_clamp,
-                        dummy_eos
-                    ),
-                    strict=False,
-                    check_trace=False # strict checks might fail on some dynamic ops
-                )
-            except Exception as trace_err:
-                logger.error("TorchScript tracing also failed: %s", trace_err)
-                raise RuntimeError(
-                    "Could not export FlowLM to TorchScript. "
-                    "The model may use dynamic control flow incompatible with export."
-                ) from trace_err
-
-    torch.jit.save(scripted, output_path)
-    logger.info("Saved TorchScript FlowLM to %s", output_path)
+        logger.error("TorchScript export failed: %s\n%s", e, traceback.format_exc())
+        logger.warning(
+            "Skipping FlowLM export due to error: Could not export FlowLM to TorchScript: %s", e
+        )
+        return None
 
     return output_path
 
@@ -116,25 +87,37 @@ def export_mimi_decoder_to_torchscript(model: TTSModel, output_dir: Path) -> Pat
     # The decoder is more straightforward to trace
     try:
         decoder = model.mimi.decoder
-        # Dummy input for decoder - latent tensor
+        # Dummy input for decoder - latent tensor and state
+        # SEANetDecoder expects (x, model_state)
+        # Passing empty dict for model_state should        # StatefulModule expects dict[str, dict[str, Tensor]].
+        # Also need to run init_state to populate _module_absolute_name in StatefulModules
+        from pocket_tts.modules.stateful_module import init_states
+
+        # Initialize states using the helper (which recurses and sets names)
+        # We use a dummy batch size of 1 and dummy seq len 10
+        dummy_state = init_states(decoder, 1, 10)
+
         with torch.no_grad():
-            dummy_latent = torch.randn((1, model.config.mimi.quantizer.dimension, 10))
-            scripted = torch.jit.trace(decoder, (dummy_latent,), strict=False)
+            # Use correct input dimension from decoder itself
+            dummy_latent = torch.randn((1, decoder.dimension, 10))
+            scripted = torch.jit.trace(
+                decoder, (dummy_latent, dummy_state), strict=False, check_trace=False
+            )
 
         torch.jit.save(scripted, output_path)
         logger.info("Saved TorchScript Mimi decoder to %s", output_path)
 
     except Exception as e:
-        logger.error("Failed to export Mimi decoder: %s", e)
+        import traceback
+
+        logger.error("Failed to export Mimi decoder: %s\n%s", e, traceback.format_exc())
         raise
 
     return output_path
 
 
 def export_to_torchscript(
-    model: TTSModel,
-    output_dir: str | Path,
-    components: str = "all"
+    model: TTSModel, output_dir: str | Path, components: str = "all"
 ) -> dict[str, Path]:
     """Export model components to TorchScript for faster inference.
 

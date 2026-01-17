@@ -104,7 +104,6 @@ test_*.py
 !tests/test_*.py
 !pocket_tts/tests/test_*.py
 !tests/**/test_*.py
-pocket_tts/data/audio_output.py
 batch_output.wav
 my_voice.wav
 benchmark_rust_cli_vs_numpy.py

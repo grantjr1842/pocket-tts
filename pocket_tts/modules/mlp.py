@@ -33,7 +33,20 @@ class RMSNorm(nn.Module):
         self.alpha = nn.Parameter(torch.full(alpha_shape, 1.0, requires_grad=True))
 
     def forward(self, x: torch.Tensor):
-        return _rms_norm(x, self.alpha, self.eps)
+        # Inline _rms_norm to avoid global reliance
+        x_dtype = x.dtype
+        var = x.var(dim=-1, keepdim=True)
+        var = var + self.eps
+        # y = (x * (alpha.to(var) * torch.rsqrt(var))).to(x_dtype)
+
+        # rsqrt
+        scaling = var.rsqrt()
+
+        # alpha match
+        alpha_t = self.alpha.to(dtype=var.dtype, device=var.device)
+
+        y = x * (alpha_t * scaling)
+        return y.to(dtype=x_dtype)
 
 
 class LayerNorm(nn.Module):
@@ -203,9 +216,15 @@ class SimpleMLPAdaLN(nn.Module):
             f"Expected {self.num_time_conds} time conditions, got {len(ts)}"
         )
         assert self.num_time_conds != 1
-        t_combined = (
-            sum(self.time_embed[i](ts[i]) for i in range(self.num_time_conds)) / self.num_time_conds
-        )
+
+        # JIT-friendly loop (variable index not allowed for ModuleList)
+        t_combined = self.time_embed[0](ts[0])
+        for i, embed in enumerate(self.time_embed):
+            if i > 0:
+                t_combined = t_combined + embed(ts[i])
+
+        t_combined = t_combined / self.num_time_conds
+
         c = self.cond_embed(c)
         y = t_combined + c
 

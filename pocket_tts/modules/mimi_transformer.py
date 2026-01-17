@@ -1,6 +1,7 @@
+from typing import Dict, Optional
+
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
 from typing_extensions import Self
 
 from pocket_tts.modules.layer_scale import LayerScale
@@ -38,6 +39,9 @@ class StreamingTransformerLayer(nn.Module):
         self.linear1 = nn.Linear(d_model, dim_feedforward, bias=False)
         self.linear2 = nn.Linear(dim_feedforward, d_model, bias=False)
 
+        # Use module for GELU to avoid global F usage under beartype (JIT compatibility)
+        self.activation = nn.GELU()
+
         if layer_scale is None:
             self.layer_scale_1 = nn.Identity()
             self.layer_scale_2 = nn.Identity()
@@ -48,28 +52,23 @@ class StreamingTransformerLayer(nn.Module):
     def _ff_block(self, x: torch.Tensor) -> torch.Tensor:
         x_orig = x
         x = self.norm2(x)
-        update = self.linear2(F.gelu(self.linear1(x)))
+        update = self.linear2(self.activation(self.linear1(x)))
         return x_orig.to(update) + self.layer_scale_2(update)
 
-    def _sa_block(self, x: torch.Tensor, model_state: dict | None) -> torch.Tensor:
+    def _sa_block(
+        self, x: torch.Tensor, model_state: Optional[Dict[str, Dict[str, torch.Tensor]]]
+    ) -> torch.Tensor:
         x_orig = x
         x = self.norm1(x)
         # Handle state mapping for this layer
         if model_state is not None:
-             # Depending on how state is structured (nested or passed directly).
-             # Usually wrapper handles extraction.
-             # But here we pass 'model_state' which is the top-level dict?
-             # No, StreamingTransformer passes 'model_state' to layer.
-             # We should probably pass model_state[layer_id] if structured.
-             # Checking StreamingMultiheadAttention.get_state:
-             # It expects a dict and relies on StatefulModule.get_state logic.
-             # If model_state is the WHOLE state, get_state searches by module path?
-             # StatefulModule does that. So passing the root dict is fine.
-             pass
+            pass
         update = self.self_attn(x, model_state)
         return x_orig.to(update) + self.layer_scale_1(update)
 
-    def forward(self, x: torch.Tensor, model_state: dict | None) -> torch.Tensor:
+    def forward(
+        self, x: torch.Tensor, model_state: Optional[Dict[str, Dict[str, torch.Tensor]]]
+    ) -> torch.Tensor:
         x = self._sa_block(x, model_state)
         x = self._ff_block(x)
         return x
@@ -119,28 +118,11 @@ class StreamingTransformer(nn.Module):
             kind="flow_lm",
         )
 
-    def init_state(self, batch_size: int, sequence_length: int = 2048) -> dict:
+    def init_state(
+        self, batch_size: int, sequence_length: int = 2048
+    ) -> Dict[str, Dict[str, torch.Tensor]]:
         """Initialize the state for all layers."""
-        state = {}
-        # We need to rely on the underlying StatefulModule logic to name keys?
-        # Or construct a hierarchical dict?
-        # StatefulModule.init_state usually returns a dict with proper keys if calling on self?
-        # But StreamingMultiheadAttention.init_state returns raw state dict for ITSELF.
-        # It does NOT namespace it.
-        #
-        # If we return a dict, we need to namespace it so that
-        # StreamingMultiheadAttention.get_state can find it.
-        # StatefulModule keys match the module hierarchy? e.g. "transformer.layers.0.self_attn.cache"
-        #
-        # We can simulate this by initializing a flat dict with prefixed keys?
-        # OR return nested dicts if the infrastructure supports it?
-        #
-        # Checking StatefulModule:
-        # It likely registers state in the state_dict.
-        # But here we are creating a dynamic state dict for valid inference.
-        #
-        # A simple approach:
-        # Iterate layers, call init_state, and merge into one dict with prefix.
+        state: Dict[str, Dict[str, torch.Tensor]] = {}
 
         for i, layer in enumerate(self.layers):
             # Use context if available, else usage default
@@ -150,13 +132,12 @@ class StreamingTransformer(nn.Module):
             layer_state = layer.self_attn.init_state(batch_size, effective_len)
 
             # Key prefixing logic matching module structure
-            # strict path: layers.{i}.self_attn.{key}
-            for k, v in layer_state.items():
-                state[f"layers.{i}.self_attn.{k}"] = v
+            # Use nested structure for state dict
+            state[f"layers.{i}.self_attn"] = layer_state
 
         return state
 
-    def forward(self, x: torch.Tensor, model_state: dict | None):
+    def forward(self, x: torch.Tensor, model_state: Optional[Dict[str, Dict[str, torch.Tensor]]]):
         for layer in self.layers:
             x = layer(x, model_state)
         return x
@@ -198,7 +179,7 @@ class ProjectedTransformer(nn.Module):
             else:
                 self.output_projs.append(nn.Linear(d_model, output_dimension, bias=False))
 
-    def forward(self, x, model_state: dict | None):
+    def forward(self, x, model_state: Optional[Dict[str, Dict[str, torch.Tensor]]]):
         x = x.transpose(1, 2)
         if self.input_proj is not None:
             x = self.input_proj(x)
