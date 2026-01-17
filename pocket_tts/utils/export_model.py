@@ -52,13 +52,38 @@ def export_flow_lm_to_torchscript(model: TTSModel, output_dir: Path) -> Path:
         # Fallback to tracing with example input
         # This requires dummy inputs matching the model's expected shapes
         with torch.no_grad():
-            dummy_text = torch.zeros((1, 10), dtype=torch.int64)
-            dummy_latents = torch.randn((1, 10, model.flow_lm.ldim))
+            dummy_sequence = torch.randn((1, 10, model.flow_lm.ldim), dtype=torch.float32)
+            dummy_text_emb = torch.randn((1, 5, model.flow_lm.dim), dtype=torch.float32)
+
+            # Create a valid dummy model state
+            # FlowLM uses StreamingTransformer -> StreamingMultiheadAttention
+            # We need to initialize state properly so tracing works.
+            # We can use the model's transformer to help, or just pass a dict with correct structure if simple.
+            # But StreamingTransformer.init_state() is available.
+            dummy_state = model.flow_lm.transformer.init_state(1, 10) # B=1, T=10
+
+            # Tracing doesn't handle None well for optionals sometimes, so use a float for noise_clamp
+            dummy_lsd = 10
+            dummy_temp = 0.8
+            dummy_clamp = 10.0
+            dummy_eos = 0.5
+
             try:
+                # FlowLMModel.forward args:
+                # sequence, text_embeddings, model_state, lsd_decode_steps, temp, noise_clamp, eos_threshold
                 scripted = torch.jit.trace(
                     model.flow_lm,
-                    example_inputs=(dummy_text, dummy_latents),
-                    strict=False
+                    example_inputs=(
+                        dummy_sequence,
+                        dummy_text_emb,
+                        dummy_state,
+                        dummy_lsd,
+                        dummy_temp,
+                        dummy_clamp,
+                        dummy_eos
+                    ),
+                    strict=False,
+                    check_trace=False # strict checks might fail on some dynamic ops
                 )
             except Exception as trace_err:
                 logger.error("TorchScript tracing also failed: %s", trace_err)

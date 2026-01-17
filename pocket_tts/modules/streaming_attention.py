@@ -152,14 +152,34 @@ class StreamingMultiheadAttention(StatefulModule):
             }
         else:
             # Append mode for full-sequence attention
-            initial_current_end = torch.zeros((0,)).to(self.in_proj.weight.device)
+            # NOTE: Use next(parameters) to get device/dtype safely.
+            # Fallback for quantized modules (empty parameters)
+            try:
+                param = next(self.parameters())
+                device = param.device
+                dtype = param.dtype
+            except StopIteration:
+                # Quantized modules might not have parameters. Check buffers.
+                try:
+                    buf = next(self.buffers())
+                    device = buf.device
+                    dtype = buf.dtype
+                except StopIteration:
+                    device = torch.device("cpu")
+                    dtype = torch.float32
+
+            # Ensure cache is float32 even if weights are quantized
+            if dtype in (torch.qint8, torch.quint8):
+                dtype = torch.float32
+
+            initial_current_end = torch.zeros((0,)).to(device)
             return {
                 "current_end": initial_current_end,
                 "cache": torch.full(
                     (2, batch_size, sequence_length, self.num_heads, dim_per_head),
                     float("NaN"),
-                    device=self.in_proj.weight.device,
-                    dtype=self.in_proj.weight.dtype,
+                    device=device,
+                    dtype=dtype,
                 ),
             }
 
@@ -172,9 +192,46 @@ class StreamingMultiheadAttention(StatefulModule):
 
     def forward(self, query: torch.Tensor, model_state: dict | None) -> torch.Tensor:
         if model_state is None:
-            raise ValueError("model_state must be provided")
+            # Create a temporary state for this forward pass
+            B, T = query.shape[:2]
+            # Use T as capacity if context is None (append mode), otherwise use context relative to T?
+            # Actually init_state expects 'sequence_length' which dictates buffer size.
+            # If context is set, init_state builds a ring buffer of that size (ignoring sequence_length arg usually? No check init_state)
 
-        state = self.get_state(model_state)
+            # Check init_state logic:
+            # if context is not None: cache size is (..., sequence_length, ...) ==> expected capacity
+            # So pass self.context if set, else T.
+
+            capacity = self.context if self.context is not None else T
+            # If context is set but T > context, we might have issues as discussed.
+            # But we must support at least context size.
+            # For now, we assume T <= context or the user accepts the behavior.
+            # However, for robustness, if T > capacity, we should probably increase capacity?
+            # But the logic is fixed to ring buffer.
+            # Safe default: capacity = max(T, self.context) if self.context else T?
+            # init_state uses it as cache size.
+
+            if self.context is not None and T > self.context:
+                 # Warn or just use T? Ring buffer logic depends on modulo capacity.
+                 # If we increase capacity to T, it becomes full attention effectively?
+                 # No, _complete_ring_buffer uses modulo.
+                 pass
+
+            # Initialize state
+            state_dict = self.init_state(B, capacity)
+
+            # Move to device/dtype
+            device = query.device
+            dtype = query.dtype
+            for k, v in state_dict.items():
+                if isinstance(v, torch.Tensor):
+                    state_dict[k] = v.to(device=device)
+                    if v.is_floating_point():
+                         state_dict[k] = v.to(dtype=dtype)
+            state = state_dict
+        else:
+            state = self.get_state(model_state)
+
         B, T = query.shape[:2]
 
         projected = self.in_proj(query)

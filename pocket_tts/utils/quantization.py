@@ -49,7 +49,7 @@ def quantize_linear_layers(module: nn.Module, dtype: torch.dtype = torch.qint8) 
 def quantize_model(
     model,
     components: Literal["all", "flow-lm", "mimi"] = "all"
-) -> "TTSModel":
+) -> nn.Module:
     """Quantize pocket-tts model components to int8 for reduced memory.
 
     This applies dynamic int8 quantization to the specified components,
