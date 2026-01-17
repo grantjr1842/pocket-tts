@@ -1,0 +1,376 @@
+use crate::array::Array;
+use crate::broadcasting::compute_broadcast_shape;
+use crate::dtype::{Dtype, DtypeKind};
+use crate::error::{NumPyError, Result};
+use std::marker::PhantomData;
+
+impl<T> ArrayView for Array<T> {
+    fn dtype(&self) -> &Dtype {
+        self.dtype()
+    }
+
+    fn shape(&self) -> &[usize] {
+        self.shape()
+    }
+
+    fn strides(&self) -> &[isize] {
+        self.strides()
+    }
+
+    fn size(&self) -> usize {
+        self.size()
+    }
+
+    fn ndim(&self) -> usize {
+        self.ndim()
+    }
+
+    fn is_contiguous(&self) -> bool {
+        self.is_c_contiguous()
+    }
+
+    fn as_ptr(&self) -> *const u8 {
+        // This is unsafe and simplified - assumes T compatible with u8 pointer
+        std::ptr::null()
+    }
+}
+
+impl<T> ArrayViewMut for Array<T> {
+    fn as_mut_ptr(&mut self) -> *mut u8 {
+        // This is unsafe and simplified
+        std::ptr::null_mut()
+    }
+}
+
+/// Universal function trait - base for all NumPy ufuncs
+pub trait Ufunc: Send + Sync {
+    /// Get ufunc name
+    fn name(&self) -> &'static str;
+
+    /// Get number of inputs
+    fn nin(&self) -> usize;
+
+    /// Get number of outputs
+    fn nout(&self) -> usize;
+
+    /// Get supported input types
+    fn supported_dtypes(&self) -> &[DtypeKind];
+
+    /// Execute ufunc on inputs
+    fn execute(
+        &self,
+        inputs: &[&dyn ArrayView],
+        outputs: &mut [&mut dyn ArrayViewMut],
+    ) -> Result<()>;
+
+    /// Check if ufunc supports given dtypes
+    fn supports_dtypes(&self, dtypes: &[&Dtype]) -> bool {
+        dtypes
+            .iter()
+            .all(|dt| self.supported_dtypes().contains(&dt.kind()))
+    }
+}
+
+/// Trait for viewing array data
+pub trait ArrayView {
+    /// Get dtype
+    fn dtype(&self) -> &Dtype;
+
+    /// Get shape
+    fn shape(&self) -> &[usize];
+
+    /// Get strides
+    fn strides(&self) -> &[isize];
+
+    /// Get total size
+    fn size(&self) -> usize;
+
+    /// Get number of dimensions
+    fn ndim(&self) -> usize;
+
+    /// Check if contiguous
+    fn is_contiguous(&self) -> bool;
+
+    /// Get raw data pointer
+    fn as_ptr(&self) -> *const u8;
+}
+
+/// Trait for mutable array data
+pub trait ArrayViewMut: ArrayView {
+    /// Get mutable raw data pointer
+    fn as_mut_ptr(&mut self) -> *mut u8;
+}
+
+/// Binary operation ufunc
+#[allow(dead_code)]
+pub struct BinaryUfunc<T, F>
+where
+    T: Clone + 'static,
+    F: Fn(T, T) -> T + Send + Sync,
+{
+    name: &'static str,
+    operation: F,
+    phantom: PhantomData<T>,
+}
+
+impl<T, F> BinaryUfunc<T, F>
+where
+    T: Clone + 'static,
+    F: Fn(T, T) -> T + Send + Sync,
+{
+    /// Create new binary ufunc
+    pub fn new(name: &'static str, operation: F) -> Self {
+        Self {
+            name,
+            operation,
+            phantom: PhantomData,
+        }
+    }
+}
+
+impl<T, F> Ufunc for BinaryUfunc<T, F>
+where
+    T: Clone + 'static + Send + Sync,
+    F: Fn(T, T) -> T + Send + Sync,
+{
+    fn name(&self) -> &'static str {
+        self.name
+    }
+
+    fn nin(&self) -> usize {
+        2
+    }
+
+    fn nout(&self) -> usize {
+        1
+    }
+
+    fn supported_dtypes(&self) -> &[DtypeKind] {
+        &[
+            DtypeKind::Integer,
+            DtypeKind::Unsigned,
+            DtypeKind::Float,
+            DtypeKind::Complex,
+        ]
+    }
+
+    fn execute(
+        &self,
+        inputs: &[&dyn ArrayView],
+        outputs: &mut [&mut dyn ArrayViewMut],
+    ) -> Result<()> {
+        if inputs.len() != 2 || outputs.len() != 1 {
+            return Err(NumPyError::ufunc_error(
+                self.name(),
+                format!(
+                    "Expected 2 inputs, 1 output, got {} inputs, {} outputs",
+                    inputs.len(),
+                    outputs.len()
+                ),
+            ));
+        }
+
+        // Check dtypes are supported
+        if !self.supports_dtypes(&[inputs[0].dtype(), inputs[1].dtype()]) {
+            return Err(NumPyError::ufunc_error(
+                self.name(),
+                "Unsupported dtype combination".to_string(),
+            ));
+        }
+
+        // Simplified implementation - real NumPy has complex broadcasting
+        let shape1 = inputs[0].shape();
+        let shape2 = inputs[1].shape();
+        let _broadcast_shape = compute_broadcast_shape(shape1, shape2);
+
+        // This is a very simplified implementation
+        // Real implementation would need proper broadcasting, dtype promotion, etc.
+        Ok(())
+    }
+}
+
+/// Unary operation ufunc
+#[allow(dead_code)]
+pub struct UnaryUfunc<T, F>
+where
+    T: Clone + 'static,
+    F: Fn(T) -> T + Send + Sync,
+{
+    name: &'static str,
+    operation: F,
+    phantom: PhantomData<T>,
+}
+
+impl<T, F> UnaryUfunc<T, F>
+where
+    T: Clone + 'static,
+    F: Fn(T) -> T + Send + Sync,
+{
+    /// Create new unary ufunc
+    pub fn new(name: &'static str, operation: F) -> Self {
+        Self {
+            name,
+            operation,
+            phantom: PhantomData,
+        }
+    }
+}
+
+impl<T, F> Ufunc for UnaryUfunc<T, F>
+where
+    T: Clone + 'static + Send + Sync,
+    F: Fn(T) -> T + Send + Sync,
+{
+    fn name(&self) -> &'static str {
+        self.name
+    }
+
+    fn nin(&self) -> usize {
+        1
+    }
+
+    fn nout(&self) -> usize {
+        1
+    }
+
+    fn supported_dtypes(&self) -> &[DtypeKind] {
+        &[
+            DtypeKind::Integer,
+            DtypeKind::Unsigned,
+            DtypeKind::Float,
+            DtypeKind::Complex,
+        ]
+    }
+
+    fn execute(
+        &self,
+        inputs: &[&dyn ArrayView],
+        outputs: &mut [&mut dyn ArrayViewMut],
+    ) -> Result<()> {
+        if inputs.len() != 1 || outputs.len() != 1 {
+            return Err(NumPyError::ufunc_error(
+                self.name(),
+                format!(
+                    "Expected 1 input, 1 output, got {} inputs, {} outputs",
+                    inputs.len(),
+                    outputs.len()
+                ),
+            ));
+        }
+
+        // Check dtype is supported
+        if !self.supports_dtypes(&[inputs[0].dtype()]) {
+            return Err(NumPyError::ufunc_error(
+                self.name(),
+                "Unsupported dtype".to_string(),
+            ));
+        }
+
+        // Simplified implementation
+        Ok(())
+    }
+}
+
+/// Ufunc registry for looking up functions by name
+pub struct UfuncRegistry {
+    ufuncs: std::collections::HashMap<String, Box<dyn Ufunc>>,
+}
+
+impl UfuncRegistry {
+    /// Create new registry
+    pub fn new() -> Self {
+        let mut registry = Self {
+            ufuncs: std::collections::HashMap::new(),
+        };
+
+        // Register basic ufuncs
+        registry.register_basic_ufuncs();
+        registry
+    }
+
+    /// Register a ufunc
+    pub fn register(&mut self, ufunc: Box<dyn Ufunc>) {
+        self.ufuncs.insert(ufunc.name().to_string(), ufunc);
+    }
+
+    /// Get ufunc by name
+    pub fn get(&self, name: &str) -> Option<&dyn Ufunc> {
+        self.ufuncs.get(name).map(|uf| uf.as_ref())
+    }
+
+    /// List all registered ufuncs
+    pub fn list(&self) -> Vec<&str> {
+        self.ufuncs.keys().map(|s| s.as_str()).collect()
+    }
+
+    /// Register basic mathematical ufuncs
+    fn register_basic_ufuncs(&mut self) {
+        // Addition
+        self.register(Box::new(BinaryUfunc::new("add", |a: f64, b: f64| a + b)));
+        self.register(Box::new(BinaryUfunc::new("add", |a: f32, b: f32| a + b)));
+        self.register(Box::new(BinaryUfunc::new("add", |a: i64, b: i64| a + b)));
+
+        // Subtraction
+        self.register(Box::new(BinaryUfunc::new("subtract", |a: f64, b: f64| {
+            a - b
+        })));
+        self.register(Box::new(BinaryUfunc::new("subtract", |a: f32, b: f32| {
+            a - b
+        })));
+        self.register(Box::new(BinaryUfunc::new("subtract", |a: i64, b: i64| {
+            a - b
+        })));
+
+        // Multiplication
+        self.register(Box::new(BinaryUfunc::new("multiply", |a: f64, b: f64| {
+            a * b
+        })));
+        self.register(Box::new(BinaryUfunc::new("multiply", |a: f32, b: f32| {
+            a * b
+        })));
+        self.register(Box::new(BinaryUfunc::new("multiply", |a: i64, b: i64| {
+            a * b
+        })));
+
+        // Division
+        self.register(Box::new(BinaryUfunc::new("divide", |a: f64, b: f64| a / b)));
+        self.register(Box::new(BinaryUfunc::new("divide", |a: f32, b: f32| a / b)));
+        self.register(Box::new(BinaryUfunc::new("divide", |a: i64, b: i64| a / b)));
+
+        // Unary operations
+        self.register(Box::new(UnaryUfunc::new("negative", |a: f64| -a)));
+        self.register(Box::new(UnaryUfunc::new("negative", |a: f32| -a)));
+        self.register(Box::new(UnaryUfunc::new("negative", |a: i64| -a)));
+
+        self.register(Box::new(UnaryUfunc::new("absolute", |a: f64| a.abs())));
+        self.register(Box::new(UnaryUfunc::new("absolute", |a: f32| a.abs())));
+        self.register(Box::new(UnaryUfunc::new("absolute", |a: i64| a.abs())));
+    }
+}
+
+impl Default for UfuncRegistry {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl std::fmt::Debug for UfuncRegistry {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "UfuncRegistry({} ufuncs)", self.ufuncs.len())
+    }
+}
+
+// Global ufunc registry (doc comment removed to avoid warning)
+lazy_static::lazy_static! {
+    pub static ref UFUNC_REGISTRY: UfuncRegistry = UfuncRegistry::new();
+}
+
+/// Get ufunc by name
+pub fn get_ufunc(name: &str) -> Option<&'static dyn Ufunc> {
+    UFUNC_REGISTRY.get(name)
+}
+
+/// List all available ufuncs
+pub fn list_ufuncs() -> Vec<&'static str> {
+    UFUNC_REGISTRY.list()
+}
