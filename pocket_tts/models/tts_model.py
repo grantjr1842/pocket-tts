@@ -853,8 +853,22 @@ def prepare_text_prompt(text: str) -> tuple[str, int]:
 
 
 def split_into_best_sentences(tokenizer, text_to_generate: str) -> list[str]:
+    """Split text into sentence-sized chunks for generation.
+
+    This function tokenizes the input text and splits it into chunks
+    that don't exceed a maximum token limit, using sentence boundaries
+    as split points.
+
+    Args:
+        tokenizer: The text tokenizer.
+        text_to_generate: Input text to split.
+
+    Returns:
+        List of text chunks suitable for generation.
+    """
     text_to_generate, _ = prepare_text_prompt(text_to_generate)
-    text_to_generate = text_to_generate.strip()
+    original_text = text_to_generate.strip()
+    text_to_generate = original_text
     tokens = tokenizer(text_to_generate)
     list_of_tokens = tokens.tokens[0].tolist()
 
@@ -874,11 +888,11 @@ def split_into_best_sentences(tokenizer, text_to_generate: str) -> list[str]:
 
     nb_tokens_and_sentences = []
     for i in range(len(end_of_sentences_indices) - 1):
-        # let's print
         start = end_of_sentences_indices[i]
         end = end_of_sentences_indices[i + 1]
         text = tokenizer.sp.decode(list_of_tokens[start:end])
         nb_tokens_and_sentences.append((end - start, text))
+        logger.debug("Sentence %d: %d tokens, text='%s'", i, end - start, text)
 
     max_nb_tokens_in_a_chunk = 50
     chunks = []
@@ -900,5 +914,22 @@ def split_into_best_sentences(tokenizer, text_to_generate: str) -> list[str]:
 
     if current_chunk != "":
         chunks.append(current_chunk.strip())
+
+    # Log and validate chunks
+    if logger.isEnabledFor(logging.DEBUG):
+        for i, chunk in enumerate(chunks):
+            logger.debug("Chunk %d: '%s'", i, chunk)
+
+    # Sanity check: warn if significant content may have been lost
+    # This helps diagnose the sentence skipping issue
+    combined = " ".join(chunks)
+    original_words = set(original_text.lower().split())
+    combined_words = set(combined.lower().split())
+    missing_words = original_words - combined_words
+    if missing_words:
+        logger.warning(
+            "Potential sentence skipping detected! Missing words: %s",
+            ", ".join(sorted(list(missing_words)[:10]))  # Show first 10
+        )
 
     return chunks
