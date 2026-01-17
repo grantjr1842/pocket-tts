@@ -30,7 +30,7 @@ from pocket_tts.models.mimi import MimiModel
 from pocket_tts.modules import mimi_transformer
 from pocket_tts.modules.dummy_quantizer import DummyQuantizer
 from pocket_tts.modules.seanet import SEANetDecoder, SEANetEncoder
-from pocket_tts.modules.stateful_module import increment_steps, init_states
+from pocket_tts.modules.stateful_module import increment_steps, init_states, trim_model_state
 from pocket_tts.utils.config import Config, load_config
 from pocket_tts.utils.utils import (
     PREDEFINED_VOICES,
@@ -460,6 +460,28 @@ class TTSModel(nn.Module):
         return torch.cat(audio_chunks, dim=0)
 
     @torch.inference_mode
+    def generate_audio_batch(
+        self,
+        model_state: dict,
+        texts_to_generate: Iterable[str],
+        frames_after_eos: int | None = None,
+        copy_state: bool = True,
+    ) -> list[torch.Tensor]:
+        texts = list(texts_to_generate)
+        if not texts:
+            raise ValueError("texts_to_generate cannot be empty")
+
+        return [
+            self.generate_audio(
+                model_state=model_state,
+                text_to_generate=text,
+                frames_after_eos=frames_after_eos,
+                copy_state=copy_state,
+            )
+            for text in texts
+        ]
+
+    @torch.inference_mode
     def generate_audio_stream(
         self,
         model_state: dict,
@@ -682,6 +704,16 @@ class TTSModel(nn.Module):
         latents_queue.put(None)
         logger.info("Average generation step time: %d ms", int(statistics.mean(steps_times)))
 
+    def clear_prompt_cache(self) -> None:
+        self._cached_get_state_for_audio_prompt.cache_clear()
+
+    def get_state_for_audio_prompt_cached(
+        self, audio_conditioning: Path | str | torch.Tensor, truncate: bool = False
+    ) -> dict:
+        if isinstance(audio_conditioning, torch.Tensor):
+            return self.get_state_for_audio_prompt(audio_conditioning, truncate)
+        return self._cached_get_state_for_audio_prompt(audio_conditioning, truncate)
+
     @lru_cache(maxsize=PROMPT_CACHE_SIZE)
     def _cached_get_state_for_audio_prompt(
         self, audio_conditioning: Path | str | torch.Tensor, truncate: bool = False
@@ -766,6 +798,11 @@ class TTSModel(nn.Module):
 
         with display_execution_time("Prompting audio"):
             self._run_flow_lm_and_increment_step(model_state=model_state, audio_conditioning=prompt)
+
+        # Trim KV caches to actual used length to reduce memory for cached states
+        # This is especially important when caching multiple voice prompts
+        model_state = trim_model_state(model_state)
+        logger.debug("Trimmed model state KV caches to reduce memory usage")
 
         return model_state
 

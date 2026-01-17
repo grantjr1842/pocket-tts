@@ -27,6 +27,48 @@ def increment_steps(
         module.increment_step(model_state[module_name], increment)
 
 
+def trim_model_state(model_state: dict[str, dict[str, torch.Tensor]]) -> dict[str, dict[str, torch.Tensor]]:
+    """Trim KV cache to actual used length to reduce memory.
+
+    When caching model state for voice prompts, the full 1000-step cache is
+    allocated but only a fraction is used. This function slices caches to
+    the actual used length, significantly reducing memory for cached states.
+
+    Args:
+        model_state: Model state dictionary from init_states().
+
+    Returns:
+        Trimmed model state with same structure but smaller cache tensors.
+    """
+    trimmed = {}
+    for module_name, state in model_state.items():
+        trimmed_state = {}
+        for key, value in state.items():
+            if key == "cache":
+                # Cache shape is [2, B, seq_len, H, D] or [2, B, H, seq_len, D]
+                # Find actual used length from current_end or end_offset
+                if "current_end" in state:
+                    used_length = state["current_end"].shape[0]
+                    if used_length > 0 and value.shape[2] > used_length:
+                        # Shape is [2, B, seq_len, H, D]
+                        trimmed_state[key] = value[:, :, :used_length].clone()
+                    else:
+                        trimmed_state[key] = value.clone()
+                elif "end_offset" in state:
+                    used_length = int(state["end_offset"].max().item())
+                    if used_length > 0 and value.shape[3] > used_length:
+                        # Shape is [2, B, H, seq_len, D]
+                        trimmed_state[key] = value[:, :, :, :used_length].clone()
+                    else:
+                        trimmed_state[key] = value.clone()
+                else:
+                    trimmed_state[key] = value.clone()
+            else:
+                trimmed_state[key] = value.clone()
+        trimmed[module_name] = trimmed_state
+    return trimmed
+
+
 class StatefulModule(ABC, nn.Module):
     def __init__(self, *args, **kwds):
         self._module_absolute_name = None
