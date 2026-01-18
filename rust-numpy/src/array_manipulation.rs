@@ -212,7 +212,7 @@ where
 
     let memory_manager = MemoryManager::from_vec(data);
 
-    Array::from_data(data, vec![N, M])
+    Ok(Array::from_data(data, vec![N, M]))
 }
 
 /// Create the identity array
@@ -436,7 +436,10 @@ where
     T: Clone + Default + Float + Num + 'static,
 {
     if start == T::zero() || stop == T::zero() {
-        return Err(NumPyError::value_error("start and stop must be non-zero for geomspace", "geomspace"));
+        return Err(NumPyError::value_error(
+            "start and stop must be non-zero for geomspace",
+            "geomspace",
+        ));
     }
 
     if num == 0 {
@@ -622,7 +625,7 @@ where
         compute_strides(newshape)
     };
 
-    Array::from_data(a.to_vec(), a.shape().to_vec())
+    Ok(Array::from_data(a.to_vec(), newshape.to_vec()))
 }
 
 /// Return a contiguous flattened array
