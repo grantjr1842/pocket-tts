@@ -6,11 +6,11 @@ use crate::error::{NumPyError, Result};
 
 /// Create an array from a Python-like list of values.
 /// This is a simplified version of NumPy's np.array() that creates a 1D array from a slice of f32 values.
-pub fn array<T>(data: Vec<T>, dtype: Option<Dtype>) -> Result<Array<T>>
+pub fn array<T>(data: Vec<T>, _dtype: Option<Dtype>) -> Result<Array<T>>
 where
-    T: Clone + 'static,
+    T: Clone + Default + 'static,
 {
-    let arr = Array::from_vec(data)?;
+    let arr = Array::from_vec(data);
     Ok(arr)
 }
 
@@ -18,7 +18,7 @@ where
 ///
 /// # Arguments
 /// - `start`: Start value (inclusive)
-/// - `stop`: Stop value (exclusive)  
+/// - `stop`: Stop value (exclusive)
 /// - `step`: Step size (optional, defaults to 1.0)
 ///
 /// # Returns
@@ -38,12 +38,12 @@ pub fn arange(start: f32, stop: f32, step: Option<f32>) -> Result<Array<f32>> {
 
     let num_elements = if step_val > 0.0 {
         if stop <= start {
-            return Ok(Array::from_vec(vec![])?);
+            return Ok(Array::from_vec(vec![]));
         }
         ((stop - start) / step_val).ceil() as usize
     } else {
         if stop >= start {
-            return Ok(Array::from_vec(vec![])?);
+            return Ok(Array::from_vec(vec![]));
         }
         ((stop - start) / step_val.abs()).ceil() as usize
     };
@@ -52,7 +52,7 @@ pub fn arange(start: f32, stop: f32, step: Option<f32>) -> Result<Array<f32>> {
         .map(|i| start + (i as f32) * step_val)
         .collect();
 
-    Array::from_vec(data)
+    Ok(Array::from_vec(data))
 }
 
 /// Clip values to be within a specified range (similar to np.clip).
@@ -106,7 +106,7 @@ where
         })
         .collect();
 
-    Array::from_vec(clipped)
+    Ok(Array::from_vec(clipped))
 }
 
 /// Find minimum value in an array (similar to np.min).
@@ -127,9 +127,7 @@ where
     T: Clone + PartialOrd + 'static,
 {
     if array.size() == 0 {
-        return Err(NumPyError::ValueError(
-            "min() arg is an empty sequence".to_string(),
-        ));
+        return Err(NumPyError::invalid_value("min() arg is an empty sequence"));
     }
 
     Ok(array
@@ -169,7 +167,7 @@ where
         })
         .collect();
 
-    Array::from_vec(logged)
+    Ok(Array::from_vec(logged))
 }
 
 #[cfg(test)]
