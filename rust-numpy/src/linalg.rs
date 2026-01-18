@@ -23,10 +23,7 @@ pub fn det<T: Clone + num_traits::Zero + num_traits::One + Default>(
     a: &Array<T>,
 ) -> Result<T, NumPyError> {
     if a.ndim() != 2 || a.shape()[0] != a.shape()[1] {
-        return Err(NumPyError::invalid_value(
-            "det requires a square 2D array",
-            "linalg",
-        ));
+        return Err(NumPyError::value_error("det requires a square 2D array", "linalg"));
     }
 
     let array2 = a.to_ndarray2()?;
@@ -41,10 +38,7 @@ pub fn inv<T: Clone + num_traits::Zero + num_traits::One + Default>(
     a: &Array<T>,
 ) -> Result<Array<T>, NumPyError> {
     if a.ndim() != 2 || a.shape()[0] != a.shape()[1] {
-        return Err(NumPyError::invalid_value(
-            "inv requires a square 2D array",
-            "linalg",
-        ));
+        return Err(NumPyError::value_error("inv requires a square 2D array", "linalg"));
     }
 
     let array2 = a.to_ndarray2()?;
@@ -127,9 +121,7 @@ pub fn eigvals<T: Clone + num_traits::Zero + num_traits::One + Lapack + Default>
     a: &Array<T>,
 ) -> Result<Array<Complex64>, NumPyError> {
     if a.ndim() != 2 || a.shape()[0] != a.shape()[1] {
-        return Err(NumPyError::invalid_value(
-            "eigvals requires a square 2D array",
-        ));
+        return Err(NumPyError::value_error("eigvals requires a square 2D array",  ));
     }
 
     let array2 = a.to_ndarray2()?;
@@ -176,9 +168,7 @@ pub fn cholesky<T: Clone + num_traits::Zero + num_traits::One + Lapack + Default
     a: &Array<T>,
 ) -> Result<Array<T>, NumPyError> {
     if a.ndim() != 2 || a.shape()[0] != a.shape()[1] {
-        return Err(NumPyError::invalid_value(
-            "cholesky requires a square 2D array",
-        ));
+        return Err(NumPyError::value_error("cholesky requires a square 2D array",  ));
     }
 
     let array2 = a.to_ndarray2()?;
@@ -272,9 +262,7 @@ pub fn trace<T: Clone + num_traits::Zero + num_traits::One + Default>(
 /// Diagonal of array
 pub fn diagonal<T: Clone + Default>(a: &Array<T>, offset: isize) -> Result<Array<T>, NumPyError> {
     if a.ndim() < 2 {
-        return Err(NumPyError::invalid_value(
-            "diagonal requires a 2D or higher dimensional array",
-        ));
+        return Err(NumPyError::value_error("diagonal requires a 2D or higher dimensional array",  ));
     }
 
     let rows = a.shape()[a.ndim() - 2];
@@ -311,9 +299,7 @@ pub fn matrix_power<
     n: isize,
 ) -> Result<Array<T>, NumPyError> {
     if a.ndim() != 2 || a.shape()[0] != a.shape()[1] {
-        return Err(NumPyError::invalid_value(
-            "matrix_power requires a square 2D array",
-        ));
+        return Err(NumPyError::value_error("matrix_power requires a square 2D array",  ));
     }
 
     if n == 0 {
@@ -397,9 +383,7 @@ pub fn tensor_dot<
     b: &Array<T>,
 ) -> Result<Array<T>, NumPyError> {
     if a.ndim() < 2 || b.ndim() < 2 {
-        return Err(NumPyError::invalid_value(
-            "tensor_dot requires at least 2D arrays",
-        ));
+        return Err(NumPyError::value_error("tensor_dot requires at least 2D arrays",  ));
     }
 
     // For now, implement simple matrix multiplication
@@ -428,9 +412,7 @@ where
 
     // Implement full tensor solve with axes support
     if a.ndim() != 2 || a.shape()[0] != a.shape()[1] {
-        return Err(NumPyError::invalid_value(
-            "tensor_solve requires square 2D matrix for current implementation",
-        ));
+        return Err(NumPyError::value_error("tensor_solve requires square 2D matrix for current implementation",  ));
     }
 
     // Normalize axes
@@ -480,9 +462,7 @@ where
 
     // Implement full tensor inverse with axes support
     if a.ndim() != 2 || a.shape()[0] != a.shape()[1] {
-        return Err(NumPyError::invalid_value(
-            "tensor_inv requires square 2D matrix for current implementation",
-        ));
+        return Err(NumPyError::value_error("tensor_inv requires square 2D matrix for current implementation",  ));
     }
 
     // Normalize axes
@@ -607,10 +587,7 @@ pub fn eigvalsh<T: Clone + num_traits::Zero + num_traits::One + Lapack + Default
     a: &Array<T>,
 ) -> Result<Array<T>, NumPyError> {
     if a.ndim() != 2 || a.shape()[0] != a.shape()[1] {
-        return Err(NumPyError::invalid_value(
-            "eigvalsh requires a square 2D array",
-            "linalg",
-        ));
+        return Err(NumPyError::value_error("eigvalsh requires a square 2D array", "linalg"));
     }
 
     let array2 = a.to_ndarray2()?;
@@ -632,10 +609,7 @@ pub fn multi_dot<
     arrays: &[&Array<T>],
 ) -> Result<Array<T>, NumPyError> {
     if arrays.is_empty() {
-        return Err(NumPyError::invalid_value(
-            "multi_dot requires at least one array",
-            "linalg",
-        ));
+        return Err(NumPyError::value_error("multi_dot requires at least one array", "linalg"));
     }
 
     if arrays.len() == 1 {
@@ -659,10 +633,7 @@ pub fn diagonal_enhanced<T: Clone + Default>(
     axis2: Option<isize>,
 ) -> Result<Array<T>, NumPyError> {
     if a.ndim() < 2 {
-        return Err(NumPyError::invalid_value(
-            "diagonal requires a 2D or higher dimensional array",
-            "linalg",
-        ));
+        return Err(NumPyError::value_error("diagonal requires a 2D or higher dimensional array", "linalg"));
     }
 
     // Default to last two axes if not specified
@@ -671,17 +642,11 @@ pub fn diagonal_enhanced<T: Clone + Default>(
 
     // Validate axes
     if axis1 < 0 || axis1 >= a.ndim() as isize || axis2 < 0 || axis2 >= a.ndim() as isize {
-        return Err(NumPyError::invalid_value(
-            "axis1 and axis2 must be valid axis indices",
-            "linalg",
-        ));
+        return Err(NumPyError::value_error("axis1 and axis2 must be valid axis indices", "linalg"));
     }
 
     if axis1 == axis2 {
-        return Err(NumPyError::invalid_value(
-            "axis1 and axis2 cannot be the same",
-            "linalg",
-        ));
+        return Err(NumPyError::value_error("axis1 and axis2 cannot be the same", "linalg"));
     }
 
     // For now, delegate to existing diagonal function for default case
@@ -692,9 +657,7 @@ pub fn diagonal_enhanced<T: Clone + Default>(
 
     // Implement full axis transformation
     if offset.unwrap_or(0) != 0 {
-        return Err(NumPyError::invalid_value(
-            "offset parameter not yet supported with custom axes",
-        ));
+        return Err(NumPyError::value_error("offset parameter not yet supported with custom axes",  ));
     }
 
     // Apply axis transformation
@@ -733,9 +696,7 @@ where
     T: Clone + Default,
 {
     if a.ndim() != 2 {
-        return Err(NumPyError::invalid_value(
-            "extract_diagonal_2d requires 2D array",
-        ));
+        return Err(NumPyError::value_error("extract_diagonal_2d requires 2D array",  ));
     }
 
     let rows = a.shape()[0];

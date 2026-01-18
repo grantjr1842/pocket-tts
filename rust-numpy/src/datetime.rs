@@ -238,10 +238,7 @@ fn parse_weekmask(weekmask: &str) -> Result<[bool; 7], NumPyError> {
     } else {
         let chars: Vec<char> = weekmask.chars().collect();
         if chars.len() != 7 {
-            return Err(NumPyError::invalid_value(
-                "Weekmask must have 7 characters",
-                "datetime",
-            ));
+            return Err(NumPyError::value_error("Weekmask must have 7 characters", "datetime"));
         }
 
         for (i, c) in chars.iter().enumerate() {
@@ -358,10 +355,7 @@ fn roll_to_business_day(
     calendar: &BusDayCalendar,
 ) -> Result<i64, NumPyError> {
     match roll {
-        "raise" => Err(NumPyError::invalid_value(
-            "Non-business day encountered with roll='raise'",
-            "datetime",
-        )),
+        "raise" => Err(NumPyError::value_error("Non-business day encountered with roll='raise'", "datetime")),
         "nat" => Ok(i64::MIN),
         "forward" | "following" => {
             let mut current = timestamp + 86400;

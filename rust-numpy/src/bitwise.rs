@@ -15,7 +15,7 @@ use std::marker::PhantomData;
 pub trait BitwiseOps: Send + Sync {
     /// Bitwise AND operation
     fn bitwise_and(&self, other: &Self) -> Self;
-    /// Bitwise OR operation  
+    /// Bitwise OR operation
     fn bitwise_or(&self, other: &Self) -> Self;
     /// Bitwise XOR operation
     fn bitwise_xor(&self, other: &Self) -> Self;
@@ -124,7 +124,7 @@ impl_bitwise_ops_unsigned!(u8, u16, u32, u64);
 /// Binary bitwise ufunc for operations like AND, OR, XOR
 pub struct BitwiseBinaryUfunc<T, F>
 where
-    T: Clone + BitwiseOps + 'static,
+    T: Clone + Default + BitwiseOps + 'static,
     F: Fn(&T, &T) -> T + Send + Sync,
 {
     name: &'static str,
@@ -134,7 +134,7 @@ where
 
 impl<T, F> BitwiseBinaryUfunc<T, F>
 where
-    T: Clone + BitwiseOps + 'static,
+    T: Clone + Default + BitwiseOps + 'static,
     F: Fn(&T, &T) -> T + Send + Sync,
 {
     pub fn new(name: &'static str, operation: F) -> Self {
@@ -148,7 +148,7 @@ where
 
 impl<T, F> Ufunc for BitwiseBinaryUfunc<T, F>
 where
-    T: Clone + BitwiseOps + Send + Sync + 'static,
+    T: Clone + Default + BitwiseOps + Send + Sync + 'static,
     F: Fn(&T, &T) -> T + Send + Sync,
 {
     fn name(&self) -> &'static str {
@@ -221,7 +221,7 @@ where
 /// Unary bitwise ufunc for operations like NOT
 pub struct BitwiseUnaryUfunc<T, F>
 where
-    T: Clone + BitwiseOps + 'static,
+    T: Clone + Default + BitwiseOps + 'static,
     F: Fn(&T) -> T + Send + Sync,
 {
     name: &'static str,
@@ -231,7 +231,7 @@ where
 
 impl<T, F> BitwiseUnaryUfunc<T, F>
 where
-    T: Clone + BitwiseOps + 'static,
+    T: Clone + Default + BitwiseOps + 'static,
     F: Fn(&T) -> T + Send + Sync,
 {
     pub fn new(name: &'static str, operation: F) -> Self {
@@ -245,7 +245,7 @@ where
 
 impl<T, F> Ufunc for BitwiseUnaryUfunc<T, F>
 where
-    T: Clone + BitwiseOps + Send + Sync + 'static,
+    T: Clone + Default + BitwiseOps + Send + Sync + 'static,
     F: Fn(&T) -> T + Send + Sync,
 {
     fn name(&self) -> &'static str {
@@ -304,7 +304,7 @@ where
 /// Shift operation ufunc with validation
 pub struct BitwiseShiftUfunc<T, F>
 where
-    T: Clone + BitwiseOps + 'static,
+    T: Clone + Default + BitwiseOps + 'static,
     F: Fn(&T, u32) -> Result<T> + Send + Sync,
 {
     name: &'static str,
@@ -314,7 +314,7 @@ where
 
 impl<T, F> BitwiseShiftUfunc<T, F>
 where
-    T: Clone + BitwiseOps + 'static,
+    T: Clone + Default + BitwiseOps + 'static,
     F: Fn(&T, u32) -> Result<T> + Send + Sync,
 {
     pub fn new(name: &'static str, operation: F) -> Self {
@@ -333,7 +333,7 @@ where
             "i8" => {
                 let val = unsafe { std::mem::transmute::<&T, &i8>(shift_val) };
                 if *val < 0 {
-                    return Err(NumPyError::invalid_value(
+                    return Err(NumPyError::value_error(
                         "Shift amount must be non-negative".to_string(),
                     ));
                 }
@@ -342,7 +342,7 @@ where
             "i16" => {
                 let val = unsafe { std::mem::transmute::<&T, &i16>(shift_val) };
                 if *val < 0 {
-                    return Err(NumPyError::invalid_value(
+                    return Err(NumPyError::value_error(
                         "Shift amount must be non-negative".to_string(),
                     ));
                 }
@@ -351,7 +351,7 @@ where
             "i32" => {
                 let val = unsafe { std::mem::transmute::<&T, &i32>(shift_val) };
                 if *val < 0 {
-                    return Err(NumPyError::invalid_value(
+                    return Err(NumPyError::value_error(
                         "Shift amount must be non-negative".to_string(),
                     ));
                 }
@@ -360,7 +360,7 @@ where
             "i64" => {
                 let val = unsafe { std::mem::transmute::<&T, &i64>(shift_val) };
                 if *val < 0 {
-                    return Err(NumPyError::invalid_value(
+                    return Err(NumPyError::value_error(
                         "Shift amount must be non-negative".to_string(),
                     ));
                 }
@@ -398,7 +398,7 @@ where
 
 impl<T, F> Ufunc for BitwiseShiftUfunc<T, F>
 where
-    T: Clone + BitwiseOps + Send + Sync + 'static,
+    T: Clone + Default + BitwiseOps + Send + Sync + 'static,
     F: Fn(&T, u32) -> Result<T> + Send + Sync,
 {
     fn name(&self) -> &'static str {
@@ -509,7 +509,7 @@ where
 
 impl<T, F> Ufunc for EnhancedLogicalUfunc<T, F>
 where
-    T: Clone + Send + Sync + 'static,
+    T: Clone + Default + Send + Sync + 'static,
     F: Fn(&T, &T) -> bool + Send + Sync,
 {
     fn name(&self) -> &'static str {
@@ -597,7 +597,7 @@ where
 /// ```
 pub fn bitwise_and<T>(x1: &Array<T>, x2: &Array<T>) -> Result<Array<T>>
 where
-    T: Clone + BitwiseOps + 'static,
+    T: Clone + Default + BitwiseOps + 'static,
 {
     let engine = UfuncEngine::new();
     engine.execute_binary("bitwise_and", x1, x2)
@@ -609,7 +609,7 @@ where
 /// Only supports integer dtypes.
 pub fn bitwise_or<T>(x1: &Array<T>, x2: &Array<T>) -> Result<Array<T>>
 where
-    T: Clone + BitwiseOps + 'static,
+    T: Clone + Default + BitwiseOps + 'static,
 {
     let engine = UfuncEngine::new();
     engine.execute_binary("bitwise_or", x1, x2)
@@ -621,7 +621,7 @@ where
 /// Only supports integer dtypes.
 pub fn bitwise_xor<T>(x1: &Array<T>, x2: &Array<T>) -> Result<Array<T>>
 where
-    T: Clone + BitwiseOps + 'static,
+    T: Clone + Default + BitwiseOps + 'static,
 {
     let engine = UfuncEngine::new();
     engine.execute_binary("bitwise_xor", x1, x2)
@@ -633,7 +633,7 @@ where
 /// Only supports integer dtypes.
 pub fn bitwise_not<T>(x: &Array<T>) -> Result<Array<T>>
 where
-    T: Clone + BitwiseOps + 'static,
+    T: Clone + Default + BitwiseOps + 'static,
 {
     let engine = UfuncEngine::new();
     engine.execute_unary("bitwise_not", x)
@@ -642,7 +642,7 @@ where
 /// Alias for bitwise_not for NumPy compatibility
 pub fn invert<T>(x: &Array<T>) -> Result<Array<T>>
 where
-    T: Clone + BitwiseOps + 'static,
+    T: Clone + Default + BitwiseOps + 'static,
 {
     bitwise_not(x)
 }
@@ -655,7 +655,7 @@ where
 /// Shift amounts must be non-negative and less than the bit width of the type.
 pub fn left_shift<T>(x1: &Array<T>, x2: &Array<T>) -> Result<Array<T>>
 where
-    T: Clone + BitwiseOps + 'static,
+    T: Clone + Default + BitwiseOps + 'static,
 {
     let engine = UfuncEngine::new();
     engine.execute_binary("left_shift", x1, x2)
@@ -672,7 +672,7 @@ where
 /// Shift amounts must be non-negative and less than the bit width of the type.
 pub fn right_shift<T>(x1: &Array<T>, x2: &Array<T>) -> Result<Array<T>>
 where
-    T: Clone + BitwiseOps + 'static,
+    T: Clone + Default + BitwiseOps + 'static,
 {
     let engine = UfuncEngine::new();
     engine.execute_binary("right_shift", x1, x2)
@@ -938,7 +938,7 @@ pub fn register_bitwise_ufuncs(registry: &mut UfuncRegistry) {
 /// Convenience methods for Array bitwise operations
 impl<T> Array<T>
 where
-    T: Clone + BitwiseOps + 'static,
+    T: Clone + Default + BitwiseOps + 'static,
 {
     /// Element-wise bitwise AND
     pub fn bitwise_and(&self, other: &Array<T>) -> Result<Array<T>> {

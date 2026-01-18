@@ -248,9 +248,7 @@ pub fn choice<T: Clone>(a: &Array<T>, size: usize) -> Result<Array<T>, NumPyErro
 pub fn sample<T: Clone>(a: &Array<T>, k: usize) -> Result<Array<T>, NumPyError> {
     let n = a.size();
     if k > n {
-        return Err(NumPyError::invalid_value(
-            "Sample size cannot be larger than array size",
-        ));
+        return Err(NumPyError::value_error("Sample size cannot be larger than array size",  ));
     }
 
     let mut indices: Vec<usize> = (0..n).collect();
@@ -541,9 +539,7 @@ where
 {
     let df_f64 = df.into();
     if df_f64 <= 0.0 {
-        return Err(NumPyError::invalid_value(
-            "degrees of freedom must be positive",
-        ));
+        return Err(NumPyError::value_error("degrees of freedom must be positive",  ));
     }
 
     let shape = size.unwrap_or(&[1]);
@@ -719,9 +715,7 @@ where
 
     // Check probabilities are valid
     if pvals_f64.iter().any(|&p| p < 0.0) {
-        return Err(NumPyError::invalid_value(
-            "probabilities must be non-negative",
-        ));
+        return Err(NumPyError::value_error("probabilities must be non-negative",  ));
     }
 
     let sum: f64 = pvals_f64.iter().sum();

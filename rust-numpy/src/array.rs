@@ -62,7 +62,7 @@ where
 
     /// Get array data as slice
     pub fn as_slice(&self) -> &[T] {
-        self.data.as_ref().as_vec()
+        self.data.as_ref().as_slice()
     }
 
     /// Get array data as slice (alias for as_slice, for compatibility)

@@ -325,20 +325,16 @@ macro_rules! impl_trig_ops_float {
 
                 fn arcsin(&self) -> Result<$t> {
                     if *self < -1.0 || *self > 1.0 {
-                        return Err(NumPyError::invalid_value(
-                            format!("arcsin domain error: {}", self),
-                            "float64".to_string(),
-                        ));
+                        return Err(NumPyError::value_error(format!("arcsin domain error: {}", self),
+                            "float64".to_string(),  ));
                     }
                     Ok(self.asin())
                 }
 
                 fn arccos(&self) -> Result<$t> {
                     if *self < -1.0 || *self > 1.0 {
-                        return Err(NumPyError::invalid_value(
-                            format!("arccos domain error: {}", self),
-                            "float64".to_string(),
-                        ));
+                        return Err(NumPyError::value_error(format!("arccos domain error: {}", self),
+                            "float64".to_string(),  ));
                     }
                     Ok(self.acos())
                 }
@@ -383,20 +379,16 @@ macro_rules! impl_trig_ops_float {
 
                 fn arccosh(&self) -> Result<$t> {
                     if *self < 1.0 {
-                        return Err(NumPyError::invalid_value(
-                            format!("arccosh domain error: {}", self),
-                            "float64".to_string(),
-                        ));
+                        return Err(NumPyError::value_error(format!("arccosh domain error: {}", self),
+                            "float64".to_string(),  ));
                     }
                     Ok(self.acosh())
                 }
 
                 fn arctanh(&self) -> Result<$t> {
                     if *self <= -1.0 || *self >= 1.0 {
-                        return Err(NumPyError::invalid_value(
-                            format!("arctanh domain error: {}", self),
-                            "float64".to_string(),
-                        ));
+                        return Err(NumPyError::value_error(format!("arctanh domain error: {}", self),
+                            "float64".to_string(),  ));
                     }
                     Ok(self.atanh())
                 }
@@ -417,30 +409,24 @@ macro_rules! impl_trig_ops_float {
 
                 fn log(&self) -> Result<$t> {
                     if *self <= 0.0 {
-                        return Err(NumPyError::invalid_value(
-                            format!("log domain error: {}", self),
-                            "float64".to_string(),
-                        ));
+                        return Err(NumPyError::value_error(format!("log domain error: {}", self),
+                            "float64".to_string(),  ));
                     }
                     Ok(self.ln())
                 }
 
                 fn log2(&self) -> Result<$t> {
                     if *self <= 0.0 {
-                        return Err(NumPyError::invalid_value(
-                            format!("log2 domain error: {}", self),
-                            "float64".to_string(),
-                        ));
+                        return Err(NumPyError::value_error(format!("log2 domain error: {}", self),
+                            "float64".to_string(),  ));
                     }
                     Ok(self.log2())
                 }
 
                 fn log10(&self) -> Result<$t> {
                     if *self <= 0.0 {
-                        return Err(NumPyError::invalid_value(
-                            format!("log10 domain error: {}", self),
-                            "float64".to_string(),
-                        ));
+                        return Err(NumPyError::value_error(format!("log10 domain error: {}", self),
+                            "float64".to_string(),  ));
                     }
                     Ok(self.log10())
                 }
@@ -1431,10 +1417,8 @@ pub fn register_math_ufuncs(registry: &mut crate::ufunc::UfuncRegistry) {
         "arcsin",
         |x: &f32| {
             if *x < -1.0 || *x > 1.0 {
-                Err(NumPyError::invalid_value(
-                    format!("arcsin domain error: {}", x),
-                    "float32".to_string(),
-                ))
+                Err(NumPyError::value_error(format!("arcsin domain error: {}", x),
+                    "float32".to_string(),  ))
             } else {
                 Ok(x.asin())
             }
@@ -1444,10 +1428,8 @@ pub fn register_math_ufuncs(registry: &mut crate::ufunc::UfuncRegistry) {
         "arcsin",
         |x: &f64| {
             if *x < -1.0 || *x > 1.0 {
-                Err(NumPyError::invalid_value(
-                    format!("arcsin domain error: {}", x),
-                    "float64".to_string(),
-                ))
+                Err(NumPyError::value_error(format!("arcsin domain error: {}", x),
+                    "float64".to_string(),  ))
             } else {
                 Ok(x.asin())
             }
@@ -1458,10 +1440,8 @@ pub fn register_math_ufuncs(registry: &mut crate::ufunc::UfuncRegistry) {
         "arccos",
         |x: &f32| {
             if *x < -1.0 || *x > 1.0 {
-                Err(NumPyError::invalid_value(
-                    format!("arccos domain error: {}", x),
-                    "float32".to_string(),
-                ))
+                Err(NumPyError::value_error(format!("arccos domain error: {}", x),
+                    "float32".to_string(),  ))
             } else {
                 Ok(x.acos())
             }
@@ -1471,10 +1451,8 @@ pub fn register_math_ufuncs(registry: &mut crate::ufunc::UfuncRegistry) {
         "arccos",
         |x: &f64| {
             if *x < -1.0 || *x > 1.0 {
-                Err(NumPyError::invalid_value(
-                    format!("arccos domain error: {}", x),
-                    "float64".to_string(),
-                ))
+                Err(NumPyError::value_error(format!("arccos domain error: {}", x),
+                    "float64".to_string(),  ))
             } else {
                 Ok(x.acos())
             }
@@ -1561,10 +1539,8 @@ pub fn register_math_ufuncs(registry: &mut crate::ufunc::UfuncRegistry) {
         "arccosh",
         |x: &f32| {
             if *x < 1.0 {
-                Err(NumPyError::invalid_value(
-                    format!("arccosh domain error: {}", x),
-                    "float32".to_string(),
-                ))
+                Err(NumPyError::value_error(format!("arccosh domain error: {}", x),
+                    "float32".to_string(),  ))
             } else {
                 Ok(x.acosh())
             }
@@ -1574,10 +1550,8 @@ pub fn register_math_ufuncs(registry: &mut crate::ufunc::UfuncRegistry) {
         "arccosh",
         |x: &f64| {
             if *x < 1.0 {
-                Err(NumPyError::invalid_value(
-                    format!("arccosh domain error: {}", x),
-                    "float64".to_string(),
-                ))
+                Err(NumPyError::value_error(format!("arccosh domain error: {}", x),
+                    "float64".to_string(),  ))
             } else {
                 Ok(x.acosh())
             }
@@ -1588,10 +1562,8 @@ pub fn register_math_ufuncs(registry: &mut crate::ufunc::UfuncRegistry) {
         "arctanh",
         |x: &f32| {
             if *x <= -1.0 || *x >= 1.0 {
-                Err(NumPyError::invalid_value(
-                    format!("arctanh domain error: {}", x),
-                    "float32".to_string(),
-                ))
+                Err(NumPyError::value_error(format!("arctanh domain error: {}", x),
+                    "float32".to_string(),  ))
             } else {
                 Ok(x.atanh())
             }
@@ -1601,10 +1573,8 @@ pub fn register_math_ufuncs(registry: &mut crate::ufunc::UfuncRegistry) {
         "arctanh",
         |x: &f64| {
             if *x <= -1.0 || *x >= 1.0 {
-                Err(NumPyError::invalid_value(
-                    format!("arctanh domain error: {}", x),
-                    "float64".to_string(),
-                ))
+                Err(NumPyError::value_error(format!("arctanh domain error: {}", x),
+                    "float64".to_string(),  ))
             } else {
                 Ok(x.atanh())
             }
@@ -1631,20 +1601,16 @@ pub fn register_math_ufuncs(registry: &mut crate::ufunc::UfuncRegistry) {
 
     registry.register(Box::new(MathUnaryUfuncWithResult::new("log", |x: &f32| {
         if *x <= 0.0 {
-            Err(NumPyError::invalid_value(
-                format!("log domain error: {}", x),
-                "float32".to_string(),
-            ))
+            Err(NumPyError::value_error(format!("log domain error: {}", x),
+                "float32".to_string(),  ))
         } else {
             Ok(x.ln())
         }
     })));
     registry.register(Box::new(MathUnaryUfuncWithResult::new("log", |x: &f64| {
         if *x <= 0.0 {
-            Err(NumPyError::invalid_value(
-                format!("log domain error: {}", x),
-                "float64".to_string(),
-            ))
+            Err(NumPyError::value_error(format!("log domain error: {}", x),
+                "float64".to_string(),  ))
         } else {
             Ok(x.ln())
         }
@@ -1654,10 +1620,8 @@ pub fn register_math_ufuncs(registry: &mut crate::ufunc::UfuncRegistry) {
         "log2",
         |x: &f32| {
             if *x <= 0.0 {
-                Err(NumPyError::invalid_value(
-                    format!("log2 domain error: {}", x),
-                    "float32".to_string(),
-                ))
+                Err(NumPyError::value_error(format!("log2 domain error: {}", x),
+                    "float32".to_string(),  ))
             } else {
                 Ok(x.log2())
             }
@@ -1667,10 +1631,8 @@ pub fn register_math_ufuncs(registry: &mut crate::ufunc::UfuncRegistry) {
         "log2",
         |x: &f64| {
             if *x <= 0.0 {
-                Err(NumPyError::invalid_value(
-                    format!("log2 domain error: {}", x),
-                    "float64".to_string(),
-                ))
+                Err(NumPyError::value_error(format!("log2 domain error: {}", x),
+                    "float64".to_string(),  ))
             } else {
                 Ok(x.log2())
             }
@@ -1681,10 +1643,8 @@ pub fn register_math_ufuncs(registry: &mut crate::ufunc::UfuncRegistry) {
         "log10",
         |x: &f32| {
             if *x <= 0.0 {
-                Err(NumPyError::invalid_value(
-                    format!("log10 domain error: {}", x),
-                    "float32".to_string(),
-                ))
+                Err(NumPyError::value_error(format!("log10 domain error: {}", x),
+                    "float32".to_string(),  ))
             } else {
                 Ok(x.log10())
             }
@@ -1694,10 +1654,8 @@ pub fn register_math_ufuncs(registry: &mut crate::ufunc::UfuncRegistry) {
         "log10",
         |x: &f64| {
             if *x <= 0.0 {
-                Err(NumPyError::invalid_value(
-                    format!("log10 domain error: {}", x),
-                    "float64".to_string(),
-                ))
+                Err(NumPyError::value_error(format!("log10 domain error: {}", x),
+                    "float64".to_string(),  ))
             } else {
                 Ok(x.log10())
             }

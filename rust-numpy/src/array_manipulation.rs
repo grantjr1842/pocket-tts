@@ -436,10 +436,7 @@ where
     T: Clone + Default + Float + Num + 'static,
 {
     if start == T::zero() || stop == T::zero() {
-        return Err(NumPyError::invalid_value(
-            "start and stop must be non-zero for geomspace",
-            "geomspace",
-        ));
+        return Err(NumPyError::value_error("start and stop must be non-zero for geomspace", "geomspace"));
     }
 
     if num == 0 {
