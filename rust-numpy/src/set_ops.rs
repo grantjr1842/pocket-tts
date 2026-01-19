@@ -135,6 +135,9 @@ pub fn unique<T>(
 where
     T: SetElement + Clone + Default + 'static,
 {
+    use std::collections::HashMap;
+
+    // Handle empty array
     if ar.is_empty() {
         return Ok(UniqueResult {
             values: Array::from_data(vec![], vec![]),
@@ -156,10 +159,76 @@ where
         });
     }
 
-    // For now, implement a simple version
-    Err(NumPyError::not_implemented(
-        "unique function is not yet fully implemented",
-    ))
+    // Collect all elements from the array (flattened for now)
+    let elements: Vec<T> = ar.iter().cloned().collect();
+
+    // Use IndexMap-like approach with a Vec to store unique elements in order
+    let mut unique_values: Vec<T> = Vec::new();
+    let mut value_to_index: HashMap<usize, (usize, usize)> = HashMap::new();
+    let mut index_counter: usize = 0;
+
+    // We need to hash elements for the HashMap
+    for (i, elem) in elements.iter().enumerate() {
+        // Try to find this element in our unique list
+        let mut found = false;
+        for (u_idx, u_elem) in unique_values.iter().enumerate() {
+            if u_elem == elem {
+                // Found existing element - update count
+                let entry = value_to_index.entry(u_idx).or_insert((u_idx, 0));
+                entry.1 += 1;
+                found = true;
+                break;
+            }
+        }
+
+        if !found {
+            // New unique element
+            value_to_index.insert(index_counter, (index_counter, 1));
+            unique_values.push(elem.clone());
+            index_counter += 1;
+        }
+    }
+
+    let n_unique = unique_values.len();
+
+    // Extract indices if requested
+    let indices = if return_index {
+        let idx: Vec<usize> = value_to_index.values().map(|(idx, _)| *idx).collect();
+        Some(Array::from_data(idx, vec![n_unique]))
+    } else {
+        None
+    };
+
+    // Extract inverse indices if requested
+    let inverse = if return_inverse {
+        let inv: Vec<usize> = elements.iter().map(|elem| {
+            // Find the index of this element in unique_values
+            for (u_idx, u_elem) in unique_values.iter().enumerate() {
+                if u_elem == elem {
+                    return u_idx;
+                }
+            }
+            0
+        }).collect();
+        Some(Array::from_data(inv, vec![elements.len()]))
+    } else {
+        None
+    };
+
+    // Extract counts if requested
+    let counts = if return_counts {
+        let cnt: Vec<usize> = value_to_index.values().map(|(_, count)| *count).collect();
+        Some(Array::from_data(cnt, vec![n_unique]))
+    } else {
+        None
+    };
+
+    Ok(UniqueResult {
+        values: Array::from_data(unique_values, vec![n_unique]),
+        indices,
+        inverse,
+        counts,
+    })
 }
 
 /// Test whether each element of a 1-D array is also present in a second array.
@@ -431,18 +500,46 @@ impl SetOps {
     /// Find unique rows in a 2D array
     pub fn unique_rows<T>(ar: &Array<T>) -> Result<Array<T>>
     where
-        T: SetElement + Clone,
+        T: SetElement + Clone + Eq + std::hash::Hash + Default + 'static,
     {
+        use std::collections::HashSet;
+
         if ar.ndim() != 2 {
             return Err(NumPyError::invalid_operation(
                 "unique_rows requires 2-dimensional array",
             ));
         }
 
-        // For now, implement a simple version
-        Err(NumPyError::not_implemented(
-            "unique_rows is not yet implemented",
-        ))
+        let shape = ar.shape();
+        let ncols = shape[1];
+        let nrows = shape[0];
+
+        // Extract rows as vectors
+        let mut rows: Vec<Vec<T>> = Vec::with_capacity(nrows);
+        for i in 0..nrows {
+            let mut row = Vec::with_capacity(ncols);
+            for j in 0..ncols {
+                if let Some(val) = ar.get(i * ncols + j) {
+                    row.push(val.clone());
+                }
+            }
+            rows.push(row);
+        }
+
+        // Use HashSet to find unique rows
+        let mut unique_rows_set: HashSet<Vec<T>> = HashSet::new();
+        for row in rows {
+            unique_rows_set.insert(row);
+        }
+
+        // Convert back to flat array
+        let mut unique_flat: Vec<T> = Vec::new();
+        for row in unique_rows_set {
+            unique_flat.extend(row);
+        }
+
+        let n_unique_rows = unique_flat.len() / ncols;
+        Ok(Array::from_data(unique_flat, vec![n_unique_rows, ncols]))
     }
 }
 
