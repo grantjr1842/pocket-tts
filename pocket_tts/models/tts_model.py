@@ -1,4 +1,5 @@
 import copy
+import gc
 import logging
 import os
 import queue
@@ -509,6 +510,8 @@ class TTSModel(nn.Module):
             and audio decoding. Generation performance is logged including
             real-time factor (RTF) metrics.
         """
+        # Log memory usage before generation
+        self.log_memory_usage(f"before generation: '{text_to_generate[:50]}...'")
 
         # Parse pause tags from text (e.g., <pause:500ms>)
         text_chunks, pause_markers = parse_pause_tags(text_to_generate)
@@ -596,6 +599,9 @@ class TTSModel(nn.Module):
             generation_time,
             real_time_factor,
         )
+        
+        # Log memory usage after generation
+        self.log_memory_usage("after generation")
 
     @torch.inference_mode
     def _decode_audio_worker(
@@ -706,6 +712,97 @@ class TTSModel(nn.Module):
 
     def clear_prompt_cache(self) -> None:
         self._cached_get_state_for_audio_prompt.cache_clear()
+    
+    def cleanup(self) -> None:
+        """Explicitly clean up model resources.
+        
+        This method ensures all resources are properly released:
+        - Clears prompt cache
+        - Joins any active threads
+        - Clears PyTorch CUDA cache if applicable
+        - Logs memory usage before and after cleanup
+        
+        This should be called when you're done with the model or before
+        reloading it. Using a context manager is preferred:
+        
+        Example:
+            >>> model = TTSModel.load_model()
+            >>> with model:
+            ...     audio = model.generate_audio(...)
+            >>> # Resources automatically cleaned up
+        """
+        logger.debug("Cleaning up TTSModel resources")
+        
+        # Clear prompt cache to release memory
+        self.clear_prompt_cache()
+        
+        # Clear PyTorch CUDA cache if on GPU
+        if hasattr(torch.cuda, 'empty_cache'):
+            torch.cuda.empty_cache()
+            logger.debug("Cleared CUDA cache")
+        
+        logger.info("TTSModel resources cleaned up successfully")
+    
+    def __enter__(self) -> Self:
+        """Context manager entry for automatic resource cleanup."""
+        return self
+    
+    def __exit__(self, exc_type, exc_val, exc_tb) -> bool:
+        """Context manager exit for automatic resource cleanup."""
+        self.cleanup()
+        return False  # Don't suppress exceptions
+    
+    def get_memory_usage(self) -> dict:
+        """Get current memory usage statistics.
+        
+        Returns a dictionary with memory usage information:
+        - model_size_mb: Size of model parameters in MB
+        - cache_entries: Number of entries in prompt cache
+        - torch_allocated_mb: PyTorch allocated memory (if available)
+        - torch_reserved_mb: PyTorch reserved memory (if available)
+        - gc_objects: Number of Python objects tracked by garbage collector
+        
+        This is useful for monitoring memory usage during generation
+        and detecting potential memory leaks.
+        
+        Returns:
+            dict: Memory usage statistics
+        """
+        stats = {}
+        
+        # Model parameter size
+        model_size_bytes = sum(p.numel() * p.element_size() for p in self.parameters())
+        stats["model_size_mb"] = model_size_bytes / (1024 * 1024)
+        
+        # Prompt cache size
+        stats["cache_entries"] = self._cached_get_state_for_audio_prompt.cache_info().currsize
+        
+        # PyTorch memory (if CUDA is available)
+        if hasattr(torch.cuda, 'memory_allocated'):
+            stats["torch_allocated_mb"] = torch.cuda.memory_allocated() / (1024 * 1024)
+            stats["torch_reserved_mb"] = torch.cuda.memory_reserved() / (1024 * 1024)
+        
+        # Python garbage collector info
+        stats["gc_objects"] = len(gc.get_objects())
+        
+        return stats
+    
+    def log_memory_usage(self, context: str = "") -> None:
+        """Log current memory usage with optional context.
+        
+        Args:
+            context: Optional context string to include in log message
+        """
+        stats = self.get_memory_usage()
+        logger.info(
+            "Memory usage%s: Model=%.2f MB, Cache=%d entries, "
+            "PyTorch allocated=%.2f MB, GC objects=%d",
+            f" ({context})" if context else "",
+            stats["model_size_mb"],
+            stats["cache_entries"],
+            stats.get("torch_allocated_mb", 0),
+            stats["gc_objects"],
+        )
 
     def get_state_for_audio_prompt_cached(
         self, audio_conditioning: Path | str | torch.Tensor, truncate: bool = False
