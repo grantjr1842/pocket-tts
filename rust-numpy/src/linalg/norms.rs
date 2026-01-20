@@ -182,7 +182,7 @@ pub fn norm<T>(
     x: &Array<T>,
     ord: Option<&str>,
     axis: Option<usize>,
-    keepdims: bool,
+    _keepdims: bool,
 ) -> Result<Array<T>, NumPyError>
 where
     T: LinalgScalar + num_traits::Float,
@@ -213,7 +213,7 @@ where
                 }
             } else {
                 return Err(NumPyError::value_error(
-                    &format!("Invalid norm order: {}", s),
+                    format!("Invalid norm order: {}", s),
                     "linalg",
                 ));
             }
@@ -257,14 +257,14 @@ where
     T: LinalgScalar + num_traits::Float,
 {
     let mut sum_sq = T::Real::zero();
-    
+
     for i in 0..x.size() {
         if let Some(val) = x.get_linear(i) {
             let abs_val = LinalgScalar::abs(*val);
             sum_sq = sum_sq + abs_val * abs_val;
         }
     }
-    
+
     let result = Float::sqrt(sum_sq);
     Ok(Array::from_vec(vec![T::from(result).unwrap()]))
 }
@@ -288,14 +288,14 @@ where
     }
 
     let mut sum_abs_p = T::Real::zero();
-    
+
     for i in 0..x.size() {
         if let Some(val) = x.get_linear(i) {
             let abs_val = LinalgScalar::abs(*val);
             sum_abs_p = sum_abs_p + Float::powi(abs_val, p as i32);
         }
     }
-    
+
     // Compute Lp norm (only L1 and L2 supported for now)
     let result = if p == 1 {
         T::from(sum_abs_p).unwrap()
@@ -306,6 +306,6 @@ where
         // Should not reach here due to p > 2 check above
         T::from(sum_abs_p).unwrap()
     };
-    
+
     Ok(Array::from_vec(vec![result]))
 }

@@ -363,37 +363,25 @@ mod tests {
         }
     );
 
-    conformance_test!(
-        test_in1d_basic,
-        "In1d should test membership in array",
-        {
-            let arr = Array::from_vec(vec![1i32, 2i32, 3i32, 4i32, 5i32]);
-            let test = Array::from_vec(vec![2i32, 4i32, 6i32]);
-            let result = numpy::set_ops::in1d(&test, &arr, false).unwrap();
-            assert_eq!(result.to_vec(), vec![true, true, false]);
-        }
-    );
+    conformance_test!(test_in1d_basic, "In1d should test membership in array", {
+        let arr = Array::from_vec(vec![1i32, 2i32, 3i32, 4i32, 5i32]);
+        let test = Array::from_vec(vec![2i32, 4i32, 6i32]);
+        let result = numpy::set_ops::in1d(&test, &arr, false).unwrap();
+        assert_eq!(result.to_vec(), vec![true, true, false]);
+    });
 
-    conformance_test!(
-        test_isin_basic,
-        "Isin should test membership in array",
-        {
-            let arr = Array::from_vec(vec![1i32, 2i32, 3i32, 4i32, 5i32]);
-            let test = Array::from_vec(vec![2i32, 4i32, 6i32]);
-            let result = numpy::set_ops::isin(&test, &arr).unwrap();
-            assert_eq!(result.to_vec(), vec![true, true, false]);
-        }
-    );
+    conformance_test!(test_isin_basic, "Isin should test membership in array", {
+        let arr = Array::from_vec(vec![1i32, 2i32, 3i32, 4i32, 5i32]);
+        let test = Array::from_vec(vec![2i32, 4i32, 6i32]);
+        let result = numpy::set_ops::isin(&test, &arr).unwrap();
+        assert_eq!(result.to_vec(), vec![true, true, false]);
+    });
 
-    conformance_test!(
-        test_unique_basic,
-        "Unique should return unique elements",
-        {
-            let arr = Array::from_vec(vec![1i32, 2i32, 2i32, 3i32, 3i32, 3i32]);
-            let result = numpy::set_ops::unique(&arr, false, false, false, None).unwrap();
-            assert_eq!(result.values.to_vec(), vec![1i32, 2i32, 3i32]);
-        }
-    );
+    conformance_test!(test_unique_basic, "Unique should return unique elements", {
+        let arr = Array::from_vec(vec![1i32, 2i32, 2i32, 3i32, 3i32, 3i32]);
+        let result = numpy::set_ops::unique(&arr, false, false, false, None).unwrap();
+        assert_eq!(result.values.to_vec(), vec![1i32, 2i32, 3i32]);
+    });
 
     conformance_test!(
         test_unique_with_counts,
@@ -402,7 +390,10 @@ mod tests {
             let arr = Array::from_vec(vec![1i32, 2i32, 2i32, 3i32, 3i32, 3i32]);
             let result = numpy::set_ops::unique(&arr, false, false, true, None).unwrap();
             assert_eq!(result.values.to_vec(), vec![1i32, 2i32, 3i32]);
-            assert_eq!(result.counts.as_ref().unwrap().to_vec(), vec![1usize, 2usize, 3usize]);
+            assert_eq!(
+                result.counts.as_ref().unwrap().to_vec(),
+                vec![1usize, 2usize, 3usize]
+            );
         }
     );
 
@@ -413,16 +404,23 @@ mod tests {
             let arr = Array::from_vec(vec![1i32, 2i32, 2i32, 3i32, 3i32, 3i32]);
             let result = numpy::set_ops::unique(&arr, false, true, false, None).unwrap();
             assert_eq!(result.values.to_vec(), vec![1i32, 2i32, 3i32]);
-            assert_eq!(result.inverse.as_ref().unwrap().to_vec(), vec![0usize, 1usize, 1usize, 2usize, 2usize, 2usize]);
+            assert_eq!(
+                result.inverse.as_ref().unwrap().to_vec(),
+                vec![0usize, 1usize, 1usize, 2usize, 2usize, 2usize]
+            );
         }
     );
 
     // Norm operations conformance tests
-    conformance_test!(test_norm_l1, "L1 norm should compute sum of absolute values", {
-        let arr = Array::from_vec(vec![1.0f64, -2.0, 3.0, -4.0]);
-        let result = numpy::norm(&arr, Some("1"), None, false).unwrap();
-        assert_eq!(result.to_vec(), vec![10.0]); // |1| + |-2| + |3| + |-4| = 10
-    });
+    conformance_test!(
+        test_norm_l1,
+        "L1 norm should compute sum of absolute values",
+        {
+            let arr = Array::from_vec(vec![1.0f64, -2.0, 3.0, -4.0]);
+            let result = numpy::norm(&arr, Some("1"), None, false).unwrap();
+            assert_eq!(result.to_vec(), vec![10.0]); // |1| + |-2| + |3| + |-4| = 10
+        }
+    );
 
     conformance_test!(test_norm_l2, "L2 norm should compute Euclidean norm", {
         let arr = Array::from_vec(vec![3.0f64, 4.0]);
@@ -437,27 +435,39 @@ mod tests {
         assert!((result.to_vec()[0] - 2.571).abs() < 1e-3);
     });
 
-    conformance_test!(test_norm_frobenius, "Frobenius norm should compute sqrt of sum of squares", {
-        let arr = Array::from_vec(vec![1.0f64, 2.0, 3.0]);
-        let result = numpy::norm(&arr, Some("fro"), None, false).unwrap();
-        // sqrt(1^2 + 2^2 + 3^2) = sqrt(14) ≈ 3.742
-        assert!((result.to_vec()[0] - 3.742).abs() < 1e-3);
-    });
+    conformance_test!(
+        test_norm_frobenius,
+        "Frobenius norm should compute sqrt of sum of squares",
+        {
+            let arr = Array::from_vec(vec![1.0f64, 2.0, 3.0]);
+            let result = numpy::norm(&arr, Some("fro"), None, false).unwrap();
+            // sqrt(1^2 + 2^2 + 3^2) = sqrt(14) ≈ 3.742
+            assert!((result.to_vec()[0] - 3.742).abs() < 1e-3);
+        }
+    );
 
-    conformance_test!(test_norm_nuclear, "Nuclear norm should compute sum of singular values", {
-        let arr = Array::from_vec(vec![1.0f64, 2.0, 3.0]);
-        let result = numpy::norm(&arr, Some("nuc"), None, false).unwrap();
-        // Nuclear norm is approximated by Frobenius norm for now
-        // sqrt(1^2 + 2^2 + 3^2) = sqrt(14) ≈ 3.742
-        assert!((result.to_vec()[0] - 3.742).abs() < 1e-3);
-    });
+    conformance_test!(
+        test_norm_nuclear,
+        "Nuclear norm should compute sum of singular values",
+        {
+            let arr = Array::from_vec(vec![1.0f64, 2.0, 3.0]);
+            let result = numpy::norm(&arr, Some("nuc"), None, false).unwrap();
+            // Nuclear norm is approximated by Frobenius norm for now
+            // sqrt(1^2 + 2^2 + 3^2) = sqrt(14) ≈ 3.742
+            assert!((result.to_vec()[0] - 3.742).abs() < 1e-3);
+        }
+    );
 
-    conformance_test!(test_norm_default, "Default norm should use Frobenius norm for vectors", {
-        let arr = Array::from_vec(vec![3.0f64, 4.0]);
-        let result = numpy::norm(&arr, None, None, false).unwrap();
-        // Default is Frobenius norm: sqrt(3^2 + 4^2) = 5
-        assert!((result.to_vec()[0] - 5.0).abs() < 1e-10);
-    });
+    conformance_test!(
+        test_norm_default,
+        "Default norm should use Frobenius norm for vectors",
+        {
+            let arr = Array::from_vec(vec![3.0f64, 4.0]);
+            let result = numpy::norm(&arr, None, None, false).unwrap();
+            // Default is Frobenius norm: sqrt(3^2 + 4^2) = 5
+            assert!((result.to_vec()[0] - 5.0).abs() < 1e-10);
+        }
+    );
 }
 
 /// Advanced conformance test suite runner
