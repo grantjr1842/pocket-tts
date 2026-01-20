@@ -236,26 +236,38 @@ mod tests {
     );
 
     // Bitwise operations conformance tests
-    conformance_test!(test_bitwise_and, "Bitwise AND should produce correct results", {
-        let arr1 = Array::from_vec(vec![5i32, 3i32, 7i32]);
-        let arr2 = Array::from_vec(vec![3i32, 5i32, 1i32]);
-        let result = numpy::bitwise::bitwise_and(&arr1, &arr2).unwrap();
-        assert_eq!(result.to_vec(), vec![1i32, 1i32, 1i32]);
-    });
+    conformance_test!(
+        test_bitwise_and,
+        "Bitwise AND should produce correct results",
+        {
+            let arr1 = Array::from_vec(vec![5i32, 3i32, 7i32]);
+            let arr2 = Array::from_vec(vec![3i32, 5i32, 1i32]);
+            let result = numpy::bitwise::bitwise_and(&arr1, &arr2).unwrap();
+            assert_eq!(result.to_vec(), vec![1i32, 1i32, 1i32]);
+        }
+    );
 
-    conformance_test!(test_bitwise_or, "Bitwise OR should produce correct results", {
-        let arr1 = Array::from_vec(vec![5i32, 3i32, 7i32]);
-        let arr2 = Array::from_vec(vec![3i32, 5i32, 1i32]);
-        let result = numpy::bitwise::bitwise_or(&arr1, &arr2).unwrap();
-        assert_eq!(result.to_vec(), vec![7i32, 7i32, 7i32]);
-    });
+    conformance_test!(
+        test_bitwise_or,
+        "Bitwise OR should produce correct results",
+        {
+            let arr1 = Array::from_vec(vec![5i32, 3i32, 7i32]);
+            let arr2 = Array::from_vec(vec![3i32, 5i32, 1i32]);
+            let result = numpy::bitwise::bitwise_or(&arr1, &arr2).unwrap();
+            assert_eq!(result.to_vec(), vec![7i32, 7i32, 7i32]);
+        }
+    );
 
-    conformance_test!(test_bitwise_xor, "Bitwise XOR should produce correct results", {
-        let arr1 = Array::from_vec(vec![5i32, 3i32, 7i32]);
-        let arr2 = Array::from_vec(vec![3i32, 5i32, 1i32]);
-        let result = numpy::bitwise::bitwise_xor(&arr1, &arr2).unwrap();
-        assert_eq!(result.to_vec(), vec![6i32, 6i32, 6i32]);
-    });
+    conformance_test!(
+        test_bitwise_xor,
+        "Bitwise XOR should produce correct results",
+        {
+            let arr1 = Array::from_vec(vec![5i32, 3i32, 7i32]);
+            let arr2 = Array::from_vec(vec![3i32, 5i32, 1i32]);
+            let result = numpy::bitwise::bitwise_xor(&arr1, &arr2).unwrap();
+            assert_eq!(result.to_vec(), vec![6i32, 6i32, 6i32]);
+        }
+    );
 
     conformance_test!(test_bitwise_not, "Bitwise NOT should invert bits", {
         let arr = Array::from_vec(vec![5i32, 0i32, -1i32]);
@@ -263,26 +275,38 @@ mod tests {
         assert_eq!(result.to_vec(), vec![-6i32, -1i32, 0i32]);
     });
 
-    conformance_test!(test_left_shift, "Left shift should multiply by powers of 2", {
-        let arr = Array::from_vec(vec![1i32, 2i32, 3i32]);
-        let shift = Array::from_vec(vec![1i32, 2i32, 3i32]);
-        let result = numpy::bitwise::left_shift(&arr, &shift).unwrap();
-        assert_eq!(result.to_vec(), vec![2i32, 8i32, 24i32]);
-    });
+    conformance_test!(
+        test_left_shift,
+        "Left shift should multiply by powers of 2",
+        {
+            let arr = Array::from_vec(vec![1i32, 2i32, 3i32]);
+            let shift = Array::from_vec(vec![1i32, 2i32, 3i32]);
+            let result = numpy::bitwise::left_shift(&arr, &shift).unwrap();
+            assert_eq!(result.to_vec(), vec![2i32, 8i32, 24i32]);
+        }
+    );
 
-    conformance_test!(test_right_shift, "Right shift should divide by powers of 2", {
-        let arr = Array::from_vec(vec![8i32, 16i32, 32i32]);
-        let shift = Array::from_vec(vec![1i32, 2i32, 3i32]);
-        let result = numpy::bitwise::right_shift(&arr, &shift).unwrap();
-        assert_eq!(result.to_vec(), vec![4i32, 4i32, 4i32]);
-    });
+    conformance_test!(
+        test_right_shift,
+        "Right shift should divide by powers of 2",
+        {
+            let arr = Array::from_vec(vec![8i32, 16i32, 32i32]);
+            let shift = Array::from_vec(vec![1i32, 2i32, 3i32]);
+            let result = numpy::bitwise::right_shift(&arr, &shift).unwrap();
+            assert_eq!(result.to_vec(), vec![4i32, 4i32, 4i32]);
+        }
+    );
 
-    conformance_test!(test_bitwise_signed_right_shift, "Signed right shift should preserve sign", {
-        let arr = Array::from_vec(vec![-8i32, -16i32, -32i32]);
-        let shift = Array::from_vec(vec![1i32, 2i32, 3i32]);
-        let result = numpy::bitwise::right_shift(&arr, &shift).unwrap();
-        assert_eq!(result.to_vec(), vec![-4i32, -4i32, -4i32]);
-    });
+    conformance_test!(
+        test_bitwise_signed_right_shift,
+        "Signed right shift should preserve sign",
+        {
+            let arr = Array::from_vec(vec![-8i32, -16i32, -32i32]);
+            let shift = Array::from_vec(vec![1i32, 2i32, 3i32]);
+            let result = numpy::bitwise::right_shift(&arr, &shift).unwrap();
+            assert_eq!(result.to_vec(), vec![-4i32, -4i32, -4i32]);
+        }
+    );
 
     // Note: Broadcasting test for bitwise operations is skipped due to implementation limitation
     // The bitwise module does not currently support broadcasting
