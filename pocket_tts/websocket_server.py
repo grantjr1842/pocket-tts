@@ -67,9 +67,8 @@ class TTSWebSocketServer:
         are raw PCM data for efficient streaming.
         """
         # Import numpy_rs for NumPy replacement
+        import numpy as np_rs
         import torch
-
-        from pocket_tts import numpy_rs as np_rs
 
         # Convert to numpy
         if isinstance(audio_chunk, torch.Tensor):
