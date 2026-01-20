@@ -317,6 +317,105 @@ mod tests {
     //     assert_eq!(result.shape(), vec![2, 3]);
     //     assert_eq!(result.to_vec(), vec![1i32, 1i32, 1i32, 1i32, 2i32, 2i32]);
     // });
+
+    // Set operations conformance tests
+    conformance_test!(
+        test_intersect1d_basic,
+        "Intersect1d should find common elements",
+        {
+            let arr1 = Array::from_vec(vec![1i32, 2i32, 3i32, 4i32, 5i32]);
+            let arr2 = Array::from_vec(vec![3i32, 4i32, 5i32, 6i32, 7i32]);
+            let result = numpy::set_ops::intersect1d(&arr1, &arr2).unwrap();
+            assert_eq!(result.to_vec(), vec![3i32, 4i32, 5i32]);
+        }
+    );
+
+    conformance_test!(
+        test_union1d_basic,
+        "Union1d should combine unique elements",
+        {
+            let arr1 = Array::from_vec(vec![1i32, 2i32, 3i32]);
+            let arr2 = Array::from_vec(vec![3i32, 4i32, 5i32]);
+            let result = numpy::set_ops::union1d(&arr1, &arr2).unwrap();
+            assert_eq!(result.to_vec(), vec![1i32, 2i32, 3i32, 4i32, 5i32]);
+        }
+    );
+
+    conformance_test!(
+        test_setdiff1d_basic,
+        "Setdiff1d should find elements in arr1 not in arr2",
+        {
+            let arr1 = Array::from_vec(vec![1i32, 2i32, 3i32, 4i32, 5i32]);
+            let arr2 = Array::from_vec(vec![3i32, 4i32, 5i32]);
+            let result = numpy::set_ops::setdiff1d(&arr1, &arr2).unwrap();
+            assert_eq!(result.to_vec(), vec![1i32, 2i32]);
+        }
+    );
+
+    conformance_test!(
+        test_setxor1d_basic,
+        "Setxor1d should find symmetric difference",
+        {
+            let arr1 = Array::from_vec(vec![1i32, 2i32, 3i32, 4i32]);
+            let arr2 = Array::from_vec(vec![3i32, 4i32, 5i32, 6i32]);
+            let result = numpy::set_ops::setxor1d(&arr1, &arr2).unwrap();
+            assert_eq!(result.to_vec(), vec![1i32, 2i32, 5i32, 6i32]);
+        }
+    );
+
+    conformance_test!(
+        test_in1d_basic,
+        "In1d should test membership in array",
+        {
+            let arr = Array::from_vec(vec![1i32, 2i32, 3i32, 4i32, 5i32]);
+            let test = Array::from_vec(vec![2i32, 4i32, 6i32]);
+            let result = numpy::set_ops::in1d(&test, &arr, false).unwrap();
+            assert_eq!(result.to_vec(), vec![true, true, false]);
+        }
+    );
+
+    conformance_test!(
+        test_isin_basic,
+        "Isin should test membership in array",
+        {
+            let arr = Array::from_vec(vec![1i32, 2i32, 3i32, 4i32, 5i32]);
+            let test = Array::from_vec(vec![2i32, 4i32, 6i32]);
+            let result = numpy::set_ops::isin(&test, &arr).unwrap();
+            assert_eq!(result.to_vec(), vec![true, true, false]);
+        }
+    );
+
+    conformance_test!(
+        test_unique_basic,
+        "Unique should return unique elements",
+        {
+            let arr = Array::from_vec(vec![1i32, 2i32, 2i32, 3i32, 3i32, 3i32]);
+            let result = numpy::set_ops::unique(&arr, false, false, false, None).unwrap();
+            assert_eq!(result.values.to_vec(), vec![1i32, 2i32, 3i32]);
+        }
+    );
+
+    conformance_test!(
+        test_unique_with_counts,
+        "Unique with counts should return element frequencies",
+        {
+            let arr = Array::from_vec(vec![1i32, 2i32, 2i32, 3i32, 3i32, 3i32]);
+            let result = numpy::set_ops::unique(&arr, false, false, true, None).unwrap();
+            assert_eq!(result.values.to_vec(), vec![1i32, 2i32, 3i32]);
+            assert_eq!(result.counts.as_ref().unwrap().to_vec(), vec![1usize, 2usize, 3usize]);
+        }
+    );
+
+    conformance_test!(
+        test_unique_with_inverse,
+        "Unique with inverse should reconstruct original array",
+        {
+            let arr = Array::from_vec(vec![1i32, 2i32, 2i32, 3i32, 3i32, 3i32]);
+            let result = numpy::set_ops::unique(&arr, false, true, false, None).unwrap();
+            assert_eq!(result.values.to_vec(), vec![1i32, 2i32, 3i32]);
+            assert_eq!(result.inverse.as_ref().unwrap().to_vec(), vec![0usize, 1usize, 1usize, 2usize, 2usize, 2usize]);
+        }
+    );
 }
 
 /// Advanced conformance test suite runner
@@ -360,9 +459,20 @@ pub fn run_conformance_suite() -> ConformanceTestResult {
     tests::test_bitwise_signed_right_shift();
     // tests::test_bitwise_broadcasting();
 
+    // Set operations tests
+    tests::test_intersect1d_basic();
+    tests::test_union1d_basic();
+    tests::test_setdiff1d_basic();
+    tests::test_setxor1d_basic();
+    tests::test_in1d_basic();
+    tests::test_isin_basic();
+    tests::test_unique_basic();
+    tests::test_unique_with_counts();
+    tests::test_unique_with_inverse();
+
     // Count results (in a real implementation, we'd track which tests passed)
     // Count results (in a real implementation, we'd track which tests passed)
-    let passed = 20; // All 20 tests above
+    let passed = 29; // All 29 tests above
     let failed = 0;
     let skipped = 0;
 
@@ -406,6 +516,6 @@ mod main {
 
         assert_eq!(result.failed, 0, "All conformance tests should pass");
         assert_eq!(result.skipped, 0, "No tests should be skipped");
-        assert_eq!(result.passed, 20, "All 20 conformance tests should pass");
+        assert_eq!(result.passed, 29, "All 29 conformance tests should pass");
     }
 }
