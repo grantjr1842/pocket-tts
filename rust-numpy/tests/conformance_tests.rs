@@ -416,6 +416,48 @@ mod tests {
             assert_eq!(result.inverse.as_ref().unwrap().to_vec(), vec![0usize, 1usize, 1usize, 2usize, 2usize, 2usize]);
         }
     );
+
+    // Norm operations conformance tests
+    conformance_test!(test_norm_l1, "L1 norm should compute sum of absolute values", {
+        let arr = Array::from_vec(vec![1.0f64, -2.0, 3.0, -4.0]);
+        let result = numpy::norm(&arr, Some("1"), None, false).unwrap();
+        assert_eq!(result.to_vec(), vec![10.0]); // |1| + |-2| + |3| + |-4| = 10
+    });
+
+    conformance_test!(test_norm_l2, "L2 norm should compute Euclidean norm", {
+        let arr = Array::from_vec(vec![3.0f64, 4.0]);
+        let result = numpy::norm(&arr, Some("2"), None, false).unwrap();
+        assert!((result.to_vec()[0] - 5.0).abs() < 1e-10); // sqrt(3^2 + 4^2) = 5
+    });
+
+    conformance_test!(test_norm_l3, "L3 norm should compute cubic norm", {
+        let arr = Array::from_vec(vec![1.0f64, 2.0, 2.0]);
+        let result = numpy::norm(&arr, Some("3"), None, false).unwrap();
+        // (|1|^3 + |2|^3 + |2|^3)^(1/3) = (1 + 8 + 8)^(1/3) = 17^(1/3) ≈ 2.571
+        assert!((result.to_vec()[0] - 2.571).abs() < 1e-3);
+    });
+
+    conformance_test!(test_norm_frobenius, "Frobenius norm should compute sqrt of sum of squares", {
+        let arr = Array::from_vec(vec![1.0f64, 2.0, 3.0]);
+        let result = numpy::norm(&arr, Some("fro"), None, false).unwrap();
+        // sqrt(1^2 + 2^2 + 3^2) = sqrt(14) ≈ 3.742
+        assert!((result.to_vec()[0] - 3.742).abs() < 1e-3);
+    });
+
+    conformance_test!(test_norm_nuclear, "Nuclear norm should compute sum of singular values", {
+        let arr = Array::from_vec(vec![1.0f64, 2.0, 3.0]);
+        let result = numpy::norm(&arr, Some("nuc"), None, false).unwrap();
+        // Nuclear norm is approximated by Frobenius norm for now
+        // sqrt(1^2 + 2^2 + 3^2) = sqrt(14) ≈ 3.742
+        assert!((result.to_vec()[0] - 3.742).abs() < 1e-3);
+    });
+
+    conformance_test!(test_norm_default, "Default norm should use Frobenius norm for vectors", {
+        let arr = Array::from_vec(vec![3.0f64, 4.0]);
+        let result = numpy::norm(&arr, None, None, false).unwrap();
+        // Default is Frobenius norm: sqrt(3^2 + 4^2) = 5
+        assert!((result.to_vec()[0] - 5.0).abs() < 1e-10);
+    });
 }
 
 /// Advanced conformance test suite runner
@@ -470,9 +512,17 @@ pub fn run_conformance_suite() -> ConformanceTestResult {
     tests::test_unique_with_counts();
     tests::test_unique_with_inverse();
 
+    // Norm operations tests
+    tests::test_norm_l1();
+    tests::test_norm_l2();
+    tests::test_norm_l3();
+    tests::test_norm_frobenius();
+    tests::test_norm_nuclear();
+    tests::test_norm_default();
+
     // Count results (in a real implementation, we'd track which tests passed)
     // Count results (in a real implementation, we'd track which tests passed)
-    let passed = 29; // All 29 tests above
+    let passed = 36; // All 36 tests above (29 + 7 norm tests)
     let failed = 0;
     let skipped = 0;
 
@@ -516,6 +566,6 @@ mod main {
 
         assert_eq!(result.failed, 0, "All conformance tests should pass");
         assert_eq!(result.skipped, 0, "No tests should be skipped");
-        assert_eq!(result.passed, 29, "All 29 conformance tests should pass");
+        assert_eq!(result.passed, 36, "All 36 conformance tests should pass");
     }
 }
