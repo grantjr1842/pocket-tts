@@ -1,0 +1,104 @@
+# Implementation Plan
+
+Generated from GitHub Issues via Ralph Playbook Initialization.
+
+- [x] #40 [Med] [ufunc][core][kernels] Broadcast-aware binary exec path (elementwise add)
+- [ ] #41 [Med] [api] Public Array facade + add() wired end-to-end
+- [ ] #42 [Med] [kernels][ufunc][api] Add mul ufunc (mirror add) + tests
+- [ ] #43 [Med] [ufunc][kernels][api] Global sum reduction for f64
+- [ ] #44 [Med] [ufunc][api] sum(axis=..., keepdims=...): single axis first
+- [ ] #45 [Med] [performance][core][ufunc] Dimension coalescing into fewer contiguous runs
+- [ ] #46 [Med] [performance][kernels] SIMD kernels (feature-gated) + runtime dispatch
+- [ ] #47 [Med] [performance] Threading policy for safe kernels (no overlap/alias hazards)
+- [ ] #48 [Med] [rust-numpy] Phase 1: FFT Module Implementation
+- [ ] #49 [Med] [rust-numpy] Phase 2: Advanced Array Methods
+- [ ] #50 [Med] [rust-numpy] Phase 3: NaN-Aware Statistics
+- [ ] #51 [Med] [rust-numpy] Phase 4: Advanced Indexing & Slicing
+- [ ] #52 [Med] [rust-numpy] Phase 5: Missing Utility Ufuncs
+- [ ] #53 [Med] [rust-numpy] Phase 6: Polynomial Module Comparison
+- [ ] #54 [Med] [rust-numpy] Phase 7: Test Coverage Expansion
+- [ ] #55 [Med] [rust-numpy] C-ABI Integration & Python Shim
+- [ ] #56 [Med] [rust-numpy] Implement Eigen-decomposition
+- [ ] #57 [Med] [rust-numpy] Implement QR Decomposition
+- [ ] #58 [Med] [rust-numpy] Implement SVD (Singular Value Decomposition)
+- [ ] #59 [Med] [rust-numpy] Implement Multi-dimensional Dot Products
+- [ ] #60 [Med] [rust-numpy] Implement Least Squares Solver
+- [ ] #61 [Med] [rust-numpy] Complete Unique Implementation
+- [ ] #62 [Med] Identify Gaps
+- [ ] #64 [Med] [High] Run `./ralph/loop.sh plan` to populate this plan from `ralph/specs/*`.
+- [ ] #65 [Med] [rust-numpy] Add PARITY.md and link checklist to tests
+- [ ] #66 [High] [TTS] Fix generation skipping parts of sentences
+- [ ] #67 [Med] [TTS] Verify docker-compose.yaml exists and is complete
+- [ ] #68 [Med] [TTS] Reduce memory usage - Part 1: Slice kv-cache to voice length
+- [ ] #69 [Med] [TTS] Reduce memory usage - Part 2: Keep weights in bfloat16
+- [ ] #70 [Med] [TTS] Reduce memory usage - Part 3: Dynamically size kv-cache
+- [ ] #71 [Med] [TTS] Fuse MimiStreamingMultiheadAttention and StreamingMultiheadAttention
+- [ ] #72 [Med] [TTS] Integrate Rust-numpy via C-ABI
+- [ ] #73 [Med] [rust-numpy] Derive contiguity (C/F) and layout invariants
+- [ ] #74 [Med] [rust-numpy] Transpose-as-view (stride permutation)
+- [ ] #75 [Med] [rust-numpy] Broadcast layout (stride=0 where dim=1)
+- [ ] #76 [Med] [rust-numpy] Minimal correct N-D iterator offsets
+- [ ] #77 [Med] [rust-numpy] Numeric promotion rules for Add/Sub/Mul/TrueDiv/Comparison/Bitwise
+- [ ] #78 [Med] [rust-numpy] Casting policy skeleton (Safe/SameKind/Unsafe)
+- [ ] #79 [Med] [rust-numpy] UFunc registry + kernel lookup by signature
+- [ ] #80 [Med] [rust-numpy] Minimal execution engine (contiguous baseline) for binary ufunc
+- [ ] #81 [Med] [rust-numpy] Broadcast-aware binary exec path (elementwise add)
+- [ ] #82 [Med] [rust-numpy] Public Array facade + add() wired end-to-end
+- [ ] #83 [Med] [rust-numpy] Add mul ufunc (mirror add) + tests
+- [ ] #84 [Med] [rust-numpy] Global sum reduction for f64
+- [ ] #85 [Med] [rust-numpy] sum(axis=..., keepdims=...): single axis first
+- [ ] #86 [Med] [rust-numpy] Dimension coalescing into fewer contiguous runs
+- [ ] #87 [Med] [rust-numpy] SIMD kernels (feature-gated) + runtime dispatch
+- [ ] #88 [Med] [rust-numpy] Threading policy for safe kernels (no overlap/alias hazards)
+- [ ] #89 [Med] [rust-numpy] Identify all remaining todos for 100% Rust port with 100% parity
+- [ ] #90 [Med] [TTS] Investigate text input pauses (silence generation)
+- [ ] #91 [Med] [TTS] Research quantization to int8
+- [ ] #92 [Med] Resolve README.md merge conflict
+- [ ] #93 [High] Fix generation skipping parts of sentences (High Priority)
+- [ ] #94 [Med] Verify docker-compose.yaml exists and is complete
+- [ ] #95 [Med] Reduce memory usage - Part 1: Slice kv-cache to voice length
+- [ ] #96 [Med] Reduce memory usage - Part 2: Keep weights in bfloat16
+- [ ] #97 [Med] Reduce memory usage - Part 3: Dynamically size kv-cache
+- [ ] #98 [Med] Fuse MimiStreamingMultiheadAttention and StreamingMultiheadAttention
+- [ ] #99 [Med] Integrate Rust-numpy via C-ABI
+- [ ] #100 [Med] Implement tensor operations with axes support
+- [ ] #101 [Med] Implement nuclear and L-p norms in linalg::norm
+- [ ] #102 [Med] Implement sorting functions: argpartition and partition with array kth
+- [ ] #103 [Med] Implement set operations in set_ops.rs
+- [ ] #104 [Med] Verify and implement bitwise operations
+- [ ] #105 [Med] Complete Dtype system (intp, uintp, IEEE 754 f16)
+- [ ] #106 [Med] Workspace lint/format enforcement (fmt + clippy -D warnings)
+- [ ] #107 [Med] Slicing-as-view (ranges + step; support negative step)
+- [ ] #108 [Med] Derive contiguity (C/F) and layout invariants
+- [ ] #109 [Med] Transpose-as-view (stride permutation)
+- [ ] #110 [Med] Broadcast layout (stride=0 where dim=1)
+- [ ] #111 [Med] Minimal correct N-D iterator offsets
+- [ ] #112 [Med] Numeric promotion rules for Add/Sub/Mul/TrueDiv/Comparison/Bitwise
+- [ ] #113 [Med] Casting policy skeleton (Safe/SameKind/Unsafe)
+- [ ] #114 [Med] UFunc registry + kernel lookup by signature
+- [ ] #115 [Med] Minimal execution engine (contiguous baseline) for binary ufunc
+- [ ] #116 [Med] Broadcast-aware binary exec path (elementwise add)
+- [ ] #117 [Med] Public Array facade + add() wired end-to-end
+- [ ] #118 [Med] Add mul ufunc (mirror add) + tests
+- [ ] #119 [Med] Global sum reduction for f64
+- [ ] #120 [Med] sum(axis=..., keepdims=...): single axis first
+- [ ] #121 [Med] Dimension coalescing into fewer contiguous runs
+- [ ] #122 [Med] SIMD kernels (feature-gated) + runtime dispatch
+- [ ] #123 [Med] Threading policy for safe kernels (no overlap/alias hazards)
+- [ ] #124 [Med] Phase 1: FFT Module Implementation
+- [ ] #125 [Med] Phase 2: Advanced Array Methods
+- [ ] #126 [Med] Phase 3: NaN-Aware Statistics
+- [ ] #127 [Med] Phase 4: Advanced Indexing & Slicing
+- [ ] #128 [Med] Phase 5: Missing Utility Ufuncs
+- [ ] #129 [Med] Phase 6: Polynomial Module Comparison
+- [ ] #130 [Med] Phase 7: Test Coverage Expansion
+- [ ] #131 [Med] Add PARITY.md and link checklist to tests
+- [ ] #132 [Med] Implement Eigen-decomposition
+- [ ] #133 [Med] Implement QR Decomposition
+- [ ] #134 [Med] Implement SVD (Singular Value Decomposition)
+- [ ] #135 [Med] Implement Multi-dimensional Dot Products
+- [ ] #136 [Med] Implement Least Squares Solver
+- [ ] #137 [Med] Complete Unique Implementation
+- [ ] #138 [Med] Identify all remaining todos for 100% Rust port with 100% parity
+- [ ] #139 [Med] Investigate text input pauses (silence generation)
+- [ ] #140 [Med] Research quantization to int8
