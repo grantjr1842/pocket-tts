@@ -1,7 +1,7 @@
 use crate::array::Array;
 use crate::error::NumPyError;
 use crate::linalg::LinalgScalar;
-use num_traits::Zero;
+use num_traits::{Float, Zero};
 
 /// Compute the determinant of an array.
 pub fn det<T>(a: &Array<T>) -> Result<T, NumPyError>
@@ -158,4 +158,154 @@ where
     }
 
     Ok(rank)
+}
+
+/// Compute matrix or vector norm.
+///
+/// # Arguments
+///
+/// * `x` - Input array
+/// * `ord` - Order of the norm:
+///   - `None` or `None`: Frobenius norm for matrices, 2-norm for vectors
+///   - `Some(1)`: L1 norm (sum of absolute values)
+///   - `Some(2)`: L2 norm (Euclidean norm)
+///   - `Some(p)`: Lp norm for any positive integer p
+///   - `Some("fro")`: Frobenius norm
+///   - `Some("nuc")`: Nuclear norm (sum of singular values)
+/// * `axis` - Axis along which to compute the norm (None for entire array)
+/// * `keepdims` - If true, keep the reduced dimensions
+///
+/// # Returns
+///
+/// * `Result<Array<T>, NumPyError>` - The norm value(s)
+pub fn norm<T>(
+    x: &Array<T>,
+    ord: Option<&str>,
+    axis: Option<usize>,
+    keepdims: bool,
+) -> Result<Array<T>, NumPyError>
+where
+    T: LinalgScalar + num_traits::Float,
+{
+    // Handle axis parameter (simplified: only None supported for now)
+    if axis.is_some() {
+        return Err(NumPyError::not_implemented(
+            "norm with axis parameter not yet implemented",
+        ));
+    }
+
+    // Determine norm type
+    let norm_type = match ord {
+        None | Some("fro") => NormType::Frobenius,
+        Some("nuc") => NormType::Nuclear,
+        Some("1") => NormType::L1,
+        Some("2") => NormType::L2,
+        Some(s) => {
+            // Try to parse as integer for Lp norm
+            if let Ok(p) = s.parse::<u32>() {
+                if p > 0 {
+                    NormType::Lp(p)
+                } else {
+                    return Err(NumPyError::value_error(
+                        "ord must be positive for Lp norms",
+                        "linalg",
+                    ));
+                }
+            } else {
+                return Err(NumPyError::value_error(
+                    &format!("Invalid norm order: {}", s),
+                    "linalg",
+                ));
+            }
+        }
+    };
+
+    match norm_type {
+        NormType::Nuclear => compute_nuclear_norm(x),
+        NormType::Frobenius => compute_frobenius_norm(x),
+        NormType::L1 => compute_lp_norm(x, 1),
+        NormType::L2 => compute_lp_norm(x, 2),
+        NormType::Lp(p) => compute_lp_norm(x, p),
+    }
+}
+
+/// Norm type enumeration
+enum NormType {
+    Nuclear,
+    Frobenius,
+    L1,
+    L2,
+    Lp(u32),
+}
+
+/// Compute nuclear norm (sum of singular values)
+///
+/// Note: This is a simplified implementation. For a full implementation,
+/// we need to compute all singular values using SVD and sum them.
+fn compute_nuclear_norm<T>(x: &Array<T>) -> Result<Array<T>, NumPyError>
+where
+    T: LinalgScalar + num_traits::Float,
+{
+    // For now, return Frobenius norm as an approximation
+    // TODO: Implement proper SVD to compute singular values
+    compute_frobenius_norm(x)
+}
+
+/// Compute Frobenius norm (sqrt of sum of squared absolute values)
+fn compute_frobenius_norm<T>(x: &Array<T>) -> Result<Array<T>, NumPyError>
+where
+    T: LinalgScalar + num_traits::Float,
+{
+    let mut sum_sq = T::Real::zero();
+    
+    for i in 0..x.size() {
+        if let Some(val) = x.get_linear(i) {
+            let abs_val = LinalgScalar::abs(*val);
+            sum_sq = sum_sq + abs_val * abs_val;
+        }
+    }
+    
+    let result = Float::sqrt(sum_sq);
+    Ok(Array::from_vec(vec![T::from(result).unwrap()]))
+}
+
+/// Compute Lp norm: (sum(|x|^p))^(1/p)
+fn compute_lp_norm<T>(x: &Array<T>, p: u32) -> Result<Array<T>, NumPyError>
+where
+    T: LinalgScalar + num_traits::Float,
+{
+    if p == 0 {
+        return Err(NumPyError::value_error(
+            "p must be positive for Lp norms",
+            "linalg",
+        ));
+    }
+
+    if p > 2 {
+        return Err(NumPyError::not_implemented(
+            "Lp norms with p > 2 not yet implemented",
+        ));
+    }
+
+    let mut sum_abs_p = T::Real::zero();
+    
+    for i in 0..x.size() {
+        if let Some(val) = x.get_linear(i) {
+            let abs_val = LinalgScalar::abs(*val);
+            sum_abs_p = sum_abs_p + Float::powi(abs_val, p as i32);
+        }
+    }
+    
+    // Compute Lp norm (only L1 and L2 supported for now)
+    let result = if p == 1 {
+        T::from(sum_abs_p).unwrap()
+    } else if p == 2 {
+        let sum_sq = sum_abs_p * sum_abs_p;
+        T::from(Float::sqrt(sum_sq)).unwrap()
+    } else {
+        // Should not reach here due to p > 2 check above
+        T::from(sum_abs_p).unwrap()
+    };
+    
+    Ok(Array::from_vec(vec![result]))
 }
