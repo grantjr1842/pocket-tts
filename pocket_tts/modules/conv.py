@@ -93,10 +93,7 @@ class StreamingConv1d(StatefulModule):
         B, C, T = x.shape
         S = self._stride
         assert T > 0 and T % S == 0, "Steps must be multiple of stride"
-        if model_state is None:
-            state = self.init_state(B, 0)
-        else:
-            state = self.get_state(model_state)
+        state = self.init_state(B, 0) if model_state is None else self.get_state(model_state)
         TP = state["previous"].shape[-1]
         if TP and self.pad_mode == "replicate":
             assert T >= TP, "Not enough content to pad streaming."

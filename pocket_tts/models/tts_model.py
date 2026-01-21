@@ -967,10 +967,7 @@ def prepare_text_prompt(text: str) -> tuple[str, int]:
         raise ValueError("Text prompt cannot be empty")
     text = text.replace("\n", " ").replace("\r", " ").replace("  ", " ")
     number_of_words = len(text.split())
-    if number_of_words <= 4:
-        frames_after_eos_guess = 3
-    else:
-        frames_after_eos_guess = 1
+    frames_after_eos_guess = 3 if number_of_words <= 4 else 1
 
     # Make sure it starts with an uppercase letter
     if not text[0].isupper():

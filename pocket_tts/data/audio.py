@@ -77,7 +77,7 @@ class StreamingWAVWriter:
         """Initialize WAV writer with header."""
         # For stdout streaming, we need to handle the unseekable stream case
         # The wave module supports unseekable streams since Python 3.4
-        self.wave_writer = wave.open(self.output_stream, "wb")
+        self.wave_writer = wave.open(self.output_stream, "wb")  # noqa: SIM115 - managed by finalize()
         self.wave_writer.setnchannels(1)  # Mono
         self.wave_writer.setsampwidth(2)  # 16-bit
         self.wave_writer.setframerate(sample_rate)
@@ -133,14 +133,23 @@ def stream_audio_chunks(
     path: str | Path | None | Any, audio_chunks: Iterator[torch.Tensor], sample_rate: int
 ):
     """Stream audio chunks to a WAV file or stdout, optionally playing them."""
+    # Handle file path case separately to use context manager directly
+    if not is_file_like(path) and path not in ("-", None):
+        with open(path, "wb") as f:
+            writer = StreamingWAVWriter(f, sample_rate)
+            writer.write_header(sample_rate)
+            for chunk in audio_chunks:
+                writer.write_pcm_data(chunk)
+            writer.finalize()
+        return
+
+    # Handle stdout, null context, and file-like objects
     if path == "-":
         f = sys.stdout.buffer
     elif path is None:
         f = nullcontext()
-    elif is_file_like(path):
-        f = path
     else:
-        f = open(path, "wb")
+        f = path
 
     with f:
         if path is not None:
