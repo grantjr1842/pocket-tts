@@ -397,10 +397,41 @@ where
         ));
     }
 
-    // For now, implement a simple version
-    Err(NumPyError::not_implemented(
-        "in1d function is not yet fully implemented",
-    ))
+    use std::collections::HashSet;
+
+    struct HashWrapper<'a, T: SetElement>(&'a T);
+
+    impl<'a, T: SetElement> Hash for HashWrapper<'a, T> {
+        fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+            self.0.hash_element(state);
+        }
+    }
+
+    impl<'a, T: SetElement> PartialEq for HashWrapper<'a, T> {
+        fn eq(&self, other: &Self) -> bool {
+            self.0.compare(other.0) == Ordering::Equal
+        }
+    }
+
+    impl<'a, T: SetElement> Eq for HashWrapper<'a, T> {}
+
+    let mut set = HashSet::with_capacity(ar2.size());
+    for i in 0..ar2.size() {
+        if let Some(val) = ar2.get_linear(i) {
+            set.insert(HashWrapper(val));
+        }
+    }
+
+    let mut result = Vec::with_capacity(ar1.size());
+    for i in 0..ar1.size() {
+        if let Some(val) = ar1.get_linear(i) {
+            result.push(set.contains(&HashWrapper(val)));
+        } else {
+            result.push(false); // Should not happen with get_linear logic
+        }
+    }
+
+    Ok(Array::from_vec(result))
 }
 
 /// Advanced set operations for multi-dimensional arrays
