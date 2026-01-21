@@ -1,7 +1,7 @@
 use crate::array::Array;
 use crate::error::NumPyError;
 use crate::linalg::LinalgScalar;
-use num_traits::{Float, Zero};
+use num_traits::{Float, One, ToPrimitive, Zero};
 
 /// Compute the determinant of an array.
 pub fn det<T>(a: &Array<T>) -> Result<T, NumPyError>
@@ -182,7 +182,7 @@ pub fn norm<T>(
     x: &Array<T>,
     ord: Option<&str>,
     axis: Option<usize>,
-    keepdims: bool,
+    _keepdims: bool,
 ) -> Result<Array<T>, NumPyError>
 where
     T: LinalgScalar + num_traits::Float,
@@ -213,7 +213,7 @@ where
                 }
             } else {
                 return Err(NumPyError::value_error(
-                    &format!("Invalid norm order: {}", s),
+                    format!("Invalid norm order: {}", s),
                     "linalg",
                 ));
             }
@@ -257,14 +257,14 @@ where
     T: LinalgScalar + num_traits::Float,
 {
     let mut sum_sq = T::Real::zero();
-    
+
     for i in 0..x.size() {
         if let Some(val) = x.get_linear(i) {
             let abs_val = LinalgScalar::abs(*val);
             sum_sq = sum_sq + abs_val * abs_val;
         }
     }
-    
+
     let result = Float::sqrt(sum_sq);
     Ok(Array::from_vec(vec![T::from(result).unwrap()]))
 }
@@ -281,31 +281,29 @@ where
         ));
     }
 
-    if p > 2 {
-        return Err(NumPyError::not_implemented(
-            "Lp norms with p > 2 not yet implemented",
-        ));
-    }
-
     let mut sum_abs_p = T::Real::zero();
-    
+
     for i in 0..x.size() {
         if let Some(val) = x.get_linear(i) {
             let abs_val = LinalgScalar::abs(*val);
             sum_abs_p = sum_abs_p + Float::powi(abs_val, p as i32);
         }
     }
-    
-    // Compute Lp norm (only L1 and L2 supported for now)
+
+    // Compute Lp norm: (sum(|x|^p))^(1/p)
     let result = if p == 1 {
         T::from(sum_abs_p).unwrap()
     } else if p == 2 {
-        let sum_sq = sum_abs_p * sum_abs_p;
-        T::from(Float::sqrt(sum_sq)).unwrap()
+        // For L2 norm, use sqrt for better precision
+        T::from(Float::sqrt(sum_abs_p)).unwrap()
     } else {
-        // Should not reach here due to p > 2 check above
-        T::from(sum_abs_p).unwrap()
+        // For other p values, use exp(ln(x)/p) to compute pth root
+        let log_sum = Float::ln(sum_abs_p);
+        // Convert p to the Real type
+        let inv_p = T::Real::one() / num_traits::cast(p as f64).unwrap();
+        let root = Float::exp(log_sum * inv_p);
+        T::from(root).unwrap()
     };
-    
+
     Ok(Array::from_vec(vec![result]))
 }

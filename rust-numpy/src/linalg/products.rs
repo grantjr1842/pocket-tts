@@ -93,7 +93,9 @@ where
     let a_rows = *a_shape.last().unwrap_or(&1);
     let a_cols = *a_shape.get(a_ndim.saturating_sub(1)).unwrap_or(&1);
 
-    let a_2d_shape: Vec<usize> = a_batch_dims.iter().cloned()
+    let a_2d_shape: Vec<usize> = a_batch_dims
+        .iter()
+        .cloned()
         .chain([a_rows * a_cols].iter().cloned())
         .collect();
 
@@ -109,7 +111,9 @@ where
     let b_rows = *b_shape.get(b_ndim.saturating_sub(2)).unwrap_or(&1);
     let b_cols = *b_shape.last().unwrap_or(&1);
 
-    let b_2d_shape: Vec<usize> = b_batch_dims.iter().cloned()
+    let b_2d_shape: Vec<usize> = b_batch_dims
+        .iter()
+        .cloned()
         .chain([b_rows * b_cols].iter().cloned())
         .collect();
 
@@ -119,7 +123,7 @@ where
     let result_2d = dot(&a_2d, &b_2d)?;
 
     // Compute output shape: (batch_dims, a_rows, b_cols)
-    let mut output_shape: Vec<usize> = a_batch_dims.iter().cloned().collect();
+    let mut output_shape: Vec<usize> = a_batch_dims.to_vec();
     output_shape.push(a_rows);
     output_shape.push(b_cols);
 
@@ -142,14 +146,14 @@ where
     // Default axes: last two dimensions
     let (ax1, ax2) = match (axis1, axis2) {
         (Some(a1), Some(a2)) => (a1, a2),
-        (Some(a1), None) => {
+        (Some(_a1), None) => {
             if ndim >= 2 {
                 (ndim - 2, ndim - 1)
             } else {
                 (0, 1)
             }
         }
-        (None, Some(a2)) => {
+        (None, Some(_a2)) => {
             if ndim >= 2 {
                 (ndim - 2, ndim - 1)
             } else {
@@ -191,7 +195,11 @@ where
 
     for _ in 0..output_size {
         for i in 0..diag_size {
-            let idx1 = if offset >= 0 { i + offset as usize } else { (diag_size - 1 - i) + offset.abs() as usize };
+            let idx1 = if offset >= 0 {
+                i + offset as usize
+            } else {
+                (diag_size - 1 - i) + offset.unsigned_abs()
+            };
             let idx2 = i;
 
             // Compute linear indices for diagonal elements
@@ -204,16 +212,21 @@ where
             for (dim, &val) in output_shape.iter().enumerate() {
                 out_idx *= val;
                 if dim < output_shape.len() - 1 {
-                    let orig_dim = if dim < ax1 { dim } else if dim < ax2 { dim + 1 } else { dim + 2 };
+                    let orig_dim = if dim < ax1 {
+                        dim
+                    } else if dim < ax2 {
+                        dim + 1
+                    } else {
+                        dim + 2
+                    };
                     let divisor: usize = output_shape[dim + 1..].iter().product();
                     a_indices[orig_dim] = if divisor > 0 { out_idx / divisor } else { 0 };
                 }
             }
-            out_idx += i;
 
             // Get diagonal element
             let linear_idx = crate::strides::compute_linear_index(&a_indices, a.strides());
-            if let Some(val) = a.get_storage_at(linear_idx as isize) {
+            if let Some(val) = a.get(linear_idx as usize) {
                 output_data.push(val.clone());
             }
         }

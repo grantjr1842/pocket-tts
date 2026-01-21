@@ -190,8 +190,8 @@ where
     }
 
     // Compute matrix dimensions
-    let m = a.shape()[ax1];  // rows
-    let n = a.shape()[ax2];  // cols
+    let m = a.shape()[ax1]; // rows
+    let n = a.shape()[ax2]; // cols
 
     // Reshape a to 2D: (batch_size, m * n)
     let batch_size: usize = batch_shape.iter().product();
@@ -232,10 +232,7 @@ where
 
 /// Tensor inverse with axes support
 /// Computes inverse of tensor matrices along specified axes
-pub fn tensor_inv<T>(
-    a: &Array<T>,
-    axes: Option<&[usize]>,
-) -> Result<Array<T>, NumPyError>
+pub fn tensor_inv<T>(a: &Array<T>, axes: Option<&[usize]>) -> Result<Array<T>, NumPyError>
 where
     T: LinalgScalar + Clone + Default + 'static,
 {
@@ -276,8 +273,8 @@ where
     }
 
     // Compute matrix dimensions
-    let m = a.shape()[ax1];  // rows
-    let n = a.shape()[ax2];  // cols
+    let m = a.shape()[ax1]; // rows
+    let n = a.shape()[ax2]; // cols
 
     // Reshape a to 2D: (batch_size, m * n)
     let batch_size: usize = batch_shape.iter().product();
