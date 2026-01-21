@@ -1,9 +1,12 @@
 #!/usr/bin/env python3
 import argparse
 import json
+import logging
 from collections import defaultdict
 from datetime import datetime, timezone
 from pathlib import Path
+
+logger = logging.getLogger(__name__)
 
 
 def parse_ts(s: str):
@@ -48,7 +51,8 @@ def main():
                 continue
             try:
                 rec = json.loads(line)
-            except Exception:
+            except Exception as exc:
+                logger.debug("Failed to parse JSON line in %s: %s", p, exc)
                 continue
             runs[run_id]["events"].append(rec)
             ts = parse_ts(rec.get("ts", ""))

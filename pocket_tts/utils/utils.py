@@ -72,7 +72,7 @@ def download_if_necessary(file_path: str) -> Path:
             hashlib.sha256(file_path.encode()).hexdigest() + "." + file_path.split(".")[-1]
         )
         if not cached_file.exists():
-            response = requests.get(file_path)
+            response = requests.get(file_path, timeout=30)
             response.raise_for_status()
             with open(cached_file, "wb") as f:
                 f.write(response.content)

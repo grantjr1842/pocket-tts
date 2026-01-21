@@ -1,32 +1,43 @@
 import argparse
 import json
+import shutil
 import subprocess
 from pathlib import Path
 from typing import Any
 
 
 def run_ffprobe(path: Path) -> dict[str, Any]:
+    ffprobe_path = shutil.which("ffprobe")
+    if ffprobe_path is None:
+        return {"error": "ffprobe not found"}
     try:
-        result = subprocess.run(
-            ["ffprobe", "-hide_banner", "-show_format", "-show_streams", "-of", "json", str(path)],
+        result = subprocess.run(  # noqa: S603 - executable validated with shutil.which
+            [
+                ffprobe_path,
+                "-hide_banner",
+                "-show_format",
+                "-show_streams",
+                "-of",
+                "json",
+                str(path),
+            ],
             check=True,
             capture_output=True,
             text=True,
         )
         return json.loads(result.stdout)
-    except FileNotFoundError:
-        return {"error": "ffprobe not found"}
     except subprocess.CalledProcessError as exc:
         return {"error": "ffprobe failed", "stderr": exc.stderr}
 
 
 def run_sox_stat(path: Path) -> dict[str, Any]:
-    try:
-        result = subprocess.run(
-            ["sox", str(path), "-n", "stat"], check=True, capture_output=True, text=True
-        )
-    except FileNotFoundError:
+    sox_path = shutil.which("sox")
+    if sox_path is None:
         return {"error": "sox not found"}
+    try:
+        result = subprocess.run(  # noqa: S603 - executable validated with shutil.which
+            [sox_path, str(path), "-n", "stat"], check=True, capture_output=True, text=True
+        )
     except subprocess.CalledProcessError as exc:
         return {"error": "sox failed", "stderr": exc.stderr}
 
