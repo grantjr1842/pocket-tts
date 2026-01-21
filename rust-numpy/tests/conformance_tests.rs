@@ -162,14 +162,12 @@ mod tests {
         }
     );
 
-    /*
     conformance_test!(test_tile_basic, "Tile should repeat array pattern", {
-        let arr = Array::from_vec(vec![1.0, 2.0f64, 3.0]);
-        let result = numpy::advanced_broadcast::tile(&arr, &[2, 3]).unwrap();
-        assert_eq!(result.shape(), vec![4, 6]);
-        assert_eq!(result.size(), 12);
+        let arr = Array::from_vec(vec![1.0, 2.0f64]);
+        let result = numpy::advanced_broadcast::tile(&arr, &[2]).unwrap();
+        assert_eq!(result.shape(), vec![4]);
+        assert_eq!(result.to_vec(), vec![1.0, 2.0, 1.0, 2.0]);
     });
-    */
 
     conformance_test!(
         test_dtype_int64,
@@ -496,7 +494,7 @@ pub fn run_conformance_suite() -> ConformanceTestResult {
     tests::test_sin_function();
     tests::test_exp_function();
     tests::test_repeat_basic();
-    // tests::test_tile_basic();
+    tests::test_tile_basic();
     tests::test_dtype_int64();
     tests::test_dtype_float64();
     tests::test_error_handling_empty_array();

@@ -145,7 +145,7 @@ pub trait ArrayViewMut: ArrayView {
 #[allow(dead_code)]
 pub struct BinaryUfunc<T, F>
 where
-    T: Clone + 'static,
+    T: Clone + Default + 'static,
     F: Fn(T, T) -> T + Send + Sync,
 {
     name: &'static str,
@@ -155,7 +155,7 @@ where
 
 impl<T, F> BinaryUfunc<T, F>
 where
-    T: Clone + 'static,
+    T: Clone + Default + 'static,
     F: Fn(T, T) -> T + Send + Sync,
 {
     /// Create new binary ufunc
@@ -170,7 +170,7 @@ where
 
 impl<T, F> Ufunc for BinaryUfunc<T, F>
 where
-    T: Clone + 'static + Send + Sync,
+    T: Clone + Default + 'static + Send + Sync,
     F: Fn(T, T) -> T + Send + Sync,
 {
     fn name(&self) -> &'static str {
@@ -234,13 +234,21 @@ where
             ));
         }
 
-        // Simplified implementation - real NumPy has complex broadcasting
-        let shape1 = inputs[0].shape();
-        let shape2 = inputs[1].shape();
-        let _broadcast_shape = compute_broadcast_shape(shape1, shape2);
+        let input0 = unsafe { &*(inputs[0] as *const _ as *const Array<T>) };
+        let input1 = unsafe { &*(inputs[1] as *const _ as *const Array<T>) };
+        let output = unsafe { &mut *(outputs[0] as *mut _ as *mut Array<T>) };
 
-        // This is a very simplified implementation
-        // Real implementation would need proper broadcasting, dtype promotion, etc.
+        let broadcasted = crate::broadcasting::broadcast_arrays(&[input0, input1])?;
+        let arr0 = &broadcasted[0];
+        let arr1 = &broadcasted[1];
+
+        for i in 0..output.size() {
+            if let (Some(a), Some(b)) = (arr0.get(i), arr1.get(i)) {
+                let result = (self.operation)(a.clone(), b.clone());
+                output.set(i, result)?;
+            }
+        }
+
         Ok(())
     }
 }
@@ -249,7 +257,7 @@ where
 #[allow(dead_code)]
 pub struct UnaryUfunc<T, F>
 where
-    T: Clone + 'static,
+    T: Clone + Default + 'static,
     F: Fn(T) -> T + Send + Sync,
 {
     name: &'static str,
@@ -259,7 +267,7 @@ where
 
 impl<T, F> UnaryUfunc<T, F>
 where
-    T: Clone + 'static,
+    T: Clone + Default + 'static,
     F: Fn(T) -> T + Send + Sync,
 {
     /// Create new unary ufunc
@@ -274,7 +282,7 @@ where
 
 impl<T, F> Ufunc for UnaryUfunc<T, F>
 where
-    T: Clone + 'static + Send + Sync,
+    T: Clone + Default + 'static + Send + Sync,
     F: Fn(T) -> T + Send + Sync,
 {
     fn name(&self) -> &'static str {
@@ -334,7 +342,16 @@ where
             ));
         }
 
-        // Simplified implementation
+        let input = unsafe { &*(inputs[0] as *const _ as *const Array<T>) };
+        let output = unsafe { &mut *(outputs[0] as *mut _ as *mut Array<T>) };
+
+        for i in 0..input.size() {
+            if let Some(a) = input.get(i) {
+                let result = (self.operation)(a.clone());
+                output.set(i, result)?;
+            }
+        }
+
         Ok(())
     }
 }

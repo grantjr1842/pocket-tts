@@ -642,10 +642,11 @@ where
 ///
 /// # Example
 /// ```rust
-/// use rust_numpy::*;
+/// use numpy::{array, bitwise_and};
 /// let a = array![5, 3, 7];  // 101, 011, 111
 /// let b = array![2, 6, 1];  // 010, 110, 001
-/// let result = bitwise_and(&a, &b)?;  // [1, 2, 1] -> 001, 010, 001
+/// let result = bitwise_and(&a, &b).unwrap();
+/// // result == [0, 2, 1]    // 000, 010, 001
 /// ```
 pub fn bitwise_and<T>(x1: &Array<T>, x2: &Array<T>) -> Result<Array<T>>
 where
@@ -1062,9 +1063,9 @@ mod tests {
         let a = array![5u8, 3u8, 7u8]; // 101, 011, 111
         let b = array![2u8, 6u8, 1u8]; // 010, 110, 001
         let result = bitwise_and(&a, &b)?;
-        assert_eq!(result.get(0), Some(&1u8));
-        assert_eq!(result.get(1), Some(&2u8));
-        assert_eq!(result.get(2), Some(&1u8));
+        assert_eq!(result.get(0), Some(&0u8)); // 101 & 010 = 000
+        assert_eq!(result.get(1), Some(&2u8)); // 011 & 110 = 010
+        assert_eq!(result.get(2), Some(&1u8)); // 111 & 001 = 001
         Ok(())
     }
 
@@ -1084,9 +1085,9 @@ mod tests {
         let a = array![5u8, 3u8, 7u8]; // 101, 011, 111
         let b = array![2u8, 6u8, 1u8]; // 010, 110, 001
         let result = bitwise_xor(&a, &b)?;
-        assert_eq!(result.get(0), Some(&6u8)); // 110
-        assert_eq!(result.get(1), Some(&5u8)); // 101
-        assert_eq!(result.get(2), Some(&6u8)); // 110
+        assert_eq!(result.get(0), Some(&7u8)); // 101 ^ 010 = 111
+        assert_eq!(result.get(1), Some(&5u8)); // 011 ^ 110 = 101
+        assert_eq!(result.get(2), Some(&6u8)); // 111 ^ 001 = 110
         Ok(())
     }
 

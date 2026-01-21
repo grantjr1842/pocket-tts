@@ -1204,10 +1204,28 @@ where
     for j in 0..len - 1 {
         let should_swap = match order {
             SortOrder::Ascending => {
-                keys[indices[j] as usize].less(&keys[indices[len - 1] as usize])
+                let val_j = &keys[indices[j] as usize];
+                let val_pivot = &keys[indices[len - 1] as usize];
+                if val_j.less(val_pivot) {
+                    true
+                } else if val_j.equal(val_pivot) {
+                    // Tie-breaker: use original index for stability
+                    indices[j] < indices[len - 1]
+                } else {
+                    false
+                }
             }
             SortOrder::Descending => {
-                keys[indices[j] as usize].greater(&keys[indices[len - 1] as usize])
+                let val_j = &keys[indices[j] as usize];
+                let val_pivot = &keys[indices[len - 1] as usize];
+                if val_j.greater(val_pivot) {
+                    true
+                } else if val_j.equal(val_pivot) {
+                    // Tie-breaker: use original index (keep original order)
+                    indices[j] < indices[len - 1]
+                } else {
+                    false
+                }
             }
         };
 

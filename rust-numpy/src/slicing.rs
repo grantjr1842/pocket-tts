@@ -478,23 +478,44 @@ impl<'a, T> Iterator for ArrayIterMut<'a, T> {
 /// Convenience macros for slicing
 #[macro_export]
 macro_rules! s {
-    (:) => {
+    // Full slice: ..
+    ( .. ) => {
         $crate::slicing::Slice::Full
-    (start:end:step) => {
-        $crate::slicing::Slice::RangeStep(start, end, step)
     };
-    (..end) => {
-        $crate::slicing::Slice::To(end)
+    // Python-style step: ::step (using : : to avoid PathSep if needed)
+    ( : : $step:expr ) => {
+        $crate::slicing::Slice::Step($step as isize)
     };
-    (start..) => {
-        $crate::slicing::Slice::From(start)
+    // Python-style step: ::step (using :: just in case)
+    ( :: $step:expr ) => {
+        $crate::slicing::Slice::Step($step as isize)
     };
-    (start..end) => {
-        $crate::slicing::Slice::Range(start, end)
+    // start..stop..step
+    ( $start:tt .. $stop:tt .. $step:expr ) => {
+        $crate::slicing::Slice::RangeStep($start as isize, $stop as isize, $step as isize)
     };
-    (start..end..step) => {
-        $crate::slicing::Slice::RangeStep(start, end, step)
+    // ..stop..step
+    ( .. $stop:tt .. $step:expr ) => {
+        $crate::slicing::Slice::RangeStep(0, $stop as isize, $step as isize)
     };
-
-}
+    // start.. ..step
+    ( $start:tt .. .. $step:expr ) => {
+        $crate::slicing::Slice::RangeStep($start as isize, isize::MAX, $step as isize)
+    };
+    // start..stop
+    ( $start:tt .. $stop:tt ) => {
+        $crate::slicing::Slice::Range($start as isize, $stop as isize)
+    };
+    // ..stop
+    ( .. $stop:tt ) => {
+        $crate::slicing::Slice::To($stop as isize)
+    };
+    // start..
+    ( $start:tt .. ) => {
+        $crate::slicing::Slice::From($start as isize)
+    };
+    // single index
+    ( $idx:expr ) => {
+        $crate::slicing::Slice::Index($idx as isize)
+    };
 }

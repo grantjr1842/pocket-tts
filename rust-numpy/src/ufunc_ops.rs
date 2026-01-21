@@ -2,7 +2,7 @@ use crate::array::Array;
 use crate::broadcasting::{broadcast_arrays, compute_broadcast_shape};
 
 use crate::error::{NumPyError, Result};
-use crate::ufunc::{get_ufunc, UfuncRegistry};
+use crate::ufunc::{get_ufunc, get_ufunc_typed, get_ufunc_typed_binary, UfuncRegistry};
 use std::sync::Arc;
 
 /// Ufunc execution engine
@@ -29,7 +29,7 @@ impl UfuncEngine {
     where
         T: Clone + Default + 'static,
     {
-        let ufunc = get_ufunc(ufunc_name)
+        let ufunc = get_ufunc_typed_binary::<T>(ufunc_name)
             .ok_or_else(|| NumPyError::ufunc_error(ufunc_name, "Function not found"))?;
 
         // Check if ufunc supports the dtype
@@ -70,7 +70,7 @@ impl UfuncEngine {
     where
         T: Clone + Default + 'static,
     {
-        let ufunc = get_ufunc(ufunc_name)
+        let ufunc = get_ufunc_typed::<T>(ufunc_name)
             .ok_or_else(|| NumPyError::ufunc_error(ufunc_name, "Function not found"))?;
 
         if !ufunc.supports_dtypes(&[a.dtype()]) {
@@ -99,7 +99,7 @@ impl UfuncEngine {
     where
         T: Clone + Default + 'static,
     {
-        let ufunc = get_ufunc(ufunc_name)
+        let ufunc = get_ufunc_typed_binary::<T>(ufunc_name)
             .ok_or_else(|| NumPyError::ufunc_error(ufunc_name, "Function not found"))?;
 
         if !ufunc.supports_dtypes(&[a.dtype(), b.dtype()]) {
@@ -593,18 +593,64 @@ where
         }
     }
 
-    pub fn all(&self, axis: Option<&[isize]>, _keepdims: bool) -> Result<Array<bool>>
+    pub fn all(&self, axis: Option<&[isize]>, keepdims: bool) -> Result<Array<bool>>
     where
-        T: Clone + Default + Into<bool>,
+        T: Clone + Default + Into<bool> + 'static,
     {
         match axis {
             None => {
-                // Return true if all elements are truthy
                 let result = (0..self.size())
                     .all(|i| self.get(i).map(|v| v.clone().into()).unwrap_or(false));
                 Ok(Array::from_scalar(result, vec![]))
             }
-            Some(_) => Err(NumPyError::not_implemented("all() with axis parameter")),
+            Some(axes) => {
+                let engine = UfuncEngine::new();
+                // We need to map T to bool first, or use a custom reduction
+                // Since execute_reduction expects T -> T, let's just do it manually for now
+                // to match the existing pattern or implement a specialized logical reduction.
+
+                let output_shape =
+                    crate::broadcasting::broadcast_shape_for_reduce(self.shape(), axes, keepdims);
+                let mut output = Array::<bool>::full(output_shape, true);
+
+                let input_shape = self.shape();
+                let output_shape_vec = output.shape().to_vec();
+
+                let normalized_axes: Vec<usize> = axes
+                    .iter()
+                    .map(|&ax| {
+                        if ax < 0 {
+                            (ax + input_shape.len() as isize) as usize
+                        } else {
+                            ax as usize
+                        }
+                    })
+                    .collect();
+
+                for out_idx in 0..output.size() {
+                    let out_indices =
+                        crate::strides::compute_multi_indices(out_idx, &output_shape_vec);
+                    let mut current_all = true;
+
+                    for in_idx in 0..self.size() {
+                        let in_indices = crate::strides::compute_multi_indices(in_idx, input_shape);
+                        if engine.should_include_for_reduction(
+                            &in_indices,
+                            &out_indices,
+                            &normalized_axes,
+                        ) {
+                            if let Some(val) = self.get(in_idx) {
+                                if !val.clone().into() {
+                                    current_all = false;
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                    output.set(out_idx, current_all)?;
+                }
+                Ok(output)
+            }
         }
     }
 
@@ -622,18 +668,60 @@ where
         Array::from_data(new_data, self.shape().to_vec())
     }
 
-    pub fn any(&self, axis: Option<&[isize]>, _keepdims: bool) -> Result<Array<bool>>
+    pub fn any(&self, axis: Option<&[isize]>, keepdims: bool) -> Result<Array<bool>>
     where
-        T: Clone + Default + Into<bool>,
+        T: Clone + Default + Into<bool> + 'static,
     {
         match axis {
             None => {
-                // Return true if any element is truthy
                 let result = (0..self.size())
                     .any(|i| self.get(i).map(|v| v.clone().into()).unwrap_or(false));
                 Ok(Array::from_scalar(result, vec![]))
             }
-            Some(_) => Err(NumPyError::not_implemented("any() with axis parameter")),
+            Some(axes) => {
+                let engine = UfuncEngine::new();
+                let output_shape =
+                    crate::broadcasting::broadcast_shape_for_reduce(self.shape(), axes, keepdims);
+                let mut output = Array::<bool>::full(output_shape, false);
+
+                let input_shape = self.shape();
+                let output_shape_vec = output.shape().to_vec();
+
+                let normalized_axes: Vec<usize> = axes
+                    .iter()
+                    .map(|&ax| {
+                        if ax < 0 {
+                            (ax + input_shape.len() as isize) as usize
+                        } else {
+                            ax as usize
+                        }
+                    })
+                    .collect();
+
+                for out_idx in 0..output.size() {
+                    let out_indices =
+                        crate::strides::compute_multi_indices(out_idx, &output_shape_vec);
+                    let mut current_any = false;
+
+                    for in_idx in 0..self.size() {
+                        let in_indices = crate::strides::compute_multi_indices(in_idx, input_shape);
+                        if engine.should_include_for_reduction(
+                            &in_indices,
+                            &out_indices,
+                            &normalized_axes,
+                        ) {
+                            if let Some(val) = self.get(in_idx) {
+                                if val.clone().into() {
+                                    current_any = true;
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                    output.set(out_idx, current_any)?;
+                }
+                Ok(output)
+            }
         }
     }
 
@@ -681,9 +769,9 @@ where
                 let axis_size = self.shape()[ax];
 
                 for outer in 0..stride_before {
-                    let mut running = T::default();
-                    for pos in 0..axis_size {
-                        for inner in 0..stride_after {
+                    for inner in 0..stride_after {
+                        let mut running = T::default();
+                        for pos in 0..axis_size {
                             let idx = outer * axis_size * stride_after + pos * stride_after + inner;
                             if let Some(val) = self.get(idx) {
                                 running = running + val.clone();
@@ -746,17 +834,22 @@ where
                 let axis_size = self.shape()[ax];
 
                 for outer in 0..stride_before {
-                    for pos in 0..axis_size {
-                        let mut running = T::default();
-                        for inner in 0..stride_after {
+                    for inner in 0..stride_after {
+                        let mut running: Option<T> = None;
+                        for pos in 0..axis_size {
                             let idx = outer * axis_size * stride_after + pos * stride_after + inner;
                             if let Some(val) = self.get(idx) {
-                                if inner == 0 && pos == 0 {
-                                    running = val.clone();
-                                } else {
-                                    running = running * val.clone();
+                                match &mut running {
+                                    None => {
+                                        let v = val.clone();
+                                        result.set(idx, v.clone())?;
+                                        running = Some(v);
+                                    }
+                                    Some(r) => {
+                                        *r = r.clone() * val.clone();
+                                        result.set(idx, r.clone())?;
+                                    }
                                 }
-                                result.set(idx, running.clone())?;
                             }
                         }
                     }
@@ -912,7 +1005,7 @@ where
 
         for i in 0..self.size() {
             if let Some(val) = self.get(i) {
-                output.set(i, val == val)?;
+                output.set(i, val.clone() == T::default())?;
             }
         }
 

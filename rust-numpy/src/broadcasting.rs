@@ -268,13 +268,21 @@ pub fn broadcast_shape_for_reduce(shape: &[usize], axis: &[isize], keepdims: boo
 
     let mut result = shape.to_vec();
 
-    for &ax in axis {
-        let ax = if ax < 0 {
-            ax + shape.len() as isize
-        } else {
-            ax
-        } as usize;
+    // Sort axes in descending order to avoid index shifts when removing
+    let mut normalized_axes: Vec<usize> = axis
+        .iter()
+        .map(|&ax| {
+            if ax < 0 {
+                (ax + shape.len() as isize) as usize
+            } else {
+                ax as usize
+            }
+        })
+        .collect();
+    normalized_axes.sort_unstable_by(|a, b| b.cmp(a));
+    normalized_axes.dedup();
 
+    for ax in normalized_axes {
         if ax < result.len() {
             if keepdims {
                 result[ax] = 1;
