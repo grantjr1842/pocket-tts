@@ -21,9 +21,8 @@
 use crate::array::Array;
 use crate::error::{NumPyError, Result};
 use num_traits::Float;
-use std::hash::Hash;
-
 use std::cmp::Ordering;
+use std::hash::Hash;
 
 /// Trait for types that can be used in set operations
 pub trait SetElement: Clone + PartialEq {
@@ -176,49 +175,57 @@ where
         }
 
         // General N-D axis implementation
-        // Use array manipulation utilities to simplify the process
+        // We'll iterate through the array along the target axis without moving axes
 
-        // First, move the target axis to position 0
-        let source_axes = vec![axis as isize];
-        let dest_axes = vec![0];
-        let rearranged = super::array_manipulation::moveaxis(ar, &source_axes, &dest_axes)?;
+        // Calculate the size of each "slice" along the target axis
+        let mut slice_size = 1;
+        for i in (axis_norm + 1)..ar.ndim() {
+            slice_size *= ar.shape()[i];
+        }
 
-        // Now reshape to 2D: (target_axis_size, product_of_other_dims)
-        let target_size = rearranged.shape()[0];
-        let other_size: usize = rearranged.shape().iter().skip(1).product();
-        let reshaped = rearranged.reshape(&[target_size, other_size])?;
+        // Calculate the number of elements in each slice along the target axis
+        let mut elements_per_slice = 1;
+        for i in 0..axis_norm {
+            elements_per_slice *= ar.shape()[i];
+        }
 
-        // Now we can work with a 2D array where each row represents an element along the target axis
-        let rows = reshaped.shape()[0];
-        let cols = reshaped.shape()[1];
+        let target_size = ar.shape()[axis_norm];
+        let total_slice_size = slice_size * target_size;
 
-        // Sort indices based on row data without copying rows
-        let mut indices: Vec<usize> = (0..rows).collect();
+        // Sort indices based on slice comparison
+        let mut indices: Vec<usize> = (0..target_size).collect();
         indices.sort_by(|&i, &j| {
-            for k in 0..cols {
-                let val_i = reshaped.get_linear(i * cols + k).unwrap();
-                let val_j = reshaped.get_linear(j * cols + k).unwrap();
-                let cmp = val_i.compare(val_j);
-                if cmp != Ordering::Equal {
-                    return cmp;
+            // Compare slices i and j along the target axis
+            for slice_idx in 0..elements_per_slice {
+                let base_idx = slice_idx * total_slice_size;
+                for offset in 0..slice_size {
+                    let idx_i = base_idx + i * slice_size + offset;
+                    let idx_j = base_idx + j * slice_size + offset;
+
+                    let val_i = ar.get_linear(idx_i).unwrap();
+                    let val_j = ar.get_linear(idx_j).unwrap();
+                    let cmp = val_i.compare(val_j);
+                    if cmp != Ordering::Equal {
+                        return cmp;
+                    }
                 }
             }
             Ordering::Equal
         });
 
-        // Collect unique rows
-        let mut unique_rows = Vec::new();
+        // Collect unique slices
+        let mut unique_indices = Vec::new();
         let mut result_indices = if return_index { Some(Vec::new()) } else { None };
         let mut result_counts = if return_counts {
             Some(Vec::new())
         } else {
             None
         };
-        let mut inverse = vec![0; rows];
+        let mut inverse = vec![0; target_size];
 
-        if rows > 0 {
+        if target_size > 0 {
             let mut current_pos = 0;
-            unique_rows.push(indices[0]);
+            unique_indices.push(indices[0]);
             if let Some(ref mut idxs) = result_indices {
                 idxs.push(indices[0]);
             }
@@ -227,24 +234,33 @@ where
             }
             inverse[indices[0]] = 0;
 
-            for k in 1..rows {
+            for k in 1..target_size {
                 let idx = indices[k];
                 let prev_idx = indices[k - 1];
 
-                // Compare rows without copying
+                // Compare slices idx and prev_idx
                 let mut equal = true;
-                for col in 0..cols {
-                    let val_curr = reshaped.get_linear(idx * cols + col).unwrap();
-                    let val_prev = reshaped.get_linear(prev_idx * cols + col).unwrap();
-                    if val_curr.compare(val_prev) != Ordering::Equal {
-                        equal = false;
+                for slice_idx in 0..elements_per_slice {
+                    let base_idx = slice_idx * total_slice_size;
+                    for offset in 0..slice_size {
+                        let idx_curr = base_idx + idx * slice_size + offset;
+                        let idx_prev = base_idx + prev_idx * slice_size + offset;
+
+                        let val_curr = ar.get_linear(idx_curr).unwrap();
+                        let val_prev = ar.get_linear(idx_prev).unwrap();
+                        if val_curr.compare(val_prev) != Ordering::Equal {
+                            equal = false;
+                            break;
+                        }
+                    }
+                    if !equal {
                         break;
                     }
                 }
 
                 if !equal {
                     current_pos += 1;
-                    unique_rows.push(idx);
+                    unique_indices.push(idx);
                     if let Some(ref mut idxs) = result_indices {
                         idxs.push(idx);
                     }
@@ -259,21 +275,66 @@ where
             }
         }
 
-        // Extract unique rows into a new array
-        let mut final_data = Vec::with_capacity(unique_rows.len() * cols);
-        for &row_idx in &unique_rows {
-            for col in 0..cols {
-                final_data.push(reshaped.get_linear(row_idx * cols + col).unwrap().clone());
+        // Extract unique slices into a new array
+        let mut final_data = Vec::new();
+
+        // Calculate the total size of the result array
+        let mut result_size = 1;
+        for (i, &dim) in ar.shape().iter().enumerate() {
+            if i == axis_norm {
+                result_size *= unique_indices.len();
+            } else {
+                result_size *= dim;
+            }
+        }
+        final_data.reserve(result_size);
+
+        // Build the result by iterating through all possible indices
+        let mut indices = vec![0usize; ar.ndim()];
+        loop {
+            // Check if the current axis index is one of the unique ones
+            if let Some(&unique_idx) = unique_indices.iter().find(|&&x| x == indices[axis_norm]) {
+                // Map to the new index in the unique array
+                let new_axis_idx = unique_indices
+                    .iter()
+                    .position(|&x| x == indices[axis_norm])
+                    .unwrap();
+
+                // Calculate linear index in original array
+                let mut orig_linear = 0;
+                let mut stride = 1;
+                for i in (0..ar.ndim()).rev() {
+                    orig_linear += indices[i] * stride;
+                    stride *= ar.shape()[i];
+                }
+
+                // Add the element to final_data
+                final_data.push(ar.get_linear(orig_linear).unwrap().clone());
+            }
+
+            // Increment indices (like a odometer)
+            let mut carry = true;
+            for i in (0..ar.ndim()).rev() {
+                if carry {
+                    indices[i] += 1;
+                    if indices[i] >= ar.shape()[i] {
+                        indices[i] = 0;
+                        carry = true;
+                    } else {
+                        carry = false;
+                    }
+                }
+            }
+
+            // Check if we've wrapped around
+            if carry {
+                break;
             }
         }
 
-        // Reshape back to the final N-D shape
-        let mut final_shape = vec![unique_rows.len()];
-        for (i, &dim) in ar.shape().iter().enumerate() {
-            if i != axis_norm {
-                final_shape.push(dim);
-            }
-        }
+        // Construct the final shape
+        let mut final_shape = ar.shape().to_vec();
+        final_shape[axis_norm] = unique_indices.len();
 
         return Ok(UniqueResult {
             values: Array::from_data(final_data, final_shape),

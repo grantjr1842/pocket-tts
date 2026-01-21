@@ -7,9 +7,9 @@
 //
 //! Tests for N-D axis support in unique() function
 
-use numpyrs::array::Array;
-use numpyrs::error::Result;
-use numpyrs::set_ops::unique;
+use numpy::array::Array;
+use numpy::error::Result;
+use numpy::set_ops::unique;
 
 #[test]
 fn test_unique_2d_axis_0() -> Result<()> {
@@ -37,12 +37,13 @@ fn test_unique_2d_axis_1() -> Result<()> {
     let result = unique(&arr, false, false, false, Some(&[1]))?;
 
     // Should have 2 unique columns: [1,3,5] and [2,4,6]
-    assert_eq!(result.values.shape(), &[2, 3]);
+    assert_eq!(result.values.shape(), &[3, 2]);
 
     // Check the values
     let values = result.values.to_vec();
-    assert_eq!(values[0..3], vec![1, 3, 5]);
-    assert_eq!(values[3..6], vec![2, 4, 6]);
+    assert_eq!(values[0..2], vec![1, 2]);
+    assert_eq!(values[2..4], vec![3, 4]);
+    assert_eq!(values[4..6], vec![5, 6]);
 
     Ok(())
 }
@@ -81,8 +82,8 @@ fn test_unique_3d_axis_1() -> Result<()> {
 
     let result = unique(&arr, false, false, false, Some(&[1]))?;
 
-    // Should have 2 unique rows along axis=1
-    assert_eq!(result.values.shape(), &[2, 2, 2]);
+    // Should have 1 unique row along axis=1 (both rows are identical)
+    assert_eq!(result.values.shape(), &[2, 1, 2]);
 
     Ok(())
 }
@@ -146,7 +147,7 @@ fn test_unique_negative_axis() -> Result<()> {
 
     // axis=-1 should be same as axis=1 for 2D array
     let result = unique(&arr, false, false, false, Some(&[-1]))?;
-    assert_eq!(result.values.shape(), &[2, 3]);
+    assert_eq!(result.values.shape(), &[3, 3]);
 
     // axis=-2 should be same as axis=0 for 2D array
     let result = unique(&arr, false, false, false, Some(&[-2]))?;
@@ -171,7 +172,7 @@ fn test_unique_axis_out_of_bounds() {
 
 #[test]
 fn test_unique_empty_array_with_axis() -> Result<()> {
-    let arr = Array::from_data(vec![], vec![0, 3]);
+    let arr: Array<i32> = Array::from_data(vec![], vec![0, 3]);
     let result = unique(&arr, false, false, false, Some(&[0]))?;
 
     assert_eq!(result.values.shape(), &[0, 3]);
