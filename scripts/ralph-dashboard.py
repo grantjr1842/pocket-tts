@@ -1,8 +1,13 @@
 #!/usr/bin/env python3
-import argparse, json
+import argparse
+import json
+import logging
 from collections import defaultdict
 from datetime import datetime, timezone
 from pathlib import Path
+
+logger = logging.getLogger(__name__)
+
 
 def parse_ts(s: str):
     try:
@@ -13,9 +18,14 @@ def parse_ts(s: str):
     except Exception:
         return None
 
+
 def main():
-    ap = argparse.ArgumentParser(description="Generate a Markdown status dashboard from Ralph JSONL logs.")
-    ap.add_argument("--log-dir", default=".ralph/logs", help="Directory containing <run_id>.jsonl files")
+    ap = argparse.ArgumentParser(
+        description="Generate a Markdown status dashboard from Ralph JSONL logs."
+    )
+    ap.add_argument(
+        "--log-dir", default=".ralph/logs", help="Directory containing <run_id>.jsonl files"
+    )
     ap.add_argument("--out", default="docs/status-dashboard.md", help="Output Markdown file")
     args = ap.parse_args()
 
@@ -32,17 +42,20 @@ def main():
 
     for p in sorted(log_dir.glob("*.jsonl")):
         run_id = p.stem
-        runs.setdefault(run_id, {"events": [], "first": None, "last": None, "agents": set(), "issues": set()})
+        runs.setdefault(
+            run_id, {"events": [], "first": None, "last": None, "agents": set(), "issues": set()}
+        )
         for line in p.read_text(encoding="utf-8").splitlines():
             line = line.strip()
             if not line:
                 continue
             try:
                 rec = json.loads(line)
-            except Exception:
+            except Exception as exc:
+                logger.debug("Failed to parse JSON line in %s: %s", p, exc)
                 continue
             runs[run_id]["events"].append(rec)
-            ts = parse_ts(rec.get("ts",""))
+            ts = parse_ts(rec.get("ts", ""))
             if ts:
                 if runs[run_id]["first"] is None or ts < runs[run_id]["first"]:
                     runs[run_id]["first"] = ts
@@ -59,15 +72,19 @@ def main():
     lines = []
     lines.append("# Ralph Status Dashboard")
     lines.append("")
-    lines.append(f"_Generated: {datetime.now(timezone.utc).isoformat().replace('+00:00','Z')}_")
+    lines.append(f"_Generated: {datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z')}_")
     lines.append("")
     lines.append("## Runs")
     lines.append("")
     lines.append("| Run ID | Start (UTC) | End (UTC) | Agents | Issues | Last event |")
     lines.append("|---|---|---|---|---:|---|")
-    for run_id, meta in sorted(runs.items(), key=lambda kv: (kv[1]["first"] or datetime.min.replace(tzinfo=timezone.utc)) , reverse=True):
-        start = meta["first"].isoformat().replace("+00:00","Z") if meta["first"] else ""
-        end = meta["last"].isoformat().replace("+00:00","Z") if meta["last"] else ""
+    for run_id, meta in sorted(
+        runs.items(),
+        key=lambda kv: (kv[1]["first"] or datetime.min.replace(tzinfo=timezone.utc)),
+        reverse=True,
+    ):
+        start = meta["first"].isoformat().replace("+00:00", "Z") if meta["first"] else ""
+        end = meta["last"].isoformat().replace("+00:00", "Z") if meta["last"] else ""
         agents = ", ".join(sorted(meta["agents"])) if meta["agents"] else ""
         issue_count = len(meta["issues"])
         last_event = meta["events"][-1]["event"] if meta["events"] else ""
@@ -80,8 +97,10 @@ def main():
     lines.append("|---:|---|---|---|---|")
     for issue, meta in sorted(issues.items(), key=lambda kv: kv[0]):
         last = meta["last"] or {}
-        ts = last.get("ts","")
-        lines.append(f"| {issue} | {last.get('event','')} | {last.get('status','')} | `{last.get('run_id','')}` | {ts} |")
+        ts = last.get("ts", "")
+        lines.append(
+            f"| {issue} | {last.get('event', '')} | {last.get('status', '')} | `{last.get('run_id', '')}` | {ts} |"
+        )
 
     lines.append("")
     lines.append("## Notes")
@@ -94,6 +113,7 @@ def main():
 
     out_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
     return 0
+
 
 if __name__ == "__main__":
     raise SystemExit(main())
