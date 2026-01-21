@@ -1,1 +1,0 @@
-{"timestamp": "2026-01-20T21:08:24.101310", "level": "WARNING", "name": "ralph", "message": "Plan file not found at .ralph/IMPLEMENTATION_PLAN.md. Skipping ADR update.", "module": "update_adrs", "funcName": "main", "lineNo": 53}
