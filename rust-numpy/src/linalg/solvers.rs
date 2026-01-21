@@ -138,8 +138,231 @@ where
     solve(a, &eye)
 }
 
-pub fn lstsq<T>(_a: &Array<T>, _b: &Array<T>) -> Result<Array<T>, NumPyError> {
-    Err(NumPyError::not_implemented("lstsq not implemented"))
+/// Compute the determinant of an array.
+pub fn det<T>(a: &Array<T>) -> Result<T, NumPyError>
+where
+    T: LinalgScalar,
+{
+    if a.ndim() != 2 {
+        return Err(NumPyError::value_error("det requires 2D array", "linalg"));
+    }
+    let n = a.shape()[0];
+    if n != a.shape()[1] {
+        return Err(NumPyError::value_error(
+            "det requires square matrix",
+            "linalg",
+        ));
+    }
+
+    // Gaussian elimination to upper triangular form
+    let a_strides = a.strides();
+    let idx = |row: usize, col: usize, strides: &[isize]| -> usize {
+        (row as isize * strides[0] + col as isize * strides[1]) as usize
+    };
+
+    let mut a_data = vec![T::zero(); n * n];
+    for i in 0..n {
+        for j in 0..n {
+            let a_idx = idx(i, j, a_strides);
+            a_data[i * n + j] = *a.get(a_idx).unwrap();
+        }
+    }
+
+    let mut sign = T::one();
+    let eps = <T::Real as num_traits::Float>::epsilon();
+
+    for col in 0..n {
+        let mut pivot_row = col;
+        let mut pivot_val = a_data[col * n + col].abs();
+        for row in (col + 1)..n {
+            let candidate = a_data[row * n + col].abs();
+            if candidate > pivot_val {
+                pivot_val = candidate;
+                pivot_row = row;
+            }
+        }
+
+        if pivot_val <= eps {
+            return Ok(T::zero());
+        }
+
+        if pivot_row != col {
+            // Swap rows
+            for j in 0..n {
+                a_data.swap(col * n + j, pivot_row * n + j);
+            }
+            sign = T::zero() - sign; // Flip sign
+        }
+
+        let pivot = a_data[col * n + col];
+        for row in (col + 1)..n {
+            let factor = a_data[row * n + col] / pivot;
+            if factor.abs() <= eps {
+                continue;
+            }
+            for j in col..n {
+                a_data[row * n + j] = a_data[row * n + j] - factor * a_data[col * n + j];
+            }
+        }
+    }
+
+    let mut det_val = sign;
+    for i in 0..n {
+        det_val = det_val * a_data[i * n + i];
+    }
+
+    Ok(det_val)
+}
+
+/// Compute the pseudo-inverse of a matrix.
+pub fn pinv<T>(a: &Array<T>, rcond: Option<f64>) -> Result<Array<T>, NumPyError>
+where
+    T: LinalgScalar,
+{
+    // pinv(A) via lstsq(A, I)
+    // A @ X = I  =>  X = A^+
+    // If A is (M, N), I must be (M, M).
+    // lstsq expects b to have shape (M, K).
+    // Result X will be (N, M).
+
+    let m = a.shape()[0];
+    let eye = Array::<T>::eye(m);
+
+    let (x, _, _, _) = lstsq(a, &eye, rcond)?;
+    Ok(x)
+}
+
+/// Return the least-squares solution to a linear matrix equation.
+/// Computes the vector x that approximatively solves the equation a @ x = b.
+/// The equation may be under-, well-, or over-determined.
+///
+/// Returns (solution, residuals, rank, singular_values)
+pub fn lstsq<T>(
+    a: &Array<T>,
+    b: &Array<T>,
+    _rcond: Option<f64>,
+) -> Result<(Array<T>, Array<T>, usize, Array<T>), NumPyError>
+where
+    T: LinalgScalar,
+{
+    use crate::linalg::decompositions::qr;
+    use num_traits::{NumCast, Zero};
+
+    if a.ndim() != 2 {
+        return Err(NumPyError::value_error("lstsq: a must be 2D", "linalg"));
+    }
+    let m = a.shape()[0];
+    let n = a.shape()[1];
+
+    // b can be 1D (M,) or 2D (M, K)
+    let b_ndim = b.ndim();
+    if b.shape()[0] != m {
+        return Err(NumPyError::shape_mismatch(vec![m], vec![b.shape()[0]]));
+    }
+
+    let (q, r) = qr(a, "reduced")?;
+
+    // Compute d = Q.T @ b
+    let q_t = q.transpose();
+
+    // Handle b reshape for dot if 1D
+    let (d, _b_reshaped_guard) = if b_ndim == 1 {
+        // b is (M,) -> reshape to (M, 1) to allow dot with (K, M)
+        // dot expects (M, 1) to produce (K, 1).
+        // Since reshape returns new Array, we keep it alive.
+        let b_reshaped = b.reshape(&[m, 1])?;
+        (q_t.dot(&b_reshaped)?, Some(b_reshaped))
+    } else {
+        (q_t.dot(b)?, None)
+    };
+
+    let x = if m >= n {
+        solve(&r, &d)?
+    } else {
+        return Err(NumPyError::not_implemented(
+            "lstsq for M < N not fully implemented",
+        ));
+    };
+
+    let b_est = a.dot(&x)?;
+
+    // Diff calculation. b - b_est.
+    // If b was 1D, x is (N, 1) and b_est is (M, 1).
+    // We treat them as matching b's dimension.
+    let diff = if b_ndim == 1 {
+        let mut diff_data = Vec::with_capacity(m);
+        for i in 0..m {
+            // b is 1D (M,)
+            let val_b = *b.get(i).unwrap();
+            // b_est is 2D (M, 1)
+            // We access index i (row i, col 0)
+            let val_est = *b_est.get_linear(i).unwrap();
+            diff_data.push(val_b - val_est);
+        }
+        Array::from_data(diff_data, vec![m])
+    } else {
+        let k = b.shape()[1];
+        let mut diff_data = Vec::with_capacity(m * k);
+        for i in 0..m {
+            for j in 0..k {
+                let val_b = *b.get_linear(i * k + j).unwrap();
+                let val_est = *b_est.get_linear(i * k + j).unwrap();
+                diff_data.push(val_b - val_est);
+            }
+        }
+        Array::from_data(diff_data, vec![m, k])
+    };
+
+    // Residuals
+    let residuals = if m > n {
+        if b_ndim == 1 {
+            let mut sum: T::Real = Zero::zero();
+            for i in 0..m {
+                let val = *diff.get(i).unwrap();
+                sum = sum + val.abs() * val.abs();
+            }
+            Array::from_data(vec![T::from_real(sum)], vec![1])
+        } else {
+            let k = b.shape()[1];
+            let mut sums: Vec<T::Real> = vec![Zero::zero(); k];
+            for i in 0..m {
+                for j in 0..k {
+                    let val = *diff.get_linear(i * k + j).unwrap();
+                    sums[j] = sums[j] + val.abs() * val.abs();
+                }
+            }
+            let sums_t: Vec<T> = sums.into_iter().map(|s| T::from_real(s)).collect();
+            Array::from_data(sums_t, vec![k])
+        }
+    } else {
+        Array::from_data(Vec::new(), vec![0])
+    };
+
+    let r_diag_len = r.shape()[0].min(r.shape()[1]);
+    let mut rank = 0;
+    let machine_eps = <T::Real as num_traits::Float>::epsilon();
+
+    for i in 0..r_diag_len {
+        let val = *r.get_linear(i * r.shape()[1] + i).unwrap();
+        if let Some(threshold) = <T::Real as NumCast>::from(100.0) {
+            if val.abs() > machine_eps * threshold {
+                rank += 1;
+            }
+        }
+    }
+
+    let s = Array::from_data(Vec::new(), vec![0]);
+
+    // If input b was 1D, output x should be 1D (N,).
+    // Currently x is (N, 1) from solve.
+    if b_ndim == 1 {
+        // Flatten x: (N, 1) -> (N,)
+        let x_size: usize = x.shape.iter().product();
+        let x_flat = x.reshape(&[x_size])?;
+        Ok((x_flat, residuals, rank, s))
+    } else {
+        Ok((x, residuals, rank, s))
+    }
 }
 
 /// Tensor solve with axes support

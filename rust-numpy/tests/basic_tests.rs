@@ -52,7 +52,7 @@ mod tests {
     #[test]
     fn test_array_transpose() {
         let arr = array2![[1, 2], [3, 4]];
-        let transposed = arr.t();
+        let transposed = arr.transpose();
         assert_eq!(transposed.shape(), &[2, 2]);
         assert_eq!(transposed.size(), 4);
     }

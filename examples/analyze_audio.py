@@ -8,15 +8,7 @@ from typing import Any
 def run_ffprobe(path: Path) -> dict[str, Any]:
     try:
         result = subprocess.run(
-            [
-                "ffprobe",
-                "-hide_banner",
-                "-show_format",
-                "-show_streams",
-                "-of",
-                "json",
-                str(path),
-            ],
+            ["ffprobe", "-hide_banner", "-show_format", "-show_streams", "-of", "json", str(path)],
             check=True,
             capture_output=True,
             text=True,
@@ -31,10 +23,7 @@ def run_ffprobe(path: Path) -> dict[str, Any]:
 def run_sox_stat(path: Path) -> dict[str, Any]:
     try:
         result = subprocess.run(
-            ["sox", str(path), "-n", "stat"],
-            check=True,
-            capture_output=True,
-            text=True,
+            ["sox", str(path), "-n", "stat"], check=True, capture_output=True, text=True
         )
     except FileNotFoundError:
         return {"error": "sox not found"}
@@ -55,7 +44,7 @@ def run_sox_stat(path: Path) -> dict[str, Any]:
 def compute_python_metrics(path: Path) -> dict[str, Any]:
     try:
         import librosa  # type: ignore
-# Import numpy_rs for NumPy replacement
+        import numpy as np_rs
         import pyloudnorm as pyln  # type: ignore
         import soundfile as sf  # type: ignore
     except Exception as exc:  # pragma: no cover - optional deps
@@ -164,7 +153,9 @@ def render_text_summary(report: dict[str, Any]) -> str:
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Analyze an audio file with ffprobe/sox and Python metrics.")
+    parser = argparse.ArgumentParser(
+        description="Analyze an audio file with ffprobe/sox and Python metrics."
+    )
     parser.add_argument("path", type=Path, help="Path to audio file")
     parser.add_argument(
         "--output",

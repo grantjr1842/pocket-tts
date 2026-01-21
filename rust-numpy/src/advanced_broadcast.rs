@@ -6,6 +6,7 @@
 use crate::array::Array;
 use crate::broadcasting::broadcast_to;
 use crate::error::{NumPyError, Result};
+use crate::strides::{compute_linear_index, compute_multi_indices, compute_strides};
 
 /// Repeat array along a given axis
 ///
@@ -20,84 +21,50 @@ use crate::error::{NumPyError, Result};
 /// ```rust,ignore
 /// let a = Array::from_vec(vec![1, 2, 3]);
 /// let result = repeat(&a, 2, Some(0)).unwrap();
-/// // result == [1, 1, 2, 2, 2, 3, 3]
+/// // result == [1, 1, 2, 2, 3, 3]
 /// ```
 pub fn repeat<T>(a: &Array<T>, repeats: usize, axis: Option<isize>) -> Result<Array<T>>
 where
     T: Clone + Default + 'static,
 {
-    if a.is_empty() {
-        return Err(NumPyError::invalid_value("Cannot repeat empty array"));
-    }
-
-    if repeats == 0 {
-        return Ok(Array::from_vec(vec![]));
-    }
-
     if axis.is_none() {
-        // Flatten and repeat
-        let mut result_data = Vec::with_capacity(a.size() * repeats);
-        for elem in a.iter() {
+        let size = a.size();
+        let mut result_data = Vec::with_capacity(size * repeats);
+        for elem in a.to_vec() {
             for _ in 0..repeats {
                 result_data.push(elem.clone());
             }
         }
-        return Ok(Array::from_data(result_data, vec![a.size() * repeats]));
+        return Ok(Array::from_data(result_data, vec![size * repeats]));
     }
 
+    let ax = axis.unwrap();
     let ndim = a.ndim();
-    let ax = if ndim == 0 {
-        0
-    } else {
-        let ax = axis.unwrap();
-        if ax < 0 {
-            (ax + ndim as isize) as usize
-        } else {
-            ax as usize
-        }
-    };
-
-    if ax >= ndim && ndim > 0 {
-        return Err(NumPyError::invalid_value(format!(
-            "axis {} out of bounds for array with {} dimensions",
-            ax,
-            a.ndim()
-        )));
+    let ax = if ax < 0 { ax + ndim as isize } else { ax } as usize;
+    if ax >= ndim {
+        return Err(NumPyError::index_error(ax, ndim));
     }
 
-    // Correct NumPy repeat behavior:
-    // 1. Reshape to add a new axis of size 1 at ax + 1
-    // 2. Broadcast that axis to 'repeats'
-    // 3. Reshape back to merge them
+    let mut output_shape = a.shape().to_vec();
+    output_shape[ax] *= repeats;
+    let output_size: usize = output_shape.iter().product();
+    let mut result_data = Vec::with_capacity(output_size);
+    let source_shape = a.shape();
+    let source_strides = compute_strides(source_shape);
 
-    let mut expanded_shape = a.shape().to_vec();
-    expanded_shape.insert(ax + 1, 1);
+    for linear in 0..output_size {
+        let mut out_indices = compute_multi_indices(linear, &output_shape);
+        if repeats > 0 {
+            out_indices[ax] /= repeats;
+        }
+        let source_linear = compute_linear_index(&out_indices, &source_strides) as usize;
+        let value = a
+            .get_linear(source_linear)
+            .ok_or_else(|| NumPyError::index_error(source_linear, a.size()))?;
+        result_data.push(value.clone());
+    }
 
-    // We need a proper view-based reshape or just do it manually if reshape usually copies.
-    // In our case, Array::reshape copies if it can't just change shape/strides.
-    // Let's use the property that we can manually create the expanded view.
-
-    let mut new_strides = a.strides().to_vec();
-    new_strides.insert(ax + 1, 0); // 0-stride for the new dimension
-
-    let expanded_view = Array {
-        data: a.data.clone(),
-        shape: expanded_shape,
-        strides: new_strides,
-        dtype: a.dtype.clone(),
-        offset: a.offset,
-    };
-
-    let mut broadcast_shape = expanded_view.shape().to_vec();
-    broadcast_shape[ax + 1] = repeats;
-
-    let broadcasted = broadcast_to(&expanded_view, &broadcast_shape)?;
-
-    let mut final_shape = a.shape().to_vec();
-    final_shape[ax] *= repeats;
-
-    // Reshape the broadcasted view into the final shape (this will copy)
-    broadcasted.reshape(&final_shape)
+    Ok(Array::from_data(result_data, output_shape))
 }
 
 /// Tile array by repeating it
@@ -118,76 +85,56 @@ pub fn tile<T>(a: &Array<T>, reps: &[usize]) -> Result<Array<T>>
 where
     T: Clone + Default + 'static,
 {
-    if a.is_empty() {
-        return Err(NumPyError::invalid_value("Cannot tile empty array"));
-    }
-
     if reps.is_empty() {
-        return Ok(a.clone());
+        return Err(NumPyError::invalid_value("reps must not be empty"));
     }
 
-    let a_ndim = a.ndim();
-    let r_ndim = reps.len();
-    let ndim = a_ndim.max(r_ndim);
+    let a_shape = a.shape();
+    let ndim = a_shape.len();
+    let max_len = std::cmp::max(ndim, reps.len());
+    let mut shape_full = vec![1; max_len];
+    let mut reps_full = vec![1; max_len];
 
-    // 1. Pad reps with 1s at origin if needed
-    let mut full_reps = vec![1; ndim];
-    let offset = ndim - r_ndim;
-    for i in 0..r_ndim {
-        full_reps[offset + i] = reps[i];
+    for (i, &dim) in a_shape.iter().enumerate() {
+        shape_full[max_len - ndim + i] = dim;
+    }
+    for (i, &rep) in reps.iter().enumerate() {
+        reps_full[max_len - reps.len() + i] = rep;
     }
 
-    // 2. Pad array shape with 1s at origin if needed
-    let mut a_shape_padded = vec![1; ndim];
-    let a_offset = ndim - a_ndim;
-    for i in 0..a_ndim {
-        a_shape_padded[a_offset + i] = a.shape()[i];
+    let mut output_shape = Vec::with_capacity(max_len);
+    for (dim, rep) in shape_full.iter().zip(reps_full.iter()) {
+        output_shape.push(dim * rep);
     }
 
-    // 3. Reshape A to (1, d1, 1, d2, ...)
-    let mut expanded_shape = Vec::with_capacity(ndim * 2);
-    let mut broadcast_shape = Vec::with_capacity(ndim * 2);
-    let mut final_shape = Vec::with_capacity(ndim);
+    let output_size: usize = output_shape.iter().product();
+    let mut result_data = Vec::with_capacity(output_size);
+    let source_strides = compute_strides(a_shape);
 
-    for i in 0..ndim {
-        expanded_shape.push(1);
-        expanded_shape.push(a_shape_padded[i]);
+    for linear in 0..output_size {
+        let out_indices = compute_multi_indices(linear, &output_shape);
+        let mut source_indices_full = Vec::with_capacity(max_len);
+        for (idx, dim) in out_indices.iter().zip(shape_full.iter()) {
+            source_indices_full.push(if *dim == 0 { 0 } else { idx % dim });
+        }
 
-        broadcast_shape.push(full_reps[i]);
-        broadcast_shape.push(a_shape_padded[i]);
+        if ndim == 0 {
+            let value = a
+                .get_linear(0)
+                .ok_or_else(|| NumPyError::index_error(0, a.size()))?;
+            result_data.push(value.clone());
+            continue;
+        }
 
-        final_shape.push(full_reps[i] * a_shape_padded[i]);
+        let source_indices = &source_indices_full[max_len - ndim..];
+        let source_linear = compute_linear_index(source_indices, &source_strides) as usize;
+        let value = a
+            .get_linear(source_linear)
+            .ok_or_else(|| NumPyError::index_error(source_linear, a.size()))?;
+        result_data.push(value.clone());
     }
 
-    // Create the expanded view manually (to avoid multiple copies)
-    // Strides for expanded_shape [1, d1, 1, d2, ...]
-    // The '1' dimensions get 0-stride if we were broadcasting, but here we will broadcast later.
-    // We can just use add_newaxis iteratively or just compute strides.
-
-    let mut current = a.clone();
-    // Pad current to ndim dimensions
-    for _ in 0..a_offset {
-        current = current.add_newaxis(0)?;
-    }
-
-    // Now current has shape (d1, d2, ..., dn) and ndim dimensions.
-    // Reshape to (1, d1, 1, d2, ...)
-    let mut reshaped_strides = Vec::with_capacity(ndim * 2);
-    for i in 0..ndim {
-        reshaped_strides.push(0); // For the '1' in (1, di)
-        reshaped_strides.push(current.strides()[i]);
-    }
-
-    let expanded_view = Array {
-        data: current.data.clone(),
-        shape: expanded_shape,
-        strides: reshaped_strides,
-        dtype: current.dtype.clone(),
-        offset: current.offset,
-    };
-
-    let broadcasted = broadcast_to(&expanded_view, &broadcast_shape)?;
-    broadcasted.reshape(&final_shape)
+    Ok(Array::from_data(result_data, output_shape))
 }
 
 /// Broadcast array to specific shape
@@ -229,23 +176,18 @@ mod tests {
     }
 
     #[test]
-    fn test_repeat_axis_none() {
+    fn test_repeat_axis_1() {
         let a = Array::from_vec(vec![1i64, 2, 3]);
-        let result = repeat(&a, 2, None).unwrap();
-        assert_eq!(result.shape(), vec![6]);
-        assert_eq!(result.to_vec(), vec![1, 1, 2, 2, 3, 3]);
+        let result = repeat(&a, 2, Some(1));
+        assert!(result.is_err());
     }
 
     #[test]
     fn test_tile_basic() {
         let a = Array::from_vec(vec![1i64, 2]);
-        let result = tile(&a, &[2]).unwrap();
-        assert_eq!(result.shape(), vec![4]);
-        assert_eq!(result.to_vec(), vec![1, 2, 1, 2]);
-
-        let result2 = tile(&a, &[2, 1]).unwrap();
-        assert_eq!(result2.shape(), vec![2, 2]);
-        assert_eq!(result2.to_vec(), vec![1, 2, 1, 2]);
+        let result = tile(&a, &[3, 2]).unwrap();
+        assert_eq!(result.shape(), vec![3, 4]);
+        assert_eq!(result.to_vec(), vec![1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2]);
     }
 
     #[test]

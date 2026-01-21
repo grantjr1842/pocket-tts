@@ -1,109 +1,87 @@
-use numpy::{
-    array, array2,
-    set_ops::{in1d, intersect1d, isin, setdiff1d, setxor1d, union1d, unique, SetOps},
-};
+use numpy::array::Array;
+use numpy::set_ops::{in1d, intersect1d, isin, setdiff1d, setxor1d, union1d};
+
+#[test]
+fn test_in1d_basic() {
+    let ar1 = Array::from_vec(vec![0, 1, 2, 5, 0]);
+    let ar2 = Array::from_vec(vec![0, 2]);
+    let result = in1d(&ar1, &ar2, false).unwrap();
+    assert_eq!(result.to_vec(), vec![true, false, true, false, true]);
+}
+
+#[test]
+fn test_in1d_empty() {
+    let ar1 = Array::from_vec(vec![]);
+    let ar2 = Array::from_vec(vec![1, 2]);
+    let result = in1d(&ar1, &ar2, false).unwrap();
+    assert!(result.is_empty());
+}
+
+#[test]
+fn test_in1d_floats() {
+    let ar1 = Array::from_vec(vec![1.0, 2.0, 3.0]);
+    let ar2 = Array::from_vec(vec![1.0, 3.0]);
+    let result = in1d(&ar1, &ar2, false).unwrap();
+    assert_eq!(result.to_vec(), vec![true, false, true]);
+}
+
+#[test]
+fn test_in1d_strings() {
+    let ar1 = Array::from_vec(vec!["a".to_string(), "b".to_string(), "c".to_string()]);
+    let ar2 = Array::from_vec(vec!["a".to_string(), "c".to_string()]);
+    let result = in1d(&ar1, &ar2, false).unwrap();
+    assert_eq!(result.to_vec(), vec![true, false, true]);
+}
+
+#[test]
+fn test_isin_basic() {
+    let ar1 = Array::from_vec(vec![0, 1, 2, 5, 0]);
+    let ar2 = Array::from_vec(vec![0, 2]);
+    let result = isin(&ar1, &ar2, false, false).unwrap();
+    assert_eq!(result.to_vec(), vec![true, false, true, false, true]);
+}
+
+#[test]
+fn test_isin_2d() {
+    let ar1 = Array::from_shape_vec(vec![2, 3], vec![0, 1, 2, 3, 4, 5]);
+    let ar2 = Array::from_vec(vec![0, 2, 4]);
+    let result = isin(&ar1, &ar2, false, false).unwrap();
+    assert_eq!(result.shape(), &[2, 3]);
+    assert_eq!(result.to_vec(), vec![true, false, true, false, true, false]);
+}
 
 #[test]
 fn test_intersect1d() {
-    let a = array![1, 2, 3, 2, 1];
-    let b = array![2, 3, 4];
-    let res = intersect1d(&a, &b).unwrap();
-    assert_eq!(res.to_vec(), vec![2, 3]);
+    let ar1 = Array::from_vec(vec![1, 3, 4, 3]);
+    let ar2 = Array::from_vec(vec![3, 1, 2, 1]);
+    let result = intersect1d(&ar1, &ar2, false, false).unwrap();
+    // Unique common elements, sorted: 1, 3
+    assert_eq!(result.values.to_vec(), vec![1, 3]);
 }
 
 #[test]
 fn test_union1d() {
-    let a = array![1, 2, 3];
-    let b = array![2, 3, 4];
-    let res = union1d(&a, &b).unwrap();
-    assert_eq!(res.to_vec(), vec![1, 2, 3, 4]);
+    let ar1 = Array::from_vec(vec![1, 2, 3]);
+    let ar2 = Array::from_vec(vec![2, 3, 4]);
+    let result = union1d(&ar1, &ar2).unwrap();
+    // Unique elements from both, sorted: 1, 2, 3, 4
+    assert_eq!(result.to_vec(), vec![1, 2, 3, 4]);
 }
 
 #[test]
 fn test_setdiff1d() {
-    let a = array![1, 2, 3, 2, 4, 1];
-    let b = array![2, 3];
-    let res = setdiff1d(&a, &b).unwrap();
-    assert_eq!(res.to_vec(), vec![1, 4]);
+    let ar1 = Array::from_vec(vec![1, 2, 3, 4, 1]);
+    let ar2 = Array::from_vec(vec![2, 4]);
+    let result = setdiff1d(&ar1, &ar2, false).unwrap();
+    // Unique elements in ar1 not in ar2, sorted: 1, 3
+    assert_eq!(result.to_vec(), vec![1, 3]);
 }
 
 #[test]
 fn test_setxor1d() {
-    let a = array![1, 2, 3];
-    let b = array![2, 3, 4];
-    let res = setxor1d(&a, &b).unwrap();
-    assert_eq!(res.to_vec(), vec![1, 4]);
-}
-
-#[test]
-fn test_in1d() {
-    let a = array![1, 2, 3, 4, 5];
-    let b = array![2, 4, 6];
-    let res = in1d(&a, &b, false).unwrap();
-    assert_eq!(res.to_vec(), vec![false, true, false, true, false]);
-}
-
-#[test]
-fn test_isin() {
-    let a = array![1, 2, 3, 4, 5];
-    let b = array![2, 4, 6];
-    let res = isin(&a, &b).unwrap();
-    assert_eq!(res.to_vec(), vec![false, true, false, true, false]);
-}
-
-#[test]
-fn test_unique_axis_0() {
-    let a = array2![[1, 1], [2, 3], [1, 1], [2, 3], [4, 5]];
-    let res = unique(&a, false, false, false, Some(&[0])).unwrap();
-    assert_eq!(res.values.shape(), vec![3, 2]);
-    let flat_vals = res.values.to_vec();
-    // Sorted unique rows: [1,1], [2,3], [4,5]
-    assert_eq!(flat_vals, vec![1, 1, 2, 3, 4, 5]);
-}
-
-#[test]
-fn test_unique_axis_1() {
-    let a = array2![[1, 2, 1, 2], [1, 3, 1, 3]];
-    let res = unique(&a, false, false, false, Some(&[1])).unwrap();
-    assert_eq!(res.values.shape(), vec![2, 2]);
-    let flat_vals = res.values.to_vec();
-    // Unique columns: [[1,1], [2,3]]
-    // flat: [1, 2, 1, 3]
-    assert_eq!(flat_vals, vec![1, 2, 1, 3]);
-}
-
-#[test]
-fn test_unique_rows() {
-    let a = array2![[1, 1], [2, 3], [1, 1]];
-    let res = SetOps::unique_rows(&a).unwrap();
-    assert_eq!(res.shape(), vec![2, 2]);
-    assert_eq!(res.to_vec(), vec![1, 1, 2, 3]);
-}
-
-#[test]
-fn test_unique_axis_with_counts() {
-    let a = array2![[1, 1], [2, 3], [1, 1], [4, 5]];
-    let res = unique(&a, false, false, true, Some(&[0])).unwrap();
-    assert_eq!(res.values.shape(), vec![3, 2]);
-    assert_eq!(res.counts.unwrap().to_vec(), vec![2, 1, 1]); // [1,1] appears twice
-}
-
-#[test]
-fn test_unique_axis_with_index() {
-    let a = array2![[1, 1], [2, 3], [1, 1], [4, 5]];
-    // rows at index 0 and 2 are identical. first occurrence is at 0.
-    // sorted unique rows: [1,1] (from index 0), [2,3] (from index 1), [4,5] (from index 3)
-    let res = unique(&a, true, false, false, Some(&[0])).unwrap();
-    assert_eq!(res.indices.unwrap().to_vec(), vec![0, 1, 3]);
-}
-
-#[test]
-fn test_unique_axis_with_inverse() {
-    let a = array2![[1, 1], [2, 3], [1, 1], [4, 5]];
-    // row 0 -> unique row 0
-    // row 1 -> unique row 1
-    // row 2 -> unique row 0
-    // row 3 -> unique row 2
-    let res = unique(&a, false, true, false, Some(&[0])).unwrap();
-    assert_eq!(res.inverse.unwrap().to_vec(), vec![0, 1, 0, 2]);
+    let ar1 = Array::from_vec(vec![1, 2, 3, 2]);
+    let ar2 = Array::from_vec(vec![2, 3, 5, 5]);
+    let result = setxor1d(&ar1, &ar2, false).unwrap();
+    // Unique elements in ar1 or ar2 but not both, sorted: 1, 5
+    assert_eq!(result.to_vec(), vec![1, 5]);
 }

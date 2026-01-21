@@ -6,7 +6,7 @@ use numpy::*;
 fn test_fftn_2d_basic() {
     let shape = vec![2, 2];
     let data = vec![1.0, 0.0, 0.0, 0.0];
-    let arr = Array::from_data(data.clone(), shape);
+    let arr = Array::from_data(data, shape);
 
     let res = fftn(&arr, None, None, None).unwrap();
     assert_eq!(res.shape(), &[2, 2]);
@@ -22,7 +22,7 @@ fn test_fftn_2d_basic() {
 fn test_ifftn_2d_basic() {
     let shape = vec![2, 2];
     let data = vec![Complex64::new(1.0, 0.0); 4];
-    let arr = Array::from_data(data.clone(), shape);
+    let arr = Array::from_data(data, shape);
 
     let res = ifftn(&arr, None, None, None).unwrap();
     assert_eq!(res.shape(), &[2, 2]);
@@ -38,7 +38,7 @@ fn test_ifftn_2d_basic() {
 fn test_fftshift_2d() {
     let shape = vec![2, 2];
     let data = vec![1.0, 2.0, 3.0, 4.0];
-    let arr = Array::from_data(data.clone(), shape);
+    let arr = Array::from_data(data, shape);
 
     // Shift all axes
     let shifted = fftshift(&arr, None);
@@ -52,7 +52,7 @@ fn test_fftshift_2d() {
 fn test_rfftn_2d() {
     let shape = vec![2, 2];
     let data = vec![1.0, 0.0, 0.0, 0.0];
-    let arr = Array::from_data(data.clone(), shape);
+    let arr = Array::from_data(data, shape);
 
     let res = rfftn(&arr, None, None, None).unwrap();
     // Shape should be [2, 2/2 + 1] = [2, 2]
@@ -69,7 +69,7 @@ fn test_rfftn_2d() {
 fn test_fft2_basic() {
     let shape = vec![2, 2];
     let data = vec![1.0, 0.0, 0.0, 0.0];
-    let arr = Array::from_data(data.clone(), shape);
+    let arr = Array::from_data(data, shape);
 
     let res = fft2(&arr, None, None, None).unwrap();
     assert_eq!(res.shape(), &[2, 2]);
@@ -85,7 +85,7 @@ fn test_fft2_basic() {
 fn test_fft2_with_axes() {
     let shape = vec![3, 2, 2];
     let data: Vec<f64> = (0..12).map(|i| i as f64).collect();
-    let arr = Array::from_data(data.clone(), shape);
+    let arr = Array::from_data(data, shape);
 
     // Test with explicit axes
     let res = fft2(&arr, None, Some(&[1, 2]), None).unwrap();
@@ -96,7 +96,7 @@ fn test_fft2_with_axes() {
 fn test_ifft2_basic() {
     let shape = vec![2, 2];
     let data = vec![Complex64::new(1.0, 0.0); 4];
-    let arr = Array::from_data(data.clone(), shape);
+    let arr = Array::from_data(data, shape);
 
     let res = ifft2(&arr, None, None, None).unwrap();
     assert_eq!(res.shape(), &[2, 2]);
@@ -113,7 +113,7 @@ fn test_ifft2_basic() {
 fn test_fft2_ifft2_roundtrip() {
     let shape = vec![4, 4];
     let data: Vec<f64> = (0..16).map(|i| i as f64).collect();
-    let arr = Array::from_data(data.clone(), shape);
+    let arr = Array::from_data(data, shape);
 
     let fwd = fft2(&arr, None, None, None).unwrap();
     let back = ifft2(&fwd, None, None, None).unwrap();
