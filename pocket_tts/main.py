@@ -1,4 +1,7 @@
+import asyncio
+import base64
 import io
+import json
 import logging
 import os
 import statistics
@@ -10,7 +13,7 @@ from queue import Queue
 
 import typer
 import uvicorn
-from fastapi import FastAPI, File, Form, HTTPException, UploadFile
+from fastapi import FastAPI, File, Form, HTTPException, UploadFile, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, StreamingResponse
 from typing_extensions import Annotated
@@ -43,6 +46,7 @@ cli_app = typer.Typer(
 # Global model instance
 tts_model = None
 global_model_state = None
+websocket_generation_lock = asyncio.Lock()
 
 web_app = FastAPI(
     title="Kyutai Pocket TTS API", description="Text-to-Speech generation API", version="1.0.0"
@@ -80,6 +84,9 @@ async def health():
 def write_to_queue(queue, text_to_generate, model_state):
     """Allows writing to the StreamingResponse as if it were a file."""
 
+    if tts_model is None:
+        raise RuntimeError("Model is not loaded")
+
     class FileLikeToQueue(io.IOBase):
         def __init__(self, queue):
             self.queue = queue
@@ -93,10 +100,11 @@ def write_to_queue(queue, text_to_generate, model_state):
         def close(self):
             self.queue.put(None)
 
-    audio_chunks = tts_model.generate_audio_stream(
+    model = tts_model
+    audio_chunks = model.generate_audio_stream(
         model_state=model_state, text_to_generate=text_to_generate
     )
-    stream_audio_chunks(FileLikeToQueue(queue), audio_chunks, tts_model.config.mimi.sample_rate)
+    stream_audio_chunks(FileLikeToQueue(queue), audio_chunks, model.config.mimi.sample_rate)
 
 
 def generate_data_with_state(text_to_generate: str, model_state: dict):
@@ -118,6 +126,41 @@ def generate_data_with_state(text_to_generate: str, model_state: dict):
     thread.join()
 
 
+def resolve_model_state(voice_url: str | None, voice_wav: UploadFile | None) -> dict:
+    if tts_model is None or global_model_state is None:
+        raise HTTPException(status_code=503, detail="Model is not loaded")
+
+    if voice_url is not None and voice_wav is not None:
+        raise HTTPException(status_code=400, detail="Cannot provide both voice_url and voice_wav")
+
+    if voice_url is not None:
+        if not (
+            voice_url.startswith("http://")
+            or voice_url.startswith("https://")
+            or voice_url.startswith("hf://")
+            or voice_url in PREDEFINED_VOICES
+        ):
+            raise HTTPException(
+                status_code=400, detail="voice_url must start with http://, https://, or hf://"
+            )
+        model_state = tts_model.get_state_for_audio_prompt_cached(voice_url, truncate=True)
+        logging.warning("Using voice from URL: %s", voice_url)
+        return model_state
+
+    if voice_wav is not None:
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".wav") as temp_file:
+            content = voice_wav.file.read()
+            temp_file.write(content)
+            temp_file.flush()
+
+            try:
+                return tts_model.get_state_for_audio_prompt(Path(temp_file.name), truncate=True)
+            finally:
+                os.unlink(temp_file.name)
+
+    return global_model_state
+
+
 @web_app.post("/tts")
 def text_to_speech(
     text: str = Form(...),
@@ -135,38 +178,7 @@ def text_to_speech(
     if not text.strip():
         raise HTTPException(status_code=400, detail="Text cannot be empty")
 
-    if voice_url is not None and voice_wav is not None:
-        raise HTTPException(status_code=400, detail="Cannot provide both voice_url and voice_wav")
-
-    # Use the appropriate model state
-    if voice_url is not None:
-        if not (
-            voice_url.startswith("http://")
-            or voice_url.startswith("https://")
-            or voice_url.startswith("hf://")
-            or voice_url in PREDEFINED_VOICES
-        ):
-            raise HTTPException(
-                status_code=400, detail="voice_url must start with http://, https://, or hf://"
-            )
-        model_state = tts_model.get_state_for_audio_prompt_cached(voice_url, truncate=True)
-        logging.warning("Using voice from URL: %s", voice_url)
-    elif voice_wav is not None:
-        # Use uploaded voice file
-        with tempfile.NamedTemporaryFile(delete=False, suffix=".wav") as temp_file:
-            content = voice_wav.file.read()
-            temp_file.write(content)
-            temp_file.flush()
-
-            try:
-                model_state = tts_model.get_state_for_audio_prompt(
-                    Path(temp_file.name), truncate=True
-                )
-            finally:
-                os.unlink(temp_file.name)
-    else:
-        # Use default global model state
-        model_state = global_model_state
+    model_state = resolve_model_state(voice_url, voice_wav)
 
     return StreamingResponse(
         generate_data_with_state(text, model_state),
@@ -176,6 +188,105 @@ def text_to_speech(
             "Transfer-Encoding": "chunked",
         },
     )
+
+
+def audio_chunk_to_wav_bytes(audio_chunk, is_first: bool, sample_rate: int) -> bytes:
+    import numpy as np_rs
+    import torch
+    import wave
+
+    if isinstance(audio_chunk, torch.Tensor):
+        audio_np = audio_chunk.cpu().numpy()
+    else:
+        audio_np = np_rs.array(audio_chunk)
+
+    audio_np = np_rs.clip(audio_np, -1.0, 1.0).astype(np_rs.float32)
+    audio_int16 = (audio_np * 32767).astype(np_rs.int16)
+
+    if is_first:
+        buffer = io.BytesIO()
+        with wave.open(buffer, "wb") as wav_file:
+            wav_file.setnchannels(1)
+            wav_file.setsampwidth(2)
+            wav_file.setframerate(sample_rate)
+            wav_file.writeframes(audio_int16.tobytes())
+        return buffer.getvalue()
+
+    return audio_int16.tobytes()
+
+
+async def websocket_heartbeat(websocket: WebSocket, interval_s: float = 10.0) -> None:
+    while True:
+        await asyncio.sleep(interval_s)
+        await websocket.send_json({"type": "ping"})
+
+
+@web_app.websocket("/ws/tts")
+async def websocket_tts(websocket: WebSocket):
+    await websocket.accept()
+    heartbeat_task = asyncio.create_task(websocket_heartbeat(websocket))
+
+    try:
+        while True:
+            if tts_model is None or global_model_state is None:
+                await websocket.send_json({"type": "error", "message": "Model is not loaded"})
+                await asyncio.sleep(0.1)
+                continue
+
+            message = await websocket.receive_text()
+            try:
+                request = json.loads(message)
+            except json.JSONDecodeError:
+                await websocket.send_json({"type": "error", "message": "Invalid JSON"})
+                continue
+
+            if request.get("type") == "pong":
+                continue
+
+            text = request.get("text", "")
+            voice = request.get("voice")
+
+            if not text.strip():
+                await websocket.send_json({"type": "error", "message": "Text cannot be empty"})
+                continue
+
+            try:
+                model_state = resolve_model_state(voice, None)
+            except HTTPException as exc:
+                await websocket.send_json({"type": "error", "message": exc.detail})
+                continue
+
+            async with websocket_generation_lock:
+                chunk_idx = 0
+                model = tts_model
+                sample_rate = model.config.mimi.sample_rate
+                for audio_chunk in model.generate_audio_stream(
+                    model_state=model_state, text_to_generate=text
+                ):
+                    is_first = chunk_idx == 0
+                    audio_bytes = audio_chunk_to_wav_bytes(
+                        audio_chunk, is_first=is_first, sample_rate=sample_rate
+                    )
+                    audio_b64 = base64.b64encode(audio_bytes).decode("ascii")
+                    await websocket.send_json(
+                        {
+                            "type": "audio",
+                            "data": audio_b64,
+                            "chunk": chunk_idx,
+                            "format": "wav" if is_first else "pcm",
+                            "sample_rate": sample_rate,
+                        }
+                    )
+                    chunk_idx += 1
+
+                await websocket.send_json({"type": "done", "total_chunks": chunk_idx})
+
+    except WebSocketDisconnect:
+        logger.info("WebSocket client disconnected")
+    except Exception:
+        logger.exception("Unexpected websocket error")
+    finally:
+        heartbeat_task.cancel()
 
 
 @cli_app.command()

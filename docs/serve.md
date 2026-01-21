@@ -51,4 +51,37 @@ pocket-tts serve --default-voice "./my_voice.wav"
 
 Once the server is running, navigate to `http://localhost:8000` to access the web interface.
 
+## WebSocket Streaming API
+
+The server also exposes a WebSocket endpoint for real-time streaming: `ws://<host>:<port>/ws/tts`.
+
+### Protocol
+
+- Client → server: `{"text": "Hello", "voice": "alba"}`
+- Server → client: `{ "type": "audio", "data": "<base64>", "chunk": 0, "format": "wav" }`
+- Subsequent chunks use `format: "pcm"` (16-bit PCM). The first chunk includes a WAV header.
+- Server → client: `{ "type": "done", "total_chunks": N }`
+- Heartbeat: server periodically sends `{ "type": "ping" }`, reply with `{ "type": "pong" }`.
+
+### Browser example
+
+```js
+const ws = new WebSocket("ws://localhost:8000/ws/tts");
+ws.addEventListener("open", () => {
+  ws.send(JSON.stringify({ text: "Hello world", voice: "alba" }));
+});
+
+ws.addEventListener("message", (event) => {
+  const payload = JSON.parse(event.data);
+  if (payload.type === "ping") {
+    ws.send(JSON.stringify({ type: "pong" }));
+    return;
+  }
+  if (payload.type === "audio") {
+    const bytes = Uint8Array.from(atob(payload.data), (c) => c.charCodeAt(0));
+    // Feed bytes into your audio pipeline (WAV header in chunk 0, PCM thereafter).
+  }
+});
+```
+
 For more advanced usage, see the [Python API documentation](python-api.md) for direct integration with the TTS model.
