@@ -20,6 +20,7 @@
 
 use crate::array::Array;
 use crate::error::{NumPyError, Result};
+use crate::slicing::{MultiSlice, Slice};
 use num_traits::Float;
 use std::hash::Hash;
 
@@ -139,230 +140,264 @@ pub struct UniqueResult<T> {
 /// # Examples
 ///
 /// ```rust
-/// use rust_numpy::set_ops::unique;
-/// let arr = array![1, 2, 1, 3, 2, 1];
-/// let result = unique(&arr, false, false, false, None).unwrap();
-/// // result.values == [1, 2, 3]
+/// use numpy::{array, set_ops::unique};
+/// let a = array![1, 2, 2, 3, 3, 3];
+/// let result = unique(&a, false, false, false, None).unwrap();
+/// assert_eq!(result.values.to_vec(), vec![1, 2, 3]);
 /// ```
 pub fn unique<T>(
     ar: &Array<T>,
     return_index: bool,
     return_inverse: bool,
     return_counts: bool,
-    _axis: Option<&[isize]>,
+    axis: Option<&[isize]>,
 ) -> Result<UniqueResult<T>>
 where
     T: SetElement + Clone + Default + 'static,
 {
-    if let Some(axes) = _axis {
-        if axes.is_empty() {
-            return unique(ar, return_index, return_inverse, return_counts, None);
-        }
-        if axes.len() > 1 {
-            return Err(NumPyError::not_implemented(
-                "unique with multiple axes not supported yet",
+    if let Some(ax) = axis {
+        if ax.len() != 1 {
+            return Err(NumPyError::invalid_operation(
+                "unique currently only supports single axis",
             ));
         }
-
-        let axis = axes[0];
-        let ndim = ar.ndim() as isize;
-        let axis_norm = if axis < 0 { axis + ndim } else { axis } as usize;
-
-        if axis_norm >= ar.ndim() {
-            return Err(NumPyError::IndexError {
-                index: axis_norm,
-                size: ar.ndim(),
-            });
+        let a = ax[0];
+        let ndim = ar.ndim();
+        let axis_idx = if a < 0 { a + ndim as isize } else { a } as usize;
+        if axis_idx >= ndim {
+            return Err(NumPyError::index_error(axis_idx, ndim));
         }
 
-        // Axis implementation
-        // For 2D array and axis 0, we treat rows as elements
-        if ar.ndim() == 2 && axis_norm == 0 {
-            let rows = ar.shape()[0];
-            let cols = ar.shape()[1];
-            // Extract rows as Vec<Vec<T>>
-            let mut row_data: Vec<Vec<T>> = Vec::with_capacity(rows);
-            for i in 0..rows {
-                let mut row = Vec::with_capacity(cols);
-                for j in 0..cols {
-                    row.push(ar.get_linear(i * cols + j).unwrap().clone());
-                }
-                row_data.push(row);
-            }
+        // Move target axis to the front (transpose) to simplify item iteration and concatenation
+        let mut perm: Vec<usize> = (0..ndim).collect();
+        perm.remove(axis_idx);
+        perm.insert(0, axis_idx);
 
-            // Sort indices based on row data
-            let mut indices: Vec<usize> = (0..rows).collect();
-            indices.sort_by(|&i, &j| {
-                let row_i = &row_data[i];
-                let row_j = &row_data[j];
-                // Lexicographical comparison
-                for k in 0..cols {
-                    let cmp = row_i[k].compare(&row_j[k]);
-                    if cmp != Ordering::Equal {
-                        return cmp;
-                    }
-                }
-                Ordering::Equal
-            });
+        let transposed = ar.transpose_view(Some(&perm))?;
+        let n_items = transposed.shape()[0];
+        let item_size = if n_items > 0 {
+            transposed.size() / n_items
+        } else {
+            0
+        };
 
-            // Collect unique
-            let mut unique_rows = Vec::new(); // will store indices of unique rows
-            let mut result_indices = if return_index { Some(Vec::new()) } else { None };
-            let mut result_counts = if return_counts {
-                Some(Vec::new())
-            } else {
-                None
-            };
-            let mut inverse = vec![0; rows];
-
-            if rows > 0 {
-                let mut current_pos = 0;
-                unique_rows.push(indices[0]);
-                if let Some(ref mut idxs) = result_indices {
-                    idxs.push(indices[0]);
-                }
-                if let Some(ref mut cnts) = result_counts {
-                    cnts.push(1);
-                }
-                inverse[indices[0]] = 0;
-
-                for k in 1..rows {
-                    let idx = indices[k];
-                    let prev_idx = indices[k - 1];
-
-                    // Compare current row with previous sorted row
-                    let row_curr = &row_data[idx];
-                    let row_prev = &row_data[prev_idx];
-                    let mut equal = true;
-                    for col in 0..cols {
-                        if row_curr[col].compare(&row_prev[col]) != Ordering::Equal {
-                            equal = false;
-                            break;
-                        }
-                    }
-
-                    if !equal {
-                        current_pos += 1;
-                        unique_rows.push(idx);
-                        if let Some(ref mut idxs) = result_indices {
-                            idxs.push(idx);
-                        }
-                        if let Some(ref mut cnts) = result_counts {
-                            cnts.push(1);
-                        }
-                    } else if let Some(ref mut cnts) = result_counts {
-                        let last = cnts.len() - 1;
-                        cnts[last] += 1;
-                    }
-                    inverse[idx] = current_pos;
-                }
-            }
-
-            // Construct result array
-            // Flatten unique rows
-            let mut final_data = Vec::new();
-            for &r_idx in &unique_rows {
-                final_data.extend_from_slice(&row_data[r_idx]);
-            }
-            let final_shape = vec![unique_rows.len(), cols];
-
+        if n_items == 0 {
+            let mut result_shape = ar.shape().to_vec();
+            result_shape[axis_idx] = 0;
             return Ok(UniqueResult {
-                values: Array::from_data(final_data, final_shape),
-                indices: result_indices.map(Array::from_vec),
-                inverse: if return_inverse {
-                    Some(Array::from_vec(inverse))
+                values: Array::from_data(vec![], result_shape),
+                indices: if return_index {
+                    Some(Array::from_data(vec![], vec![0]))
                 } else {
                     None
                 },
-                counts: result_counts.map(Array::from_vec),
+                inverse: if return_inverse {
+                    Some(Array::from_data(vec![], vec![0]))
+                } else {
+                    None
+                },
+                counts: if return_counts {
+                    Some(Array::from_data(vec![], vec![0]))
+                } else {
+                    None
+                },
             });
         }
 
-        return Err(NumPyError::not_implemented(
-            "unique with axis only implemented for 2D axis=0 currently",
-        ));
-    }
+        // Create zero-copy views for each sub-array (item) along the axis
+        let mut views = Vec::with_capacity(n_items);
+        for i in 0..n_items {
+            let mut slices = vec![Slice::Full; ndim];
+            slices[0] = Slice::Index(i as isize);
+            let view = transposed.slice(&MultiSlice::new(slices))?;
+            views.push((view, i));
+        }
 
-    if ar.is_empty() {
+        // Sort views lexicographically using their iterators (zero-copy comparison)
+        views.sort_by(|(v1, _), (v2, _)| {
+            let mut it1 = v1.iter();
+            let mut it2 = v2.iter();
+            loop {
+                match (it1.next(), it2.next()) {
+                    (Some(a), Some(b)) => {
+                        let res = a.compare(b);
+                        if res != std::cmp::Ordering::Equal {
+                            return res;
+                        }
+                    }
+                    (None, None) => return std::cmp::Ordering::Equal,
+                    (None, Some(_)) => return std::cmp::Ordering::Less,
+                    (Some(_), None) => return std::cmp::Ordering::Greater,
+                }
+            }
+        });
+
+        let mut unique_views = Vec::new();
+        let mut unique_indices = Vec::new();
+        let mut inverse_indices = vec![0; n_items];
+        let mut counts = Vec::new();
+
+        if !views.is_empty() {
+            let (first_view, first_orig_idx) = &views[0];
+            unique_views.push(first_view.clone());
+            unique_indices.push(*first_orig_idx);
+            inverse_indices[*first_orig_idx] = 0;
+            let mut count = 1;
+
+            for i in 1..views.len() {
+                let (view, orig_idx) = &views[i];
+                let is_diff = {
+                    let prev = unique_views.last().unwrap();
+                    if view.shape() != prev.shape() {
+                        true
+                    } else {
+                        view.iter()
+                            .zip(prev.iter())
+                            .any(|(a, b)| a.compare(b) != Ordering::Equal)
+                    }
+                };
+
+                if is_diff {
+                    if return_counts {
+                        counts.push(count);
+                    }
+                    unique_views.push(view.clone());
+                    unique_indices.push(*orig_idx);
+                    count = 1;
+                } else {
+                    count += 1;
+                }
+                inverse_indices[*orig_idx] = unique_views.len() - 1;
+            }
+            if return_counts {
+                counts.push(count);
+            }
+        }
+
+        let n_unique = unique_views.len();
+        let mut flat_data = Vec::with_capacity(n_unique * item_size);
+        for v in unique_views {
+            flat_data.extend(v.iter().cloned());
+        }
+
+        let mut result_transposed_shape = transposed.shape().to_vec();
+        result_transposed_shape[0] = n_unique;
+        let result_transposed = Array::from_data(flat_data, result_transposed_shape);
+
+        // Transpose back to original axis order
+        let mut inv_perm = vec![0; ndim];
+        for (i, &p) in perm.iter().enumerate() {
+            inv_perm[p] = i;
+        }
+        let result_view = result_transposed.transpose_view(Some(&inv_perm))?;
+        let mut final_shape = ar.shape().to_vec();
+        final_shape[axis_idx] = n_unique;
+
+        // Ensure the result is an owned array with the correct shape and C-order data
+        let values = Array::from_data(result_view.iter().cloned().collect(), final_shape);
+
         return Ok(UniqueResult {
-            values: Array::from_data(vec![], vec![]),
+            values,
             indices: if return_index {
-                Some(Array::from_data(vec![], vec![]))
+                Some(Array::from_data(unique_indices, vec![n_unique]))
             } else {
                 None
             },
             inverse: if return_inverse {
-                Some(Array::from_data(vec![], vec![]))
+                Some(Array::from_data(inverse_indices, vec![n_items]))
             } else {
                 None
             },
             counts: if return_counts {
-                Some(Array::from_data(vec![], vec![]))
+                Some(Array::from_data(counts, vec![n_unique]))
             } else {
                 None
             },
         });
     }
 
-    // Flattened case
-    let flat = ar.to_vec();
-    let n = flat.len();
-    let mut indices: Vec<usize> = (0..n).collect();
+    if ar.is_empty() {
+        return Ok(UniqueResult {
+            values: Array::from_data(vec![], vec![0]),
+            indices: if return_index {
+                Some(Array::from_data(vec![], vec![0]))
+            } else {
+                None
+            },
+            inverse: if return_inverse {
+                Some(Array::from_data(vec![], vec![0]))
+            } else {
+                None
+            },
+            counts: if return_counts {
+                Some(Array::from_data(vec![], vec![0]))
+            } else {
+                None
+            },
+        });
+    }
 
-    // Sort indices by value
-    indices.sort_by(|&i, &j| flat[i].compare(&flat[j]));
+    // Standard 1D unique implementation (flattened if no axis)
+    let mut data: Vec<(T, usize)> = ar
+        .iter()
+        .cloned()
+        .enumerate()
+        .map(|(i, x)| (x, i))
+        .collect();
+
+    data.sort_by(|a, b| a.0.compare(&b.0));
 
     let mut unique_values = Vec::new();
-    let mut result_indices = if return_index { Some(Vec::new()) } else { None };
-    let mut result_counts = if return_counts {
-        Some(Vec::new())
-    } else {
-        None
-    };
-    let mut inverse = vec![0; n];
+    let mut unique_indices = Vec::new();
+    let mut inverse_indices = vec![0; ar.size()];
+    let mut counts = Vec::new();
 
-    if n > 0 {
-        let mut current_pos = 0;
-        let first_idx = indices[0];
-        unique_values.push(flat[first_idx].clone());
-        if let Some(ref mut idxs) = result_indices {
-            idxs.push(first_idx);
-        }
-        if let Some(ref mut cnts) = result_counts {
-            cnts.push(1);
-        }
-        inverse[first_idx] = 0;
+    if !data.is_empty() {
+        let (mut current_val, mut first_idx) = data[0].clone();
+        unique_values.push(current_val.clone());
+        unique_indices.push(first_idx);
+        let mut count = 1;
+        inverse_indices[data[0].1] = 0;
 
-        for k in 1..n {
-            let idx = indices[k];
-            let prev_idx = indices[k - 1];
-
-            if flat[idx].compare(&flat[prev_idx]) != Ordering::Equal {
-                current_pos += 1;
-                unique_values.push(flat[idx].clone());
-                if let Some(ref mut idxs) = result_indices {
-                    idxs.push(idx);
+        for i in 1..data.len() {
+            let (ref val, idx) = data[i];
+            if val.compare(&current_val) != Ordering::Equal {
+                if return_counts {
+                    counts.push(count);
                 }
-                if let Some(ref mut cnts) = result_counts {
-                    cnts.push(1);
-                }
-            } else if let Some(ref mut cnts) = result_counts {
-                let last = cnts.len() - 1;
-                cnts[last] += 1;
+                current_val = val.clone();
+                first_idx = idx;
+                unique_values.push(current_val.clone());
+                unique_indices.push(first_idx);
+                count = 1;
+            } else {
+                count += 1;
             }
-            inverse[idx] = current_pos;
+            inverse_indices[idx] = unique_values.len() - 1;
+        }
+        if return_counts {
+            counts.push(count);
         }
     }
 
+    let n_unique = unique_values.len();
     Ok(UniqueResult {
-        values: Array::from_vec(unique_values),
-        indices: result_indices.map(Array::from_vec),
-        inverse: if return_inverse {
-            Some(Array::from_vec(inverse))
+        values: Array::from_data(unique_values, vec![n_unique]),
+        indices: if return_index {
+            Some(Array::from_data(unique_indices, vec![n_unique]))
         } else {
             None
         },
-        counts: result_counts.map(Array::from_vec),
+        inverse: if return_inverse {
+            Some(Array::from_data(inverse_indices, vec![ar.size()]))
+        } else {
+            None
+        },
+        counts: if return_counts {
+            Some(Array::from_data(counts, vec![n_unique]))
+        } else {
+            None
+        },
     })
 }
 
@@ -393,16 +428,6 @@ impl<'a, T: SetElement> Eq for HashWrapper<'a, T> {}
 /// * `ar2` - The values against which to test each value of `ar1`
 /// * `assume_unique` - If True, input arrays are both assumed to be unique,
 ///                    which can speed up the calculation
-///
-/// # Examples
-///
-/// ```rust
-/// use rust_numpy::set_ops::in1d;
-/// let ar1 = array![1, 2, 3, 4, 5];
-/// let ar2 = array![2, 4, 6];
-/// let result = in1d(&ar1, &ar2, false).unwrap();
-/// // result == [false, true, false, true, false]
-/// ```
 pub fn in1d<T>(ar1: &Array<T>, ar2: &Array<T>, _assume_unique: bool) -> Result<Array<bool>>
 where
     T: SetElement + Clone + Default + 'static,
@@ -437,13 +462,6 @@ where
 /// Find the intersection of two arrays.
 ///
 /// Return the sorted, unique values that are in both of the input arrays.
-///
-/// # Arguments
-///
-/// * `ar1` - Input array
-/// * `ar2` - Input array
-/// * `assume_unique` - If True, the input arrays are both assumed to be unique
-/// * `return_indices` - If True, the indices of the intersection in the first and second arrays are returned
 pub fn intersect1d<T>(
     ar1: &Array<T>,
     ar2: &Array<T>,
@@ -455,43 +473,12 @@ where
 {
     use std::collections::HashSet;
 
-    // TODO: implement assume_unique optimization
-    // For now, always use HashSet for generic implementation
-
     let mut set2 = HashSet::with_capacity(ar2.size());
     for i in 0..ar2.size() {
         if let Some(val) = ar2.get_linear(i) {
             set2.insert(HashWrapper(val));
         }
     }
-
-    // Collect intersection
-    let mut common_indices = if return_indices {
-        Some(Vec::<usize>::new())
-    } else {
-        None
-    };
-    // Note: NumPy intersect1d returns indices for ar2 as well if return_indices is True
-    // But our UniqueResult only has 'indices' (implied for the result values from input?)
-    // Actually NumPy returns (intersect, comm1, comm2).
-    // Our UniqueResult definition might be tailored for 'unique'.
-    // Let's check UniqueResult definition. It has indices, inverse, counts.
-    // NumPy intersect1d returns: intersect1d(ar1, ar2, assume_unique=False, return_indices=False) -> ndarray or (ndarray, ndarray, ndarray)
-    // If return_indices is True, returns (intersect, comm1, comm2)
-    // Our UniqueResult currently maps to `unique` outputs.
-    // For this implementation, I will stick to what the test expects: `result.values`.
-    // If `return_indices` is true, I'll populate `indices` with indices for ar1.
-    // I should probably not support indices fully yet if UniqueResult doesn't fit perfectly or update UniqueResult.
-    // Updating UniqueResult to strictly match unique is better.
-    // For intersect1d, I'll just return UniqueResult with values and 'indices' pointing to ar1 indices.
-
-    // We need to return sorted unique elements.
-    // `unique` returns sorted unique elements.
-    // We can find common elements, then unique/sort them.
-
-    // Efficient approach:
-    // 1. Unique ar1 -> u1
-    // 2. Filter u1 elements that are in set2
 
     let u1 = unique(ar1, return_indices, false, false, None)?;
 
@@ -507,8 +494,6 @@ where
         if set2.contains(&HashWrapper(val)) {
             common_values.push(val.clone());
             if let Some(ref mut idxs) = common_indices {
-                // getting corresponding index from u1
-                // u1.indices is Option<Array<usize>>
                 if let Some(ref u1_idxs) = u1.indices {
                     idxs.push(u1_idxs.get_linear(i).unwrap().clone());
                 }
@@ -593,10 +578,6 @@ where
 {
     use std::collections::HashSet;
 
-    // Count occurrences across both arrays (treating each array as a set of unique values first)
-
-    // Actually, simply: (union) - (intersection)
-
     let u1 = unique(ar1, false, false, false, None)?;
     let u2 = unique(ar2, false, false, false, None)?;
 
@@ -634,27 +615,7 @@ where
     Ok(Array::from_vec(result_vec))
 }
 
-/// Calculate element in test_elements, broadcasting over element only.
-///
-/// Returns a boolean array of the same shape as `element` that is True where an element
-/// of `element` is in `test_elements` and False otherwise.
-///
-/// # Arguments
-///
-/// * `element` - Input array
-/// * `test_elements` - The values against which to test each value of `element`
-/// * `assume_unique` - If True, the input arrays are both assumed to be unique
-/// * `invert` - If True, the values in the returned array are inverted
-///
-/// # Examples
-///
-/// ```rust
-/// use rust_numpy::set_ops::isin;
-/// let element = array2![[1, 2], [3, 4]];
-/// let test_elements = array![1, 3];
-/// let result = isin(&element, &test_elements, false, false).unwrap();
-/// // result == [[true, false], [true, false]]
-/// ```
+/// Calculates element in test_elements, broadcasting over element only.
 pub fn isin<T>(
     element: &Array<T>,
     test_elements: &Array<T>,
@@ -693,18 +654,10 @@ impl SetOps {
     /// Find unique rows in a 2D array
     pub fn unique_rows<T>(ar: &Array<T>) -> Result<Array<T>>
     where
-        T: SetElement + Clone + 'static,
+        T: SetElement + Clone + Default + 'static,
     {
-        if ar.ndim() != 2 {
-            return Err(NumPyError::invalid_operation(
-                "unique_rows requires 2-dimensional array",
-            ));
-        }
-
-        // For now, implement a simple version
-        Err(NumPyError::not_implemented(
-            "unique_rows is not yet implemented",
-        ))
+        let res = unique(ar, false, false, false, Some(&[0]))?;
+        Ok(res.values)
     }
 }
 
