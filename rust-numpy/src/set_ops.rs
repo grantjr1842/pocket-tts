@@ -276,15 +276,59 @@ where
         }
 
         // Extract unique slices into a new array
-        let mut final_data =
-            Vec::with_capacity(unique_indices.len() * total_slice_size * elements_per_slice);
-        for &slice_idx in &unique_indices {
-            for slice_pos in 0..elements_per_slice {
-                let base_idx = slice_pos * total_slice_size;
-                for offset in 0..slice_size {
-                    let linear_idx = base_idx + slice_idx * slice_size + offset;
-                    final_data.push(ar.get_linear(linear_idx).unwrap().clone());
+        let mut final_data = Vec::new();
+
+        // Calculate the total size of the result array
+        let mut result_size = 1;
+        for (i, &dim) in ar.shape().iter().enumerate() {
+            if i == axis_norm {
+                result_size *= unique_indices.len();
+            } else {
+                result_size *= dim;
+            }
+        }
+        final_data.reserve(result_size);
+
+        // Build the result by iterating through all possible indices
+        let mut indices = vec![0usize; ar.ndim()];
+        loop {
+            // Check if the current axis index is one of the unique ones
+            if let Some(&unique_idx) = unique_indices.iter().find(|&&x| x == indices[axis_norm]) {
+                // Map to the new index in the unique array
+                let new_axis_idx = unique_indices
+                    .iter()
+                    .position(|&x| x == indices[axis_norm])
+                    .unwrap();
+
+                // Calculate linear index in original array
+                let mut orig_linear = 0;
+                let mut stride = 1;
+                for i in (0..ar.ndim()).rev() {
+                    orig_linear += indices[i] * stride;
+                    stride *= ar.shape()[i];
                 }
+
+                // Add the element to final_data
+                final_data.push(ar.get_linear(orig_linear).unwrap().clone());
+            }
+
+            // Increment indices (like a odometer)
+            let mut carry = true;
+            for i in (0..ar.ndim()).rev() {
+                if carry {
+                    indices[i] += 1;
+                    if indices[i] >= ar.shape()[i] {
+                        indices[i] = 0;
+                        carry = true;
+                    } else {
+                        carry = false;
+                    }
+                }
+            }
+
+            // Check if we've wrapped around
+            if carry {
+                break;
             }
         }
 
