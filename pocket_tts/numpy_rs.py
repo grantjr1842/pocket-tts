@@ -12,6 +12,7 @@ import warnings
 from pathlib import Path
 
 import numpy as _np
+from numpy import ctypeslib
 
 # Global library instance
 _LIB = None
@@ -77,7 +78,7 @@ def log_vec(samples):
         c_array, size = _to_c_array(samples)
         ptr = _LIB.log_vec(c_array, size)
         result = _from_c_array(ptr, size)
-        _LIB.free_float_buffer(result_ptr, size)
+        _LIB.free_float_buffer(ptr, size)
         return result
     else:
         import numpy as np
@@ -98,7 +99,7 @@ def clip_vec(samples, a_min, a_max):
         c_array, size = _to_c_array(samples)
         ptr = _LIB.clip_vec(c_array, size, a_min, a_max)
         result = _from_c_array(ptr, size)
-        _LIB.free_float_buffer(result_ptr, size)
+        _LIB.free_float_buffer(ptr, size)
         return result
     else:
         import numpy as np
@@ -114,7 +115,7 @@ def power_vec(samples, exponent):
         c_array, size = _to_c_array(samples)
         ptr = _LIB.power_vec(c_array, size, exponent)
         result = _from_c_array(ptr, size)
-        _LIB.free_float_buffer(result_ptr, size)
+        _LIB.free_float_buffer(ptr, size)
         return result
     else:
         import numpy as np
@@ -170,7 +171,7 @@ def zeros_vec(size):
         _LIB.zeros_vec.restype = ctypes.POINTER(ctypes.c_float)
         ptr = _LIB.zeros_vec(size)
         result = _from_c_array(ptr, size)
-        _LIB.free_float_buffer(result_ptr, size)
+        _LIB.free_float_buffer(ptr, size)
         return result
     else:
         import numpy as np
@@ -184,7 +185,7 @@ def ones_vec(size):
         _LIB.ones_vec.restype = ctypes.POINTER(ctypes.c_float)
         ptr = _LIB.ones_vec(size)
         result = _from_c_array(ptr, size)
-        _LIB.free_float_buffer(result_ptr, size)
+        _LIB.free_float_buffer(ptr, size)
         return result
     else:
         import numpy as np
@@ -198,7 +199,7 @@ def eye(n):
         _LIB.eye.restype = ctypes.POINTER(ctypes.c_float)
         ptr = _LIB.eye(n)
         result = _from_c_array(ptr, n * n)
-        _LIB.free_float_buffer(result_ptr, n * n)
+        _LIB.free_float_buffer(ptr, n * n)
         return result
     else:
         import numpy as np
@@ -310,7 +311,7 @@ def concatenate(arrays, axis=None):
             *(ctypes.c_size_t.from_buffer([len(a.shape) for a in arrays], 8))
         )
         arrays_ptrs = (ctypes.POINTER(ctypes.c_size_t) * count)(
-            *(_to_c_array(a, _LIB)[0] for a in arrays)
+            *(_to_c_array_ptr(a) for a in arrays)
         )
         _LIB.concatenate.argtypes = [
             ctypes.POINTER(ctypes.c_size_t),
@@ -323,7 +324,7 @@ def concatenate(arrays, axis=None):
         ptr = _LIB.concatenate(arrays_ptrs, sizes, count)
         result = _from_c_array(ptr, total_size)
         for a in arrays:
-            _LIB.free_float_buffer(*(_to_c_array(a, _LIB)[0], a.size))
+            _LIB.free_float_buffer(_to_c_array_ptr(a), a.size)
         _LIB.free_float_buffer(ptr, total_size)
         return result
     else:
@@ -360,11 +361,6 @@ def _to_c_array_ptr(arr):
     if not hasattr(arr, "ctypes"):
         return None
     return arr.ctypes.data_as(ctypes.POINTER(ctypes.c_float))
-
-
-def _from_c_array(ptr, size=None):
-    result = ctypeslib.as_array(ptr, shape=(size,) if size is not None else (size,))
-    return result.copy()
 
 
 def _from_c_array(c_array, size):
@@ -432,7 +428,7 @@ def clip(a, a_min, a_max):
         # For now, just delegate to clip_vec if it matches our use case, else fallback.
         try:
             return clip_vec(a, a_min, a_max)
-        except:
+        except Exception:
             pass
     return _np.clip(a, a_min, a_max)
 
