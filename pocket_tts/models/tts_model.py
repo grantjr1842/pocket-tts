@@ -172,9 +172,7 @@ class TTSModel(nn.Module):
 
             # Store model version metadata
             tts_model.model_metadata = metadata
-            logger.info(
-                f"Model version: {metadata.model_version} (format: {metadata.format_version})"
-            )
+            logger.info(f"Model version: {metadata.model_version} (format: {metadata.format_version})")
 
         if config.flow_lm.weights_path is None and config.weights_path is None:
             logger.warning(
@@ -757,7 +755,7 @@ class TTSModel(nn.Module):
         output_path: str | Path,
         description: str | None = None,
         tags: list[str] | None = None,
-        custom_metadata: dict[str, Any] | None = None,
+        custom_metadata: dict[str, any] | None = None,
     ) -> None:
         """Save model weights with version metadata.
 
@@ -784,14 +782,12 @@ class TTSModel(nn.Module):
         if custom_metadata is None:
             custom_metadata = {}
 
-        custom_metadata.update(
-            {
-                "has_voice_cloning": self.has_voice_cloning,
-                "temp": self.temp,
-                "lsd_decode_steps": self.lsd_decode_steps,
-                "sample_rate": self.sample_rate,
-            }
-        )
+        custom_metadata.update({
+            "has_voice_cloning": self.has_voice_cloning,
+            "temp": self.temp,
+            "lsd_decode_steps": self.lsd_decode_steps,
+            "sample_rate": self.sample_rate,
+        })
 
         save_model_with_versioning(
             state_dict,
