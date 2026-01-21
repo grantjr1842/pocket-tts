@@ -7,3 +7,4 @@ pub mod comparison_tests;
 pub mod comprehensive_tests;
 pub mod conformance_tests;
 pub mod reduction_tests;
+pub mod statistics_tests;
