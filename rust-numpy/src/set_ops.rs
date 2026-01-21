@@ -175,112 +175,116 @@ where
             });
         }
 
-        // Axis implementation
-        // For 2D array and axis 0, we treat rows as elements
-        if ar.ndim() == 2 && axis_norm == 0 {
-            let rows = ar.shape()[0];
-            let cols = ar.shape()[1];
-            // Extract rows as Vec<Vec<T>>
-            let mut row_data: Vec<Vec<T>> = Vec::with_capacity(rows);
-            for i in 0..rows {
-                let mut row = Vec::with_capacity(cols);
-                for j in 0..cols {
-                    row.push(ar.get_linear(i * cols + j).unwrap().clone());
-                }
-                row_data.push(row);
-            }
+        // General N-D axis implementation
+        // Use array manipulation utilities to simplify the process
 
-            // Sort indices based on row data
-            let mut indices: Vec<usize> = (0..rows).collect();
-            indices.sort_by(|&i, &j| {
-                let row_i = &row_data[i];
-                let row_j = &row_data[j];
-                // Lexicographical comparison
-                for k in 0..cols {
-                    let cmp = row_i[k].compare(&row_j[k]);
-                    if cmp != Ordering::Equal {
-                        return cmp;
-                    }
-                }
-                Ordering::Equal
-            });
+        // First, move the target axis to position 0
+        let source_axes = vec![axis as isize];
+        let dest_axes = vec![0];
+        let rearranged = super::array_manipulation::moveaxis(ar, &source_axes, &dest_axes)?;
 
-            // Collect unique
-            let mut unique_rows = Vec::new(); // will store indices of unique rows
-            let mut result_indices = if return_index { Some(Vec::new()) } else { None };
-            let mut result_counts = if return_counts {
-                Some(Vec::new())
-            } else {
-                None
-            };
-            let mut inverse = vec![0; rows];
+        // Now reshape to 2D: (target_axis_size, product_of_other_dims)
+        let target_size = rearranged.shape()[0];
+        let other_size: usize = rearranged.shape().iter().skip(1).product();
+        let reshaped = rearranged.reshape(&[target_size, other_size])?;
 
-            if rows > 0 {
-                let mut current_pos = 0;
-                unique_rows.push(indices[0]);
-                if let Some(ref mut idxs) = result_indices {
-                    idxs.push(indices[0]);
-                }
-                if let Some(ref mut cnts) = result_counts {
-                    cnts.push(1);
-                }
-                inverse[indices[0]] = 0;
+        // Now we can work with a 2D array where each row represents an element along the target axis
+        let rows = reshaped.shape()[0];
+        let cols = reshaped.shape()[1];
 
-                for k in 1..rows {
-                    let idx = indices[k];
-                    let prev_idx = indices[k - 1];
-
-                    // Compare current row with previous sorted row
-                    let row_curr = &row_data[idx];
-                    let row_prev = &row_data[prev_idx];
-                    let mut equal = true;
-                    for col in 0..cols {
-                        if row_curr[col].compare(&row_prev[col]) != Ordering::Equal {
-                            equal = false;
-                            break;
-                        }
-                    }
-
-                    if !equal {
-                        current_pos += 1;
-                        unique_rows.push(idx);
-                        if let Some(ref mut idxs) = result_indices {
-                            idxs.push(idx);
-                        }
-                        if let Some(ref mut cnts) = result_counts {
-                            cnts.push(1);
-                        }
-                    } else if let Some(ref mut cnts) = result_counts {
-                        let last = cnts.len() - 1;
-                        cnts[last] += 1;
-                    }
-                    inverse[idx] = current_pos;
+        // Sort indices based on row data without copying rows
+        let mut indices: Vec<usize> = (0..rows).collect();
+        indices.sort_by(|&i, &j| {
+            for k in 0..cols {
+                let val_i = reshaped.get_linear(i * cols + k).unwrap();
+                let val_j = reshaped.get_linear(j * cols + k).unwrap();
+                let cmp = val_i.compare(val_j);
+                if cmp != Ordering::Equal {
+                    return cmp;
                 }
             }
+            Ordering::Equal
+        });
 
-            // Construct result array
-            // Flatten unique rows
-            let mut final_data = Vec::new();
-            for &r_idx in &unique_rows {
-                final_data.extend_from_slice(&row_data[r_idx]);
+        // Collect unique rows
+        let mut unique_rows = Vec::new();
+        let mut result_indices = if return_index { Some(Vec::new()) } else { None };
+        let mut result_counts = if return_counts {
+            Some(Vec::new())
+        } else {
+            None
+        };
+        let mut inverse = vec![0; rows];
+
+        if rows > 0 {
+            let mut current_pos = 0;
+            unique_rows.push(indices[0]);
+            if let Some(ref mut idxs) = result_indices {
+                idxs.push(indices[0]);
             }
-            let final_shape = vec![unique_rows.len(), cols];
+            if let Some(ref mut cnts) = result_counts {
+                cnts.push(1);
+            }
+            inverse[indices[0]] = 0;
 
-            return Ok(UniqueResult {
-                values: Array::from_data(final_data, final_shape),
-                indices: result_indices.map(Array::from_vec),
-                inverse: if return_inverse {
-                    Some(Array::from_vec(inverse))
-                } else {
-                    None
-                },
-                counts: result_counts.map(Array::from_vec),
-            });
+            for k in 1..rows {
+                let idx = indices[k];
+                let prev_idx = indices[k - 1];
+
+                // Compare rows without copying
+                let mut equal = true;
+                for col in 0..cols {
+                    let val_curr = reshaped.get_linear(idx * cols + col).unwrap();
+                    let val_prev = reshaped.get_linear(prev_idx * cols + col).unwrap();
+                    if val_curr.compare(val_prev) != Ordering::Equal {
+                        equal = false;
+                        break;
+                    }
+                }
+
+                if !equal {
+                    current_pos += 1;
+                    unique_rows.push(idx);
+                    if let Some(ref mut idxs) = result_indices {
+                        idxs.push(idx);
+                    }
+                    if let Some(ref mut cnts) = result_counts {
+                        cnts.push(1);
+                    }
+                } else if let Some(ref mut cnts) = result_counts {
+                    let last = cnts.len() - 1;
+                    cnts[last] += 1;
+                }
+                inverse[idx] = current_pos;
+            }
         }
 
-        return Err(NumPyError::not_implemented(
-            "unique with axis only implemented for 2D axis=0 currently",
-        ));
+        // Extract unique rows into a new array
+        let mut final_data = Vec::with_capacity(unique_rows.len() * cols);
+        for &row_idx in &unique_rows {
+            for col in 0..cols {
+                final_data.push(reshaped.get_linear(row_idx * cols + col).unwrap().clone());
+            }
+        }
+
+        // Reshape back to the final N-D shape
+        let mut final_shape = vec![unique_rows.len()];
+        for (i, &dim) in ar.shape().iter().enumerate() {
+            if i != axis_norm {
+                final_shape.push(dim);
+            }
+        }
+
+        return Ok(UniqueResult {
+            values: Array::from_data(final_data, final_shape),
+            indices: result_indices.map(Array::from_vec),
+            inverse: if return_inverse {
+                Some(Array::from_vec(inverse))
+            } else {
+                None
+            },
+            counts: result_counts.map(Array::from_vec),
+        });
     }
 
     if ar.is_empty() {
