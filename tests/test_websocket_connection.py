@@ -1,10 +1,12 @@
 import asyncio
+import pytest
 import base64
 import json
 
 import websockets
 
 
+@pytest.mark.asyncio
 async def test_websocket():
     uri = "ws://localhost:8765"
     async with websockets.connect(uri) as websocket:

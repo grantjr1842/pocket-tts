@@ -21,7 +21,8 @@ class KVCacheResult:
     def from_kv(keys: torch.Tensor, values: torch.Tensor) -> "KVCacheResult":
         """Create from K/V tensors without cached history."""
         B, H, T, D = keys.shape
-        assert tuple(values.shape[:-1]) == (B, H, T)
+        if tuple(values.shape[:-1]) != (B, H, T):
+            raise ValueError(f"Expected values shape [B, H, T, D] with prefix {(B, H, T)}, got {values.shape}")
         positions = torch.arange(T, device=keys.device, dtype=torch.long)
         return KVCacheResult(keys, values, positions.expand(B, -1))
 

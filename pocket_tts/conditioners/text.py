@@ -27,9 +27,10 @@ class SentencePieceTokenizer:
         logger.info("Loading sentencepiece tokenizer from %s", tokenizer_path)
         tokenizer_path = download_if_necessary(tokenizer_path)
         self.sp = sentencepiece.SentencePieceProcessor(str(tokenizer_path))
-        assert nbins == self.sp.vocab_size(), (
-            f"sentencepiece tokenizer has vocab size={self.sp.vocab_size()} but nbins={nbins} was specified"
-        )
+        if nbins != self.sp.vocab_size():
+            raise ValueError(
+                f"sentencepiece tokenizer has vocab size={self.sp.vocab_size()} but nbins={nbins} was specified"
+            )
 
     def __call__(self, text: str) -> TokenizedText:
         return TokenizedText(torch.tensor(self.sp.encode(text, out_type=int))[None, :])

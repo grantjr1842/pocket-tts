@@ -22,8 +22,9 @@ class MockTokenizedText:
 
     def __init__(self, text: str):
         self.text = text
-        # Simple mock: 1 token per word
-        self.tokens = [[1] * len(text.split())]
+        # Simple mock: 1 token per word. Use torch.tensor to satisfy tolist() expectation.
+        import torch
+        self.tokens = [torch.tensor([1] * len(text.split()))]
 
 
 def test_simple_sentence():
@@ -120,17 +121,19 @@ def test_content_preservation():
     text = "The quick brown fox jumps over the lazy dog. The dog was not amused."
     result = split_into_best_sentences(tokenizer, text)
 
-    # Count words in original and result
-    original_words = set(text.lower().split())
-
-    # Unprepare chunks to remove added punctuation
+    # Unprepare chunks to remove added punctuation for comparison
     def unprepare(text):
-        text = text.lstrip()
-        if text.endswith("."):
-            text = text[:-1]
-        return text.strip()
+        if not text:
+            return ""
+        # Remove trailing punctuation
+        import re
+        return re.sub(r'[.!?…]+$', '', text.strip())
 
     combined_unprepared = " ".join([unprepare(c) for c in result])
+    # Also strip from original for fair comparison
+    original_stripped = " ".join([unprepare(w) for w in text.split()])
+
+    original_words = set(original_stripped.lower().split())
     result_words = set(combined_unprepared.lower().split())
 
     # All original words should be in result

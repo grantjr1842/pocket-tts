@@ -21,5 +21,6 @@ def convert_audio(
         resampled_np = resample_poly(wav_np, up, down, axis=-1)
         wav = torch.from_numpy(resampled_np).to(wav_device).to(wav_dtype)
 
-    assert wav.shape[-2] == to_channels
+    if wav.shape[-2] != to_channels:
+        raise ValueError(f"Expected {to_channels} channels, got {wav.shape[-2]}")
     return wav

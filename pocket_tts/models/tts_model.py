@@ -13,6 +13,7 @@ from pathlib import Path
 import torch
 from torch import nn
 from torch.nn import functional as F
+from typing import Any
 from typing_extensions import Self
 
 from pocket_tts.conditioners.base import TokenizedText
@@ -756,7 +757,7 @@ class TTSModel(nn.Module):
         output_path: str | Path,
         description: str | None = None,
         tags: list[str] | None = None,
-        custom_metadata: dict[str, any] | None = None,
+        custom_metadata: dict[str, Any] | None = None,
     ) -> None:
         """Save model weights with version metadata.
 

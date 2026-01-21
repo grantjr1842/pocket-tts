@@ -18,7 +18,8 @@ def modulate(x, shift, scale):
 
 
 def _rms_norm(x: torch.Tensor, alpha: torch.Tensor, eps: float):
-    assert x.dim() >= alpha.dim()
+    if x.dim() < alpha.dim():
+        raise ValueError(f"Input dimension {x.dim()} must be at least alpha dimension {alpha.dim()}")
     x_dtype = x.dtype
     var = eps + x.var(dim=-1, keepdim=True)
     y = (x * (alpha.to(var) * torch.rsqrt(var))).to(x_dtype)
@@ -91,7 +92,8 @@ class TimestepEmbedder(nn.Module):
     def forward(self, t):
         args = t * self.freqs.to(t.dtype)
         embedding = torch.cat([torch.cos(args), torch.sin(args)], dim=-1)
-        assert not (self.frequency_embedding_size % 2)
+        if self.frequency_embedding_size % 2 != 0:
+            raise ValueError(f"frequency_embedding_size must be even, got {self.frequency_embedding_size}")
         t_emb = self.mlp(embedding)
         return t_emb
 
@@ -172,7 +174,10 @@ class SimpleMLPAdaLN(nn.Module):
         self.num_res_blocks = num_res_blocks
         self.num_time_conds = num_time_conds
 
-        assert num_time_conds != 1
+        if num_time_conds == 1:
+            raise ValueError("num_time_conds must not be 1")
+        if num_time_conds < 1:
+            raise ValueError("num_time_conds must be at least 1")
         self.time_embed = nn.ModuleList(
             [TimestepEmbedder(model_channels) for _ in range(num_time_conds)]
         )
@@ -212,10 +217,10 @@ class SimpleMLPAdaLN(nn.Module):
         # Combine time conditions
         ts = [s, t]
         x = self.input_proj(x)
-        assert len(ts) == self.num_time_conds, (
-            f"Expected {self.num_time_conds} time conditions, got {len(ts)}"
-        )
-        assert self.num_time_conds != 1
+        if len(ts) != self.num_time_conds:
+            raise ValueError(f"Expected {self.num_time_conds} time conditions, got {len(ts)}")
+        if self.num_time_conds == 1:
+            raise ValueError("num_time_conds must not be 1")
 
         # JIT-friendly loop (variable index not allowed for ModuleList)
         t_combined = self.time_embed[0](ts[0])

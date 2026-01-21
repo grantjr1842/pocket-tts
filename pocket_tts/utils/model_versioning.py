@@ -207,6 +207,7 @@ class ModelVersionManager:
                     f"v{cls.CURRENT_FORMAT_VERSION}. Please upgrade PocketTTS.",
                 )
         except ValueError:
+            # Not a version string, safe to ignore
             pass
 
         return True, f"Loading model with format version {metadata.format_version}"

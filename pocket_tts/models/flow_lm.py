@@ -118,7 +118,8 @@ class FlowLMModel(nn.Module):
 
         transformer_out = self.backbone(input_, text_embeddings, sequence, model_state=model_state)
         transformer_out = transformer_out.to(torch.float32)
-        assert lsd_decode_steps > 0
+        if lsd_decode_steps <= 0:
+            raise ValueError(f"lsd_decode_steps must be positive, got {lsd_decode_steps}")
 
         transformer_out = transformer_out[:, -1]
         out_eos = self.out_eos(transformer_out) > eos_threshold
