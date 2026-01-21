@@ -6,6 +6,7 @@ import threading
 import time
 from pathlib import Path
 
+
 def generate(dashboard_py: Path, log_dir: Path, out_md: Path):
     # Call the generator script as a module-less subprocess replacement by importing it is messy;
     # simplest is exec it in-process via runpy.
@@ -19,10 +20,12 @@ def generate(dashboard_py: Path, log_dir: Path, out_md: Path):
     finally:
         sys.argv = argv0
 
+
 def md_to_html(md_text: str, refresh_seconds: int) -> str:
     # Minimal Markdown-to-HTML conversion for tables/headings/code fences.
     # This intentionally avoids external deps.
-    import html, re
+    import html
+
     lines = md_text.splitlines()
     out = []
     in_code = False
@@ -74,11 +77,13 @@ def md_to_html(md_text: str, refresh_seconds: int) -> str:
   </body>
 </html>"""
 
+
 def serve_dir(directory: Path, port: int):
     handler = http.server.SimpleHTTPRequestHandler
     with socketserver.TCPServer(("", port), handler) as httpd:
         # serve from directory
         import os
+
         cwd = os.getcwd()
         try:
             os.chdir(directory)
@@ -86,9 +91,14 @@ def serve_dir(directory: Path, port: int):
         finally:
             os.chdir(cwd)
 
+
 def main():
-    ap = argparse.ArgumentParser(description="Watch Ralph logs and regenerate dashboard in near real-time.")
-    ap.add_argument("--log-dir", default=".ralph/logs", help="Directory containing <run_id>.jsonl files")
+    ap = argparse.ArgumentParser(
+        description="Watch Ralph logs and regenerate dashboard in near real-time."
+    )
+    ap.add_argument(
+        "--log-dir", default=".ralph/logs", help="Directory containing <run_id>.jsonl files"
+    )
     ap.add_argument("--out-md", default="docs/status-dashboard.md", help="Output markdown path")
     ap.add_argument("--out-html", default="docs/status-dashboard.html", help="Output HTML path")
     ap.add_argument("--interval", type=float, default=1.0, help="Polling interval seconds")
@@ -120,13 +130,18 @@ def main():
         sig = tuple(sig_parts)
         if sig != last_sig:
             generate(dashboard_py, log_dir, out_md)
-            md = out_md.read_text(encoding="utf-8") if out_md.exists() else "# Ralph Status Dashboard\n\nNo logs.\n"
+            md = (
+                out_md.read_text(encoding="utf-8")
+                if out_md.exists()
+                else "# Ralph Status Dashboard\n\nNo logs.\n"
+            )
             html = md_to_html(md, args.refresh)
             out_html.parent.mkdir(parents=True, exist_ok=True)
             out_html.write_text(html, encoding="utf-8")
             print(f"updated: {out_md} and {out_html} (logs changed)")
             last_sig = sig
         time.sleep(args.interval)
+
 
 if __name__ == "__main__":
     main()
