@@ -891,3 +891,16 @@ pub mod exports {
         identity, linspace, logspace, meshgrid, ones_like, ravel, reshape, squeeze, zeros_like,
     };
 }
+/// Normalize an axis index, supporting negative indexing
+pub fn normalize_axis(axis: isize, ndim: usize) -> Result<usize> {
+    let ndim = ndim as isize;
+    if axis < -ndim || axis >= ndim {
+        return Err(NumPyError::index_error(axis as usize, ndim as usize));
+    }
+
+    if axis < 0 {
+        Ok((axis + ndim) as usize)
+    } else {
+        Ok(axis as usize)
+    }
+}
