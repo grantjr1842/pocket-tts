@@ -20,6 +20,7 @@
 
 use crate::array::Array;
 use crate::error::{NumPyError, Result};
+use crate::slicing::{MultiSlice, Slice};
 use num_traits::Float;
 use std::collections::{BTreeSet, HashSet};
 use std::hash::{Hash, Hasher};
@@ -134,15 +135,165 @@ pub fn unique<T>(
     axis: Option<&[isize]>,
 ) -> Result<UniqueResult<T>>
 where
-    T: SetElement + Clone + Default + Ord + 'static,
+    T: SetElement + Clone + Default + PartialOrd + 'static,
 {
     if let Some(ax) = axis {
-        if ax.len() == 1 && ax[0] == 0 && ar.ndim() == 2 {
-            return unique_rows_full(ar, return_index, return_inverse, return_counts);
+        if ax.len() != 1 {
+            return Err(NumPyError::invalid_operation(
+                "unique currently only supports single axis",
+            ));
         }
-        return Err(NumPyError::not_implemented(
-            "unique with axis other than [0] on 2D is not yet fully implemented",
-        ));
+        let a = ax[0];
+        let ndim = ar.ndim();
+        let axis_idx = if a < 0 { a + ndim as isize } else { a } as usize;
+        if axis_idx >= ndim {
+            return Err(NumPyError::index_error(axis_idx, ndim));
+        }
+
+        // Move target axis to the front (transpose) to simplify item iteration and concatenation
+        let mut perm: Vec<usize> = (0..ndim).collect();
+        perm.remove(axis_idx);
+        perm.insert(0, axis_idx);
+
+        let transposed = ar.transpose_view(Some(&perm))?;
+        let n_items = transposed.shape()[0];
+        let item_size = if n_items > 0 {
+            transposed.size() / n_items
+        } else {
+            0
+        };
+
+        if n_items == 0 {
+            let mut result_shape = ar.shape().to_vec();
+            result_shape[axis_idx] = 0;
+            return Ok(UniqueResult {
+                values: Array::from_data(vec![], result_shape),
+                indices: if return_index {
+                    Some(Array::from_data(vec![], vec![0]))
+                } else {
+                    None
+                },
+                inverse: if return_inverse {
+                    Some(Array::from_data(vec![], vec![0]))
+                } else {
+                    None
+                },
+                counts: if return_counts {
+                    Some(Array::from_data(vec![], vec![0]))
+                } else {
+                    None
+                },
+            });
+        }
+
+        // Create zero-copy views for each sub-array (item) along the axis
+        let mut views = Vec::with_capacity(n_items);
+        for i in 0..n_items {
+            let mut slices = vec![Slice::Full; ndim];
+            slices[0] = Slice::Index(i as isize);
+            let view = transposed.slice(&MultiSlice::new(slices))?;
+            views.push((view, i));
+        }
+
+        // Sort views lexicographically using their iterators (zero-copy comparison)
+        views.sort_by(|(v1, _), (v2, _)| {
+            let mut it1 = v1.iter();
+            let mut it2 = v2.iter();
+            loop {
+                match (it1.next(), it2.next()) {
+                    (Some(a), Some(b)) => {
+                        let res = a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal);
+                        if res != std::cmp::Ordering::Equal {
+                            return res;
+                        }
+                    }
+                    (None, None) => return std::cmp::Ordering::Equal,
+                    (None, Some(_)) => return std::cmp::Ordering::Less,
+                    (Some(_), None) => return std::cmp::Ordering::Greater,
+                }
+            }
+        });
+
+        let mut unique_views = Vec::new();
+        let mut unique_indices = Vec::new();
+        let mut inverse_indices = vec![0; n_items];
+        let mut counts = Vec::new();
+
+        if !views.is_empty() {
+            let (first_view, first_orig_idx) = &views[0];
+            unique_views.push(first_view.clone());
+            unique_indices.push(*first_orig_idx);
+            inverse_indices[*first_orig_idx] = 0;
+            let mut count = 1;
+
+            for i in 1..views.len() {
+                let (view, orig_idx) = &views[i];
+                let is_diff = {
+                    let prev = unique_views.last().unwrap();
+                    if view.shape() != prev.shape() {
+                        true
+                    } else {
+                        view.iter().zip(prev.iter()).any(|(a, b)| a != b)
+                    }
+                };
+
+                if is_diff {
+                    if return_counts {
+                        counts.push(count);
+                    }
+                    unique_views.push(view.clone());
+                    unique_indices.push(*orig_idx);
+                    count = 1;
+                } else {
+                    count += 1;
+                }
+                inverse_indices[*orig_idx] = unique_views.len() - 1;
+            }
+            if return_counts {
+                counts.push(count);
+            }
+        }
+
+        let n_unique = unique_views.len();
+        let mut flat_data = Vec::with_capacity(n_unique * item_size);
+        for v in unique_views {
+            flat_data.extend(v.iter().cloned());
+        }
+
+        let mut result_transposed_shape = transposed.shape().to_vec();
+        result_transposed_shape[0] = n_unique;
+        let result_transposed = Array::from_data(flat_data, result_transposed_shape);
+
+        // Transpose back to original axis order
+        let mut inv_perm = vec![0; ndim];
+        for (i, &p) in perm.iter().enumerate() {
+            inv_perm[p] = i;
+        }
+        let result_view = result_transposed.transpose_view(Some(&inv_perm))?;
+        let mut final_shape = ar.shape().to_vec();
+        final_shape[axis_idx] = n_unique;
+
+        // Ensure the result is an owned array with the correct shape and C-order data
+        let values = Array::from_data(result_view.iter().cloned().collect(), final_shape);
+
+        return Ok(UniqueResult {
+            values,
+            indices: if return_index {
+                Some(Array::from_data(unique_indices, vec![n_unique]))
+            } else {
+                None
+            },
+            inverse: if return_inverse {
+                Some(Array::from_data(inverse_indices, vec![n_items]))
+            } else {
+                None
+            },
+            counts: if return_counts {
+                Some(Array::from_data(counts, vec![n_unique]))
+            } else {
+                None
+            },
+        });
     }
 
     if ar.is_empty() {
@@ -166,7 +317,7 @@ where
         });
     }
 
-    // Flatten data for 1D unique
+    // Standard 1D unique implementation (flattened if no axis)
     let mut data: Vec<(T, usize)> = ar
         .iter()
         .cloned()
@@ -174,7 +325,6 @@ where
         .map(|(i, x)| (x, i))
         .collect();
 
-    // Sort by value
     data.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap_or(std::cmp::Ordering::Equal));
 
     let mut unique_values = Vec::new();
@@ -187,8 +337,6 @@ where
         unique_values.push(current_val.clone());
         unique_indices.push(first_idx);
         let mut count = 1;
-
-        // Map original index to new unique index
         inverse_indices[data[0].1] = 0;
 
         for i in 1..data.len() {
@@ -207,7 +355,6 @@ where
             }
             inverse_indices[idx] = unique_values.len() - 1;
         }
-
         if return_counts {
             counts.push(count);
         }
@@ -223,94 +370,6 @@ where
         },
         inverse: if return_inverse {
             Some(Array::from_data(inverse_indices, vec![ar.size()]))
-        } else {
-            None
-        },
-        counts: if return_counts {
-            Some(Array::from_data(counts, vec![n_unique]))
-        } else {
-            None
-        },
-    })
-}
-
-fn unique_rows_full<T>(
-    ar: &Array<T>,
-    return_index: bool,
-    return_inverse: bool,
-    return_counts: bool,
-) -> Result<UniqueResult<T>>
-where
-    T: SetElement + Clone + Default + Ord + 'static,
-{
-    if ar.ndim() != 2 {
-        return Err(NumPyError::invalid_operation(
-            "unique_rows_full requires 2-dimensional array",
-        ));
-    }
-
-    let rows = ar.shape()[0];
-    let cols = ar.shape()[1];
-
-    let mut data: Vec<(Vec<T>, usize)> = Vec::with_capacity(rows);
-    for i in 0..rows {
-        let mut row = Vec::with_capacity(cols);
-        for j in 0..cols {
-            row.push(ar.get(i * cols + j).cloned().unwrap_or_default());
-        }
-        data.push((row, i));
-    }
-
-    // Sort by row values
-    data.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap_or(std::cmp::Ordering::Equal));
-
-    let mut unique_rows = Vec::new();
-    let mut unique_indices = Vec::new();
-    let mut inverse_indices = vec![0; rows];
-    let mut counts = Vec::new();
-
-    if !data.is_empty() {
-        let (mut current_row, mut first_idx) = data[0].clone();
-        unique_rows.push(current_row.clone());
-        unique_indices.push(first_idx);
-        let mut count = 1;
-
-        inverse_indices[data[0].1] = 0;
-
-        for i in 1..data.len() {
-            let (ref row, idx) = data[i];
-            if row != &current_row {
-                if return_counts {
-                    counts.push(count);
-                }
-                current_row = row.clone();
-                first_idx = idx;
-                unique_rows.push(current_row.clone());
-                unique_indices.push(first_idx);
-                count = 1;
-            } else {
-                count += 1;
-            }
-            inverse_indices[idx] = unique_rows.len() - 1;
-        }
-
-        if return_counts {
-            counts.push(count);
-        }
-    }
-
-    let n_unique = unique_rows.len();
-    let flat_unique: Vec<T> = unique_rows.into_iter().flatten().collect();
-
-    Ok(UniqueResult {
-        values: Array::from_data(flat_unique, vec![n_unique, cols]),
-        indices: if return_index {
-            Some(Array::from_data(unique_indices, vec![n_unique]))
-        } else {
-            None
-        },
-        inverse: if return_inverse {
-            Some(Array::from_data(inverse_indices, vec![rows]))
         } else {
             None
         },
@@ -423,18 +482,10 @@ impl SetOps {
     /// Find unique rows in a 2D array
     pub fn unique_rows<T>(ar: &Array<T>) -> Result<Array<T>>
     where
-        T: SetElement + Clone + 'static,
+        T: SetElement + Clone + Default + PartialOrd + 'static,
     {
-        if ar.ndim() != 2 {
-            return Err(NumPyError::invalid_operation(
-                "unique_rows requires 2-dimensional array",
-            ));
-        }
-
-        // For now, implement a simple version
-        Err(NumPyError::not_implemented(
-            "unique_rows is not yet implemented",
-        ))
+        let res = unique(ar, false, false, false, Some(&[0]))?;
+        Ok(res.values)
     }
 }
 
