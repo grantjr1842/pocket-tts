@@ -6,7 +6,7 @@ import safetensors
 def get_flow_lm_state_dict(path: Path) -> dict:
     state_dict = {}
     with safetensors.safe_open(path, framework="pt", device="cpu") as f:
-        for key in f.keys():
+        for key in f:
             if (
                 key.startswith("flow.w_s_t.")
                 or key == "condition_provider.conditioners.transcript_in_segment.learnt_padding"
@@ -26,7 +26,7 @@ def get_flow_lm_state_dict(path: Path) -> dict:
 def get_mimi_state_dict(path: Path) -> dict:
     state_dict = {}
     with safetensors.safe_open(path, framework="pt", device="cpu") as f:
-        for key in f.keys():
+        for key in f:
             if key.startswith("model.quantizer.vq.") or key == "model.quantizer.logvar_proj.weight":
                 # skip vq weights
                 continue

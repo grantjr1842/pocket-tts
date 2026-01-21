@@ -75,10 +75,7 @@ def parse_pause_tags(text: str) -> tuple[list[str], list[PauseMarker]]:
         value = float(match.group(1))
         unit = match.group(2).lower()
 
-        if unit == "s":
-            duration_ms = int(value * 1000)
-        else:  # ms
-            duration_ms = int(value)
+        duration_ms = int(value * 1000) if unit == "s" else int(value)
 
         # Clamp to reasonable bounds (10ms to 10s)
         duration_ms = max(10, min(duration_ms, 10000))

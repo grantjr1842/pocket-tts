@@ -33,10 +33,7 @@ class SEANetResnetBlock(nn.Module):
     def forward(self, x, model_state: dict | None):
         v = x
         for layer in self.block:
-            if isinstance(layer, StreamingConv1d):
-                v = layer(v, model_state)
-            else:
-                v = layer(v)
+            v = layer(v, model_state) if isinstance(layer, StreamingConv1d) else layer(v)
         assert x.shape == v.shape, (x.shape, v.shape, x.shape)
         return x + v
 

@@ -15,7 +15,7 @@ def apply_rope(q, k, offset, max_period):
 
     B, T, H, D = q.shape
     Bk, Tk, Hk, Dk = k.shape
-    assert (B, T, D) == (Bk, Tk, Dk)
+    assert (Bk, Tk, Dk) == (B, T, D)
     assert D > 0
     assert D % 2 == 0
     assert max_period > 0

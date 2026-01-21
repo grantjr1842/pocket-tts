@@ -204,7 +204,7 @@ class StreamingMultiheadAttention(StatefulModule):
             # The sliding window is enforced by attn_bias later.
             capacity = max(T, self.context) if self.context is not None else T
 
-            if self.context is not None and T > self.context:
+            if self.context is not None and self.context < T:
                 # We are processing a chunk larger than window.
                 # Buffer will hold T. attn_bias handles masking.
                 pass
