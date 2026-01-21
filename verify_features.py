@@ -1,6 +1,4 @@
-
 import time
-import torch
 import scipy.io.wavfile
 import traceback
 from pocket_tts import TTSModel
@@ -13,7 +11,7 @@ text = "The quick brown fox jumps over the lazy dog."
 # 1. Baseline Benchmark (Float32)
 print("\n[1/3] Benchmarking Baseline (Float32)...")
 try:
-    tts = TTSModel.load_model() # Default float32
+    tts = TTSModel.load_model()  # Default float32
     print("Model loaded (Float32)")
     voice_state = tts.get_state_for_audio_prompt(voice_prompt)
 
@@ -26,7 +24,7 @@ try:
         _ = tts.generate_audio(voice_state, text)
         duration = time.time() - t0
         times.append(duration)
-        print(f"  Iteration {i+1}: {duration:.4f}s")
+        print(f"  Iteration {i + 1}: {duration:.4f}s")
 
     avg_time = sum(times) / len(times)
     print(f"Average generation time (Float32): {avg_time:.4f}s")

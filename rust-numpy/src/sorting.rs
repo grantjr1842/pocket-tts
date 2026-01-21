@@ -29,7 +29,7 @@ impl SortKind {
             "quicksort" | "quick" | "q" => Ok(Self::QuickSort),
             "mergesort" | "merge" | "m" => Ok(Self::MergeSort),
             "heapsort" | "heap" | "h" => Ok(Self::HeapSort),
-            _ => Err(NumPyError::invalid_operation(&format!(
+            _ => Err(NumPyError::invalid_operation(format!(
                 "Invalid sort kind: {}",
                 kind
             ))),
@@ -51,7 +51,7 @@ impl SortOrder {
         match order.to_lowercase().as_str() {
             "asc" | "ascending" => Ok(Self::Ascending),
             "desc" | "descending" => Ok(Self::Descending),
-            _ => Err(NumPyError::invalid_operation(&format!(
+            _ => Err(NumPyError::invalid_operation(format!(
                 "Invalid sort order: {}",
                 order
             ))),
@@ -73,7 +73,7 @@ impl SearchSide {
         match side.to_lowercase().as_str() {
             "left" => Ok(Self::Left),
             "right" => Ok(Self::Right),
-            _ => Err(NumPyError::invalid_operation(&format!(
+            _ => Err(NumPyError::invalid_operation(format!(
                 "Invalid search side: {}",
                 side
             ))),
@@ -156,7 +156,7 @@ where
     }
 
     let first_shape = keys[0].shape();
-    for (_i, key) in keys.iter().enumerate() {
+    for key in keys.iter() {
         if key.shape() != first_shape {
             return Err(NumPyError::shape_mismatch(
                 first_shape.to_vec(),
@@ -545,9 +545,9 @@ where
     let mut indices: Vec<isize> = (0..data.len()).map(|i| i as isize).collect();
 
     match kind {
-        SortKind::QuickSort => quicksort_by_key(&mut indices, &data, order),
-        SortKind::MergeSort => mergesort_by_key(&mut indices, &data, order),
-        SortKind::HeapSort => heapsort_by_key(&mut indices, &data, order),
+        SortKind::QuickSort => quicksort_by_key(&mut indices, data, order),
+        SortKind::MergeSort => mergesort_by_key(&mut indices, data, order),
+        SortKind::HeapSort => heapsort_by_key(&mut indices, data, order),
     }
 
     Ok(indices)
@@ -1172,7 +1172,7 @@ fn compute_index_along_axis(
 
     // Add indices for dimensions after the axis
     for i in (axis + 1)..shape.len() {
-        index += (remaining % shape[i]);
+        index += remaining % shape[i];
         remaining /= shape[i];
     }
 
@@ -1351,7 +1351,7 @@ where
     match k.cmp(&pivot) {
         Ordering::Less => quickselect(&mut data[..pivot], k),
         Ordering::Greater => quickselect(&mut data[pivot + 1..], k - pivot - 1),
-        Ordering::Equal => return,
+        Ordering::Equal => (),
     }
 }
 
