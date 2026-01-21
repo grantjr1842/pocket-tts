@@ -13,6 +13,8 @@ pub enum ByteOrder {
 /// Casting rules for type conversion
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Casting {
+    /// No casting allowed
+    No,
     /// Only allow safe casts that preserve values
     Safe,
     /// Allow safe casts and casts within the same kind (e.g. float64 -> float32)
@@ -21,8 +23,6 @@ pub enum Casting {
     Unsafe,
     /// Allow any cast (legacy name for Unsafe)
     Equiv,
-    /// Identical types only
-    No,
 }
 
 /// Comprehensive dtype system matching NumPy's type system
@@ -186,6 +186,11 @@ pub enum DtypeKind {
 }
 
 impl Dtype {
+    /// Get result type for a sequence of dtypes
+    pub fn result_type(types: &[&Dtype]) -> Option<Self> {
+        crate::type_promotion::result_type(types)
+    }
+
     /// Get the kind of this dtype
     pub fn kind(&self) -> DtypeKind {
         match self {
@@ -305,6 +310,12 @@ impl Dtype {
             Dtype::Float32 { byteorder: None }
         } else if type_id == TypeId::of::<f64>() {
             Dtype::Float64 { byteorder: None }
+        } else if type_id == TypeId::of::<f16>() {
+            Dtype::Float16 { byteorder: None }
+        } else if type_id == TypeId::of::<num_complex::Complex<f32>>() {
+            Dtype::Complex64 { byteorder: None }
+        } else if type_id == TypeId::of::<num_complex::Complex<f64>>() {
+            Dtype::Complex128 { byteorder: None }
         } else if type_id == TypeId::of::<bool>() {
             Dtype::Bool
         } else if type_id == TypeId::of::<String>() {
@@ -335,7 +346,7 @@ impl Dtype {
             "complex32" | "c4" => Ok(Dtype::Complex32 { byteorder: None }),
             "complex64" | "c8" => Ok(Dtype::Complex64 { byteorder: None }),
             "complex128" | "c16" => Ok(Dtype::Complex128 { byteorder: None }),
-            "low" => Ok(Dtype::Bool),
+            "bool" | "b1" => Ok(Dtype::Bool),
             "str" => Ok(Dtype::String { length: None }),
             "unicode" => Ok(Dtype::Unicode { length: None }),
             "object" => Ok(Dtype::Object),
@@ -419,11 +430,17 @@ impl Dtype {
         }
 
         match policy {
-            Casting::Unsafe | Casting::Equiv => true,
-            Casting::SameKind => self.can_cast_same_kind(to),
-            Casting::Safe => self.can_cast_safe(to),
             Casting::No => false,
+            Casting::Equiv => self.is_equivalent(to),
+            Casting::Safe => self.can_cast_safe(to),
+            Casting::SameKind => self.can_cast_same_kind(to),
+            Casting::Unsafe => true,
         }
+    }
+
+    /// Check if two dtypes are equivalent (same kind and size, ignoring byte order)
+    pub fn is_equivalent(&self, other: &Dtype) -> bool {
+        self.kind() == other.kind() && self.itemsize() == other.itemsize()
     }
 
     /// Check if dtype can be reliably cast to another dtype (equivalent to casting='safe')
@@ -448,25 +465,51 @@ impl Dtype {
 
         match (self_kind, other_kind) {
             // Bool casts
-            (Bool, Bool) => true,
-            (Bool, Integer) | (Bool, Unsigned) | (Bool, Float) | (Bool, Complex) => true,
+            (Bool, _) => true, // Bool can always be cast safely to any numeric type
             (_, Bool) => false,
 
             // Integer casts
             (Integer, Integer) => self.itemsize() <= other.itemsize(),
             (Unsigned, Unsigned) => self.itemsize() <= other.itemsize(),
             (Unsigned, Integer) => self.itemsize() < other.itemsize(), // Needs strictly larger to fit all unsigned values
-            (Integer, Unsigned) => false, // Negative values cannot be represented suitable
+            (Integer, Unsigned) => false, // Negative values cannot be represented safely
+
+            // Integer to Float casts
+            (Integer | Unsigned, Float) => {
+                match (self.itemsize(), other.itemsize()) {
+                    (1, _) => true,          // i8/u8 fits in f16+
+                    (2, 4 | 8 | 16) => true, // i16/u16 fits in f32+
+                    (2, 2) => false,         // i16/u16 to f16 is unsafe
+                    (4, 8 | 16) => true,     // i32/u32 fits in f64+
+                    (4, 4) => false,         // i32/u32 to f32 is unsafe
+                    (8, 16) => true,         // i64/u64 to f128 is safe
+                    (8, 8) => false,         // i64/u64 to f64 is unsafe
+                    _ => false,
+                }
+            }
+
+            // Integer to Complex casts
+            (Integer | Unsigned, Complex) => {
+                // Safe if it can cast safely to the base float type
+                let base_float_size = other.itemsize() / 2;
+                match (self.itemsize(), base_float_size) {
+                    (1, _) => true,
+                    (2, 4 | 8 | 16) => true,
+                    (2, 2) => false,
+                    (4, 8 | 16) => true,
+                    (4, 4) => false,
+                    (8, 16) => true,
+                    (8, 8) => false,
+                    _ => false,
+                }
+            }
 
             // Float casts
             (Float, Float) => self.itemsize() <= other.itemsize(),
-            (Integer, Float) => true, // Conventionally considered safe in NumPy
-            (Unsigned, Float) => true,
+            (Float, Complex) => (self.itemsize() * 2) <= other.itemsize(),
 
             // Complex casts
             (Complex, Complex) => self.itemsize() <= other.itemsize(),
-            (Float, Complex) => self.itemsize() * 2 <= other.itemsize(),
-            (Integer | Unsigned, Complex) => true,
 
             // Others
             (String, String) => true,

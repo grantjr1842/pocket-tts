@@ -46,12 +46,7 @@ pub fn promote_types(t1: &Dtype, t2: &Dtype) -> Option<Dtype> {
         if matches!(lower.kind(), Integer | Unsigned | Bool)
             && matches!(higher_kind, Float | Complex)
         {
-            // For consistency with NumPy:
-            // Integers usually promote to at least Float64 if mixed with native python floats,
-            // but here we are mixing Dtypes.
-            // i16 + f32 -> f32
-            // i64 + f32 -> f64
-            return Some(promote_int_float(lower, higher_type));
+            return Some(promote_int_float_complex(lower, higher_type));
         }
 
         // Default: use the higher kind
@@ -67,27 +62,64 @@ pub fn promote_types(t1: &Dtype, t2: &Dtype) -> Option<Dtype> {
         (Unsigned, Integer) => promote_mixed_int(t2, t1), // swap
         (Float, Float) => promote_float(t1, t2),
         (Complex, Complex) => promote_complex(t1, t2),
-        _ => None, // Strings, Objects, etc - strict matching usually required
+        (String, String) => {
+            // Pick larger length
+            let l1 = match t1 {
+                Dtype::String { length } => length.unwrap_or(0),
+                _ => 0,
+            };
+            let l2 = match t2 {
+                Dtype::String { length } => length.unwrap_or(0),
+                _ => 0,
+            };
+            Some(Dtype::String {
+                length: Some(l1.max(l2)),
+            })
+        }
+        _ => {
+            if t1 == t2 {
+                Some(t1.clone())
+            } else {
+                Some(Dtype::Object) // Fallback to Object if mixed and no rule
+            }
+        }
     }
 }
 
-fn promote_int_float(int_dtype: &Dtype, float_dtype: &Dtype) -> Dtype {
-    // If int size > float mantissa precision, might need larger float.
-    // NumPy rule:
-    // i8/i16 + f32 -> f32
-    // i32 + f32 -> f64 (because i32 range > f32 exact integer precision? No, i32 fits in f64. f32 only has 24 bits significand)
-    // Actually NumPy: float32(1) + int32(1) -> float64.
-    // But float32 + int16 -> float32.
+/// Promote multiple types to a common result type
+pub fn result_type(types: &[&Dtype]) -> Option<Dtype> {
+    if types.is_empty() {
+        return None;
+    }
+    let mut res = types[0].clone();
+    for i in 1..types.len() {
+        res = promote_types(&res, types[i])?;
+    }
+    Some(res)
+}
 
-    // We'll simplistic heuristic: if float is less than f64 and int is >= 32 bit, go to f64.
-    let f_size = float_dtype.itemsize();
+fn promote_int_float_complex(int_dtype: &Dtype, float_complex_dtype: &Dtype) -> Dtype {
+    let f_size = float_complex_dtype.itemsize();
     let i_size = int_dtype.itemsize();
 
-    if f_size < 8 && i_size >= 4 {
-        return Dtype::Float64 { byteorder: None };
-    }
+    // NumPy logic:
+    // i8/i16/u8/u16 + f32 -> f32
+    // i32/u32 + f32 -> f64 (f32 only has 24 bits of precision)
+    // i64/u64 + f32/f64 -> f64
 
-    float_dtype.clone()
+    if float_complex_dtype.kind() == DtypeKind::Float {
+        if f_size < 8 && i_size >= 4 {
+            return Dtype::Float64 { byteorder: None };
+        }
+        float_complex_dtype.clone()
+    } else {
+        // Complex
+        // c8 (2x f32) + i32 -> c16 (2x f64)
+        if f_size < 16 && i_size >= 4 {
+            return Dtype::Complex128 { byteorder: None };
+        }
+        float_complex_dtype.clone()
+    }
 }
 
 fn promote_signed(t1: &Dtype, t2: &Dtype) -> Option<Dtype> {
@@ -114,30 +146,19 @@ fn promote_mixed_int(signed: &Dtype, unsigned: &Dtype) -> Option<Dtype> {
     let s_signed = signed.itemsize();
     let s_unsigned = unsigned.itemsize();
 
-    // Rule:
-    // if signed is larger, it can likely hold unsigned (e.g. i64 > u32) -> Use signed.
+    // If signed type is strictly larger than unsigned, it can hold it (e.g. i16 can hold u8)
     if s_signed > s_unsigned {
         return Some(signed.clone());
     }
 
-    // if sizes equal: i32 + u32 -> i64.
-    // if sizes max: i64 + u64 -> f64 (NumPy behavior).
-    if s_signed == s_unsigned {
-        if s_signed >= 8 {
-            return Some(Dtype::Float64 { byteorder: None });
-        }
-        // Promote to next signed size
-        return size_to_signed(s_signed * 2);
+    // If unsigned is same or larger, we need a larger signed type
+    // e.g. i32 + u32 -> i64
+    // i64 + u64 -> float64 (NumPy fallback when it cannot fit in signed integer)
+    if s_unsigned >= 8 {
+        return Some(Dtype::Float64 { byteorder: None });
     }
 
-    // if unsigned is larger: u64 + i32 -> f64? or try to find signed large enough?
-    // u64 needs i128 (not standard supported yet) or f64.
-    // u32 + i8 -> i64.
-    if s_unsigned < 8 {
-        return size_to_signed(s_unsigned * 2);
-    }
-
-    Some(Dtype::Float64 { byteorder: None })
+    size_to_signed(s_unsigned * 2)
 }
 
 fn promote_float(t1: &Dtype, t2: &Dtype) -> Option<Dtype> {
@@ -166,6 +187,6 @@ fn size_to_signed(size: usize) -> Option<Dtype> {
         2 => Some(Dtype::Int16 { byteorder: None }),
         4 => Some(Dtype::Int32 { byteorder: None }),
         8 => Some(Dtype::Int64 { byteorder: None }),
-        _ => None,
+        _ => Some(Dtype::Float64 { byteorder: None }), // Fallback
     }
 }

@@ -301,6 +301,6 @@ mod tests {
 
         // float -> int (Unsafe)
         assert!(f64_dtype.can_cast(&i64_dtype, Casting::Unsafe));
-        assert!(f64_dtype.can_cast(&i64_dtype, Casting::Equiv));
+        assert!(!f64_dtype.can_cast(&i64_dtype, Casting::Equiv));
     }
 }
