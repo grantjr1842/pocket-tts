@@ -50,7 +50,8 @@ class StreamingConv1d(StatefulModule):
         pad_mode: str = "constant",
     ):
         super().__init__()
-        assert pad_mode in ["constant", "replicate"], pad_mode
+        if pad_mode not in ["constant", "replicate"]:
+            raise ValueError(f"pad_mode must be 'constant' or 'replicate', got {pad_mode}")
         self.pad_mode = pad_mode
         # warn user on unusual setup between dilation and stride
         if stride > 1 and dilation > 1:
@@ -92,11 +93,13 @@ class StreamingConv1d(StatefulModule):
     def forward(self, x, model_state: dict | None):
         B, C, T = x.shape
         S = self._stride
-        assert T > 0 and T % S == 0, "Steps must be multiple of stride"
+        if T == 0 or T % S != 0:
+            raise ValueError(f"Steps must be multiple of stride {S}, got {T}")
         state = self.init_state(B, 0) if model_state is None else self.get_state(model_state)
         TP = state["previous"].shape[-1]
         if TP and self.pad_mode == "replicate":
-            assert T >= TP, "Not enough content to pad streaming."
+            if T < TP:
+                raise ValueError(f"Not enough content to pad streaming: got {T} steps, need {TP}")
             init = x[..., :1]
             state["previous"][:] = torch.where(
                 state["first"].view(-1, 1, 1), init, state["previous"]

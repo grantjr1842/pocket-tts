@@ -87,7 +87,8 @@ class StreamingTransformer(nn.Module):
         kind: str = "mimi",
     ):
         super().__init__()
-        assert d_model % num_heads == 0
+        if d_model % num_heads != 0:
+            raise ValueError(f"d_model {d_model} must be divisible by num_heads {num_heads}")
         self.max_period = max_period
 
         self.rope = RotaryEmbedding(max_period=max_period)

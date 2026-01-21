@@ -39,17 +39,16 @@ class MimiModel(nn.Module):
         # We will need the dimension for the resampling. In general the encoder will be a SeanetEncoder
         # which exposes a `dimension` attribute.
         dimension = encoder.dimension
-        assert isinstance(dimension, int), (
-            f"Dimension should be int, got {dimension} of type {type(dimension)}."
-        )
+        if not isinstance(dimension, int):
+            raise TypeError(f"Dimension should be int, got {dimension} of type {type(dimension)}.")
         self.dimension = dimension
 
         if encoder_frame_rate != frame_rate:
-            assert self.encoder_frame_rate > self.frame_rate, "Cannot upsample with conv."
+            if self.encoder_frame_rate <= self.frame_rate:
+                raise ValueError(f"Cannot upsample with conv: encoder_frame_rate {self.encoder_frame_rate} <= frame_rate {self.frame_rate}")
             downsample_stride = self.encoder_frame_rate / self.frame_rate
-            assert downsample_stride == int(downsample_stride), (
-                f"Only integer strides are supported, got {downsample_stride}"
-            )
+            if downsample_stride != int(downsample_stride):
+                raise ValueError(f"Only integer strides are supported, got {downsample_stride}")
             self.downsample = ConvDownsample1d(int(downsample_stride), dimension=dimension)
             self.upsample = ConvTrUpsample1d(int(downsample_stride), dimension=dimension)
 
@@ -94,9 +93,8 @@ class MimiModel(nn.Module):
         Returns:
             Unquantized embeddings.
         """
-        assert x.dim() == 3, (
-            f"CompressionModel._encode_to_unquantized_latent expects audio of shape [B, C, T] but got {x.shape}"
-        )
+        if x.dim() != 3:
+            raise ValueError(f"CompressionModel._encode_to_unquantized_latent expects audio of shape [B, C, T] but got {x.shape}")
 
         frame_size = self.frame_size
 

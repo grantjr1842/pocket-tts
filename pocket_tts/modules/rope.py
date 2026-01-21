@@ -15,10 +15,14 @@ def apply_rope(q, k, offset, max_period):
 
     B, T, H, D = q.shape
     Bk, Tk, Hk, Dk = k.shape
-    assert (Bk, Tk, Dk) == (B, T, D)
-    assert D > 0
-    assert D % 2 == 0
-    assert max_period > 0
+    if (Bk, Tk, Dk) != (B, T, D):
+        raise ValueError(f"Query and Key shapes must match except for head dimension: q={(B, T, D)}, k={(Bk, Tk, Dk)}")
+    if D <= 0:
+        raise ValueError(f"Dimension D must be positive, got {D}")
+    if D % 2 != 0:
+        raise ValueError(f"Dimension D must be even, got {D}")
+    if max_period <= 0:
+        raise ValueError(f"max_period must be positive, got {max_period}")
 
     ds = torch.arange(D // 2, device=q.device, dtype=torch.float32)
     freqs = torch.exp(ds * (-math.log(max_period) * 2 / D))

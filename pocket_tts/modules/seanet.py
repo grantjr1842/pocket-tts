@@ -14,9 +14,8 @@ class SEANetResnetBlock(nn.Module):
         compress: int = 2,
     ):
         super().__init__()
-        assert len(kernel_sizes) == len(dilations), (
-            "Number of kernel sizes should match number of dilations"
-        )
+        if len(kernel_sizes) != len(dilations):
+            raise ValueError(f"Number of kernel sizes {len(kernel_sizes)} should match number of dilations {len(dilations)}")
         hidden = dim // compress
         block = nn.ModuleList([])
         for i, (kernel_size, dilation) in enumerate(zip(kernel_sizes, dilations)):
@@ -34,7 +33,8 @@ class SEANetResnetBlock(nn.Module):
         v = x
         for layer in self.block:
             v = layer(v, model_state) if isinstance(layer, StreamingConv1d) else layer(v)
-        assert x.shape == v.shape, (x.shape, v.shape, x.shape)
+        if x.shape != v.shape:
+            raise ValueError(f"Residual connection shape mismatch: x={x.shape}, v={v.shape}")
         return x + v
 
 

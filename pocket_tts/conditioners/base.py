@@ -31,8 +31,10 @@ class BaseConditioner(nn.Module, Generic[Prepared]):
         super().__init__()
         self.dim = dim
         self.output_dim = output_dim
-        assert force_linear or dim != output_dim
-        assert not output_bias
+        if not (force_linear or dim != output_dim):
+            raise ValueError("force_linear must be True if dim == output_dim")
+        if output_bias:
+            raise ValueError("output_bias must be False")
 
     def forward(self, inputs: TokenizedText) -> torch.Tensor:
         return self._get_condition(inputs)

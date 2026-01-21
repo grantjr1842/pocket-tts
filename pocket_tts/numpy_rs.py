@@ -429,7 +429,9 @@ def clip(a, a_min, a_max):
         try:
             return clip_vec(a, a_min, a_max)
         except Exception:
-            pass
+            # Fallback to numpy if rust-numpy clip fails
+            from pocket_tts.numpy_rs import logger
+            logger.debug("rust-numpy clip failing, falling back to numpy")
     return _np.clip(a, a_min, a_max)
 
 

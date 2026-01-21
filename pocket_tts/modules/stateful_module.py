@@ -88,7 +88,8 @@ class StatefulModule(ABC, nn.Module):
     # Remove type hints to prevent beartype wrapping
     def get_state(self, model_state: Dict[str, Dict[str, torch.Tensor]]) -> Dict[str, torch.Tensor]:
         """Get the state for this module from the model state."""
-        assert self._module_absolute_name is not None
+        if self._module_absolute_name is None:
+            raise RuntimeError("Module absolute name not set. Ensure init_states() was called.")
         return model_state[self._module_absolute_name]
 
     # End of class
