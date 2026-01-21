@@ -46,6 +46,9 @@ pub mod dtype;
 #[cfg(test)]
 mod dtype_tests;
 pub mod error;
+pub mod fft;
+#[cfg(test)]
+mod fft_tests;
 pub mod iterator;
 pub mod linalg;
 pub mod math_ufuncs;
@@ -63,10 +66,13 @@ pub mod window;
 
 // Re-export key types for convenience
 pub use array::Array;
+pub use array_manipulation::exports::*;
 pub use bitwise::*;
 pub use dtype::{Casting, Dtype, DtypeKind};
 pub use error::{NumPyError, Result};
+pub use fft::{fft_with_params, hilbert_with_params, ifft, irfft2, irfftn, rfft2, rfftn};
 pub use linalg::norm;
+pub use set_ops::exports::*;
 pub use statistics::{std, var};
 pub use type_promotion::promote_types;
 pub use ufunc_ops::UfuncEngine;

@@ -230,92 +230,52 @@ where
 pub fn corrcoef<T>(
     x: &Array<T>,
     y: Option<&Array<T>>,
-    _rowvar: bool,
+    rowvar: bool,
+    bias: Option<bool>,
+    ddof: Option<isize>,
 ) -> Result<Array<T>, NumPyError>
 where
     T: Clone + Default + AsF64 + FromF64 + 'static,
 {
-    if x.is_empty() {
-        return Err(NumPyError::invalid_value(
-            "Cannot compute corrcoef of empty array",
-        ));
-    }
+    // corrcoef is essentially cov normalized by standard deviations
+    // bias defaults to False for corrcoef (unbiased estimator)
+    let bias_val = bias.unwrap_or(false);
+    let ddof_val = ddof.unwrap_or(1);
 
-    let x_data = x.to_vec();
+    // Compute covariance matrix
+    let c = cov(x, y, rowvar, bias_val, ddof_val, None, None)?;
 
-    if let Some(y_arr) = y {
-        let y_data = y_arr.to_vec();
+    // Normalize by standard deviations to get correlation matrix
+    let c_data = c.to_vec();
+    let c_shape = c.shape();
 
-        if x_data.len() != y_data.len() {
-            return Err(NumPyError::invalid_value("x and y must have same length"));
+    // For 2D covariance matrix, normalize: corr[i,j] = cov[i,j] / sqrt(cov[i,i] * cov[j,j])
+    if c_shape.len() == 2 {
+        let n = c_shape[0];
+        let mut corr_data = vec![0.0; c_data.len()];
+
+        for i in 0..n {
+            for j in 0..n {
+                let cov_ij = c_data[i * n + j].as_f64().unwrap_or(0.0);
+                let cov_ii = c_data[i * n + i].as_f64().unwrap_or(0.0);
+                let cov_jj = c_data[j * n + j].as_f64().unwrap_or(0.0);
+
+                let std_i = cov_ii.sqrt();
+                let std_j = cov_jj.sqrt();
+
+                if std_i == 0.0 || std_j == 0.0 {
+                    return Err(NumPyError::invalid_value(
+                        "Division by zero in corrcoef: zero variance variable",
+                    ));
+                }
+
+                corr_data[i * n + j] = cov_ij / (std_i * std_j);
+            }
         }
 
-        let n = x_data.len() as f64;
-        let x_mean: f64 = x_data
-            .iter()
-            .map(|v| v.as_f64().unwrap_or(0.0))
-            .sum::<f64>()
-            / n;
-        let y_mean: f64 = y_data
-            .iter()
-            .map(|v| v.as_f64().unwrap_or(0.0))
-            .sum::<f64>()
-            / n;
-
-        let covariance: f64 = x_data
-            .iter()
-            .zip(y_data.iter())
-            .map(|(xi, yi)| {
-                (xi.as_f64().unwrap_or(0.0) - x_mean) * (yi.as_f64().unwrap_or(0.0) - y_mean)
-            })
-            .sum::<f64>()
-            / n;
-
-        let x_var: f64 = x_data
-            .iter()
-            .map(|xi| {
-                let diff = xi.as_f64().unwrap_or(0.0) - x_mean;
-                diff * diff
-            })
-            .sum::<f64>()
-            / (n - 1.0);
-
-        let y_var: f64 = y_data
-            .iter()
-            .map(|yi| {
-                let diff = yi.as_f64().unwrap_or(0.0) - y_mean;
-                diff * diff
-            })
-            .sum::<f64>()
-            / (n - 1.0);
-
-        let std_x = x_var.sqrt();
-        let std_y = y_var.sqrt();
-
-        if std_x == 0.0 || std_y == 0.0 {
-            return Err(NumPyError::invalid_value("Division by zero in corrcoef"));
-        }
-
-        let correlation = covariance / (std_x * std_y);
-
-        Ok(Array::from_vec(vec![T::from_f64(correlation)]))
+        Ok(Array::from_shape_vec(c_shape.to_vec(), corr_data.into_iter().map(T::from_f64).collect()))
     } else {
-        let n = x_data.len() as f64;
-        let x_mean: f64 = x_data
-            .iter()
-            .map(|v| v.as_f64().unwrap_or(0.0))
-            .sum::<f64>()
-            / n;
-
-        let _x_var: f64 = x_data
-            .iter()
-            .map(|xi| {
-                let diff = xi.as_f64().unwrap_or(0.0) - x_mean;
-                diff * diff
-            })
-            .sum::<f64>()
-            / (n - 1.0);
-
+        // For 1D case, single correlation coefficient is 1.0
         Ok(Array::from_vec(vec![T::from_f64(1.0)]))
     }
 }
@@ -323,11 +283,11 @@ where
 pub fn cov<T>(
     m: &Array<T>,
     y: Option<&Array<T>>,
-    _rowvar: bool,
-    _bias: bool,
+    rowvar: bool,
+    bias: bool,
     ddof: isize,
-    _fweights: Option<&Array<T>>,
-    _aweights: Option<&Array<T>>,
+    fweights: Option<&Array<T>>,
+    aweights: Option<&Array<T>>,
 ) -> Result<Array<T>, NumPyError>
 where
     T: Clone + Default + AsF64 + FromF64 + 'static,
@@ -339,47 +299,147 @@ where
     }
 
     let m_data = m.to_vec();
-    let n = m_data.len() as f64;
-    let m_mean: f64 = m_data
-        .iter()
-        .map(|v| v.as_f64().unwrap_or(0.0))
-        .sum::<f64>()
-        / n;
+    let m_shape = m.shape();
 
-    if let Some(y_arr) = y {
-        let y_data = y_arr.to_vec();
+    // Handle 1D case
+    if m_shape.len() == 1 {
+        let n = m_data.len() as f64;
 
-        if m_data.len() != y_data.len() {
-            return Err(NumPyError::invalid_value("m and y must have same length"));
+        if let Some(y_arr) = y {
+            let y_data = y_arr.to_vec();
+            if y_data.len() != m_data.len() {
+                return Err(NumPyError::invalid_value(
+                    "m and y must have same length",
+                ));
+            }
+
+            // Compute covariance between two 1D arrays
+            let m_mean: f64 = m_data.iter().map(|v| v.as_f64().unwrap_or(0.0)).sum::<f64>() / n;
+            let y_mean: f64 = y_data.iter().map(|v| v.as_f64().unwrap_or(0.0)).sum::<f64>() / n;
+
+            let covariance: f64 = m_data
+                .iter()
+                .zip(y_data.iter())
+                .map(|(mi, yi)| {
+                    (mi.as_f64().unwrap_or(0.0) - m_mean) * (yi.as_f64().unwrap_or(0.0) - y_mean)
+                })
+                .sum::<f64>();
+
+            let denom = if bias { n } else { (n as isize - ddof).max(1) as f64 };
+            let cov_val = covariance / denom;
+
+            // Return 2x2 covariance matrix
+            let m_var: f64 = m_data
+                .iter()
+                .map(|mi| {
+                    let diff = mi.as_f64().unwrap_or(0.0) - m_mean;
+                    diff * diff
+                })
+                .sum::<f64>()
+                / denom;
+            let y_var: f64 = y_data
+                .iter()
+                .map(|yi| {
+                    let diff = yi.as_f64().unwrap_or(0.0) - y_mean;
+                    diff * diff
+                })
+                .sum::<f64>()
+                / denom;
+
+            Ok(Array::from_shape_vec(
+                vec![2, 2],
+                vec![
+                    T::from_f64(m_var),
+                    T::from_f64(cov_val),
+                    T::from_f64(cov_val),
+                    T::from_f64(y_var),
+                ],
+            ))
+        } else {
+            // Single 1D array - return 1x1 matrix (variance)
+            let mean: f64 = m_data.iter().map(|v| v.as_f64().unwrap_or(0.0)).sum::<f64>() / n;
+            let variance: f64 = m_data
+                .iter()
+                .map(|mi| {
+                    let diff = mi.as_f64().unwrap_or(0.0) - mean;
+                    diff * diff
+                })
+                .sum::<f64>();
+
+            let denom = if bias { n } else { (n as isize - ddof).max(1) as f64 };
+            Ok(Array::from_shape_vec(vec![1, 1], vec![T::from_f64(variance / denom)]))
+        }
+    } else if m_shape.len() == 2 {
+        // Handle 2D case
+        let (rows, cols) = (m_shape[0], m_shape[1]);
+
+        // Determine number of variables and observations
+        let (n_vars, n_obs) = if rowvar { (rows, cols) } else { (cols, rows) };
+
+        if n_obs < 2 {
+            return Err(NumPyError::invalid_value(
+                "Need at least 2 observations to compute covariance",
+            ));
         }
 
-        let y_mean: f64 = y_data
-            .iter()
-            .map(|v| v.as_f64().unwrap_or(0.0))
-            .sum::<f64>()
-            / n;
+        // fweights and aweights validation
+        if fweights.is_some() || aweights.is_some() {
+            return Err(NumPyError::invalid_value(
+                "fweights and aweights are not yet supported for 2D arrays",
+            ));
+        }
 
-        let covariance: f64 = m_data
-            .iter()
-            .zip(y_data.iter())
-            .map(|(mi, yi)| {
-                (mi.as_f64().unwrap_or(0.0) - m_mean) * (yi.as_f64().unwrap_or(0.0) - y_mean)
-            })
-            .sum::<f64>()
-            / (n - (ddof as f64));
+        // Transpose data if rowvar=false so columns become variables (rows)
+        let data = if !rowvar {
+            // Transpose: rows become columns
+            let mut transposed = vec![0.0; rows * cols];
+            for i in 0..rows {
+                for j in 0..cols {
+                    transposed[j * rows + i] = m_data[i * cols + j].as_f64().unwrap_or(0.0);
+                }
+            }
+            transposed
+        } else {
+            m_data.iter().map(|v| v.as_f64().unwrap_or(0.0)).collect()
+        };
 
-        Ok(Array::from_vec(vec![T::from_f64(covariance)]))
+        // Compute mean for each variable (row)
+        let mut means = vec![0.0; n_vars];
+        for i in 0..n_vars {
+            let row_sum: f64 = (0..n_obs).map(|j| data[i * n_obs + j]).sum();
+            means[i] = row_sum / n_obs as f64;
+        }
+
+        // Compute covariance matrix
+        let mut cov_matrix = vec![0.0; n_vars * n_vars];
+        let denom = if bias {
+            n_obs as f64
+        } else {
+            (n_obs as isize - ddof).max(1) as f64
+        };
+
+        for i in 0..n_vars {
+            for j in i..n_vars {
+                let mut cov_sum = 0.0;
+                for k in 0..n_obs {
+                    let diff_i = data[i * n_obs + k] - means[i];
+                    let diff_j = data[j * n_obs + k] - means[j];
+                    cov_sum += diff_i * diff_j;
+                }
+                let cov_val = cov_sum / denom;
+                cov_matrix[i * n_vars + j] = cov_val;
+                cov_matrix[j * n_vars + i] = cov_val; // Symmetric
+            }
+        }
+
+        Ok(Array::from_shape_vec(
+            vec![n_vars, n_vars],
+            cov_matrix.into_iter().map(T::from_f64).collect(),
+        ))
     } else {
-        let variance: f64 = m_data
-            .iter()
-            .map(|mi| {
-                let diff = mi.as_f64().unwrap_or(0.0) - m_mean;
-                diff * diff
-            })
-            .sum::<f64>()
-            / (n - (ddof as f64));
-
-        Ok(Array::from_vec(vec![T::from_f64(variance)]))
+        Err(NumPyError::invalid_value(
+            "cov requires 1D or 2D arrays",
+        ))
     }
 }
 
