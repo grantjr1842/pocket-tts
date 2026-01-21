@@ -24,7 +24,7 @@ def main():
         f.write("Generated from GitHub Issues via Ralph Playbook Initialization.\n\n")
         for issue in issues:
             # Check labels for priority (optional, currently just naive list)
-            labels = [l["name"] for l in issue["labels"]]
+            labels = [label["name"] for label in issue["labels"]]
             prio = "[Med]"
             if "high" in str(labels).lower() or "critical" in str(labels).lower():
                 prio = "[High]"

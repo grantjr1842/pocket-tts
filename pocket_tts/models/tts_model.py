@@ -10,7 +10,6 @@ from collections.abc import Iterable
 from functools import lru_cache
 from pathlib import Path
 
-import safetensors
 import torch
 from torch import nn
 from torch.nn import functional as F
@@ -173,7 +172,9 @@ class TTSModel(nn.Module):
 
             # Store model version metadata
             tts_model.model_metadata = metadata
-            logger.info(f"Model version: {metadata.model_version} (format: {metadata.format_version})")
+            logger.info(
+                f"Model version: {metadata.model_version} (format: {metadata.format_version})"
+            )
 
         if config.flow_lm.weights_path is None and config.weights_path is None:
             logger.warning(
@@ -607,7 +608,7 @@ class TTSModel(nn.Module):
             generation_time,
             real_time_factor,
         )
-        
+
         # Log memory usage after generation
         self.log_memory_usage("after generation")
 
@@ -720,19 +721,19 @@ class TTSModel(nn.Module):
 
     def clear_prompt_cache(self) -> None:
         self._cached_get_state_for_audio_prompt.cache_clear()
-    
+
     def cleanup(self) -> None:
         """Explicitly clean up model resources.
-        
+
         This method ensures all resources are properly released:
         - Clears prompt cache
         - Joins any active threads
         - Clears PyTorch CUDA cache if applicable
         - Logs memory usage before and after cleanup
-        
+
         This should be called when you're done with the model or before
         reloading it. Using a context manager is preferred:
-        
+
         Example:
             >>> model = TTSModel.load_model()
             >>> with model:
@@ -740,15 +741,15 @@ class TTSModel(nn.Module):
             >>> # Resources automatically cleaned up
         """
         logger.debug("Cleaning up TTSModel resources")
-        
+
         # Clear prompt cache to release memory
         self.clear_prompt_cache()
-        
+
         # Clear PyTorch CUDA cache if on GPU
-        if hasattr(torch.cuda, 'empty_cache'):
+        if hasattr(torch.cuda, "empty_cache"):
             torch.cuda.empty_cache()
             logger.debug("Cleared CUDA cache")
-        
+
         logger.info("TTSModel resources cleaned up successfully")
 
     def save_with_versioning(
@@ -756,7 +757,7 @@ class TTSModel(nn.Module):
         output_path: str | Path,
         description: str | None = None,
         tags: list[str] | None = None,
-        custom_metadata: dict[str, any] | None = None,
+        custom_metadata: dict[str, Any] | None = None,
     ) -> None:
         """Save model weights with version metadata.
 
@@ -783,12 +784,14 @@ class TTSModel(nn.Module):
         if custom_metadata is None:
             custom_metadata = {}
 
-        custom_metadata.update({
-            "has_voice_cloning": self.has_voice_cloning,
-            "temp": self.temp,
-            "lsd_decode_steps": self.lsd_decode_steps,
-            "sample_rate": self.sample_rate,
-        })
+        custom_metadata.update(
+            {
+                "has_voice_cloning": self.has_voice_cloning,
+                "temp": self.temp,
+                "lsd_decode_steps": self.lsd_decode_steps,
+                "sample_rate": self.sample_rate,
+            }
+        )
 
         save_model_with_versioning(
             state_dict,
@@ -801,50 +804,50 @@ class TTSModel(nn.Module):
     def __enter__(self) -> Self:
         """Context manager entry for automatic resource cleanup."""
         return self
-    
+
     def __exit__(self, exc_type, exc_val, exc_tb) -> bool:
         """Context manager exit for automatic resource cleanup."""
         self.cleanup()
         return False  # Don't suppress exceptions
-    
+
     def get_memory_usage(self) -> dict:
         """Get current memory usage statistics.
-        
+
         Returns a dictionary with memory usage information:
         - model_size_mb: Size of model parameters in MB
         - cache_entries: Number of entries in prompt cache
         - torch_allocated_mb: PyTorch allocated memory (if available)
         - torch_reserved_mb: PyTorch reserved memory (if available)
         - gc_objects: Number of Python objects tracked by garbage collector
-        
+
         This is useful for monitoring memory usage during generation
         and detecting potential memory leaks.
-        
+
         Returns:
             dict: Memory usage statistics
         """
         stats = {}
-        
+
         # Model parameter size
         model_size_bytes = sum(p.numel() * p.element_size() for p in self.parameters())
         stats["model_size_mb"] = model_size_bytes / (1024 * 1024)
-        
+
         # Prompt cache size
         stats["cache_entries"] = self._cached_get_state_for_audio_prompt.cache_info().currsize
-        
+
         # PyTorch memory (if CUDA is available)
-        if hasattr(torch.cuda, 'memory_allocated'):
+        if hasattr(torch.cuda, "memory_allocated"):
             stats["torch_allocated_mb"] = torch.cuda.memory_allocated() / (1024 * 1024)
             stats["torch_reserved_mb"] = torch.cuda.memory_reserved() / (1024 * 1024)
-        
+
         # Python garbage collector info
         stats["gc_objects"] = len(gc.get_objects())
-        
+
         return stats
-    
+
     def log_memory_usage(self, context: str = "") -> None:
         """Log current memory usage with optional context.
-        
+
         Args:
             context: Optional context string to include in log message
         """
