@@ -121,46 +121,205 @@ pub struct UniqueResult<T> {
 /// # Examples
 ///
 /// ```rust
-/// use rust_numpy::set_ops::unique;
-/// let arr = array![1, 2, 1, 3, 2, 1];
-/// let result = unique(&arr, false, false, false, None).unwrap();
-/// // result.values == [1, 2, 3]
+/// use numpy::{array, set_ops::unique};
+/// let a = array![1, 2, 2, 3, 3, 3];
+/// let result = unique(&a, false, false, false, None).unwrap();
+/// assert_eq!(result.values.to_vec(), vec![1, 2, 3]);
 /// ```
 pub fn unique<T>(
     ar: &Array<T>,
     return_index: bool,
     return_inverse: bool,
     return_counts: bool,
-    _axis: Option<&[isize]>,
+    axis: Option<&[isize]>,
 ) -> Result<UniqueResult<T>>
 where
-    T: SetElement + Clone + Default + 'static,
+    T: SetElement + Clone + Default + Ord + 'static,
 {
+    if let Some(ax) = axis {
+        if ax.len() == 1 && ax[0] == 0 && ar.ndim() == 2 {
+            return unique_rows_full(ar, return_index, return_inverse, return_counts);
+        }
+        return Err(NumPyError::not_implemented(
+            "unique with axis other than [0] on 2D is not yet fully implemented",
+        ));
+    }
+
     if ar.is_empty() {
         return Ok(UniqueResult {
-            values: Array::from_data(vec![], vec![]),
+            values: Array::from_data(vec![], vec![0]),
             indices: if return_index {
-                Some(Array::from_data(vec![], vec![]))
+                Some(Array::from_data(vec![], vec![0]))
             } else {
                 None
             },
             inverse: if return_inverse {
-                Some(Array::from_data(vec![], vec![]))
+                Some(Array::from_data(vec![], vec![0]))
             } else {
                 None
             },
             counts: if return_counts {
-                Some(Array::from_data(vec![], vec![]))
+                Some(Array::from_data(vec![], vec![0]))
             } else {
                 None
             },
         });
     }
 
-    // For now, implement a simple version
-    Err(NumPyError::not_implemented(
-        "unique function is not yet fully implemented",
-    ))
+    // Flatten data for 1D unique
+    let mut data: Vec<(T, usize)> = ar
+        .iter()
+        .cloned()
+        .enumerate()
+        .map(|(i, x)| (x, i))
+        .collect();
+
+    // Sort by value
+    data.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap_or(std::cmp::Ordering::Equal));
+
+    let mut unique_values = Vec::new();
+    let mut unique_indices = Vec::new();
+    let mut inverse_indices = vec![0; ar.size()];
+    let mut counts = Vec::new();
+
+    if !data.is_empty() {
+        let (mut current_val, mut first_idx) = data[0].clone();
+        unique_values.push(current_val.clone());
+        unique_indices.push(first_idx);
+        let mut count = 1;
+
+        // Map original index to new unique index
+        inverse_indices[data[0].1] = 0;
+
+        for i in 1..data.len() {
+            let (ref val, idx) = data[i];
+            if val != &current_val {
+                if return_counts {
+                    counts.push(count);
+                }
+                current_val = val.clone();
+                first_idx = idx;
+                unique_values.push(current_val.clone());
+                unique_indices.push(first_idx);
+                count = 1;
+            } else {
+                count += 1;
+            }
+            inverse_indices[idx] = unique_values.len() - 1;
+        }
+
+        if return_counts {
+            counts.push(count);
+        }
+    }
+
+    let n_unique = unique_values.len();
+    Ok(UniqueResult {
+        values: Array::from_data(unique_values, vec![n_unique]),
+        indices: if return_index {
+            Some(Array::from_data(unique_indices, vec![n_unique]))
+        } else {
+            None
+        },
+        inverse: if return_inverse {
+            Some(Array::from_data(inverse_indices, vec![ar.size()]))
+        } else {
+            None
+        },
+        counts: if return_counts {
+            Some(Array::from_data(counts, vec![n_unique]))
+        } else {
+            None
+        },
+    })
+}
+
+fn unique_rows_full<T>(
+    ar: &Array<T>,
+    return_index: bool,
+    return_inverse: bool,
+    return_counts: bool,
+) -> Result<UniqueResult<T>>
+where
+    T: SetElement + Clone + Default + Ord + 'static,
+{
+    if ar.ndim() != 2 {
+        return Err(NumPyError::invalid_operation(
+            "unique_rows_full requires 2-dimensional array",
+        ));
+    }
+
+    let rows = ar.shape()[0];
+    let cols = ar.shape()[1];
+
+    let mut data: Vec<(Vec<T>, usize)> = Vec::with_capacity(rows);
+    for i in 0..rows {
+        let mut row = Vec::with_capacity(cols);
+        for j in 0..cols {
+            row.push(ar.get(i * cols + j).cloned().unwrap_or_default());
+        }
+        data.push((row, i));
+    }
+
+    // Sort by row values
+    data.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap_or(std::cmp::Ordering::Equal));
+
+    let mut unique_rows = Vec::new();
+    let mut unique_indices = Vec::new();
+    let mut inverse_indices = vec![0; rows];
+    let mut counts = Vec::new();
+
+    if !data.is_empty() {
+        let (mut current_row, mut first_idx) = data[0].clone();
+        unique_rows.push(current_row.clone());
+        unique_indices.push(first_idx);
+        let mut count = 1;
+
+        inverse_indices[data[0].1] = 0;
+
+        for i in 1..data.len() {
+            let (ref row, idx) = data[i];
+            if row != &current_row {
+                if return_counts {
+                    counts.push(count);
+                }
+                current_row = row.clone();
+                first_idx = idx;
+                unique_rows.push(current_row.clone());
+                unique_indices.push(first_idx);
+                count = 1;
+            } else {
+                count += 1;
+            }
+            inverse_indices[idx] = unique_rows.len() - 1;
+        }
+
+        if return_counts {
+            counts.push(count);
+        }
+    }
+
+    let n_unique = unique_rows.len();
+    let flat_unique: Vec<T> = unique_rows.into_iter().flatten().collect();
+
+    Ok(UniqueResult {
+        values: Array::from_data(flat_unique, vec![n_unique, cols]),
+        indices: if return_index {
+            Some(Array::from_data(unique_indices, vec![n_unique]))
+        } else {
+            None
+        },
+        inverse: if return_inverse {
+            Some(Array::from_data(inverse_indices, vec![rows]))
+        } else {
+            None
+        },
+        counts: if return_counts {
+            Some(Array::from_data(counts, vec![n_unique]))
+        } else {
+            None
+        },
+    })
 }
 
 /// Test whether each element of a 1-D array is also present in a second array.
@@ -174,30 +333,87 @@ where
 /// * `ar2` - The values against which to test each value of `ar1`
 /// * `assume_unique` - If True, input arrays are both assumed to be unique,
 ///                    which can speed up the calculation
-///
-/// # Examples
-///
-/// ```rust
-/// use rust_numpy::set_ops::in1d;
-/// let ar1 = array![1, 2, 3, 4, 5];
-/// let ar2 = array![2, 4, 6];
-/// let result = in1d(&ar1, &ar2, false).unwrap();
-/// // result == [false, true, false, true, false]
-/// ```
 pub fn in1d<T>(ar1: &Array<T>, ar2: &Array<T>, _assume_unique: bool) -> Result<Array<bool>>
 where
-    T: SetElement + Clone + Default + 'static,
+    T: SetElement + Clone + Default + Hash + Eq + 'static,
 {
-    if ar1.ndim() != 1 || ar2.ndim() != 1 {
-        return Err(NumPyError::invalid_operation(
-            "in1d requires 1-dimensional arrays",
-        ));
+    let mut set = HashSet::new();
+    for x in ar2.iter() {
+        set.insert(x.clone());
     }
 
-    // For now, implement a simple version
-    Err(NumPyError::not_implemented(
-        "in1d function is not yet fully implemented",
-    ))
+    let result_data: Vec<bool> = ar1.iter().map(|x| set.contains(x)).collect();
+    Ok(Array::from_data(result_data, ar1.shape().to_vec()))
+}
+
+/// Find the intersection of two arrays.
+///
+/// Return the sorted, unique values that are in both of the input arrays.
+pub fn intersect1d<T>(ar1: &Array<T>, ar2: &Array<T>) -> Result<Array<T>>
+where
+    T: SetElement + Clone + Default + Hash + Eq + Ord + 'static,
+{
+    let set1: HashSet<T> = ar1.iter().cloned().collect();
+    let set2: HashSet<T> = ar2.iter().cloned().collect();
+
+    let mut intersected: Vec<T> = set1.intersection(&set2).cloned().collect();
+    intersected.sort();
+    Ok(Array::from_vec(intersected))
+}
+
+/// Find the union of two arrays.
+///
+/// Return the unique, sorted array of values that are in either of the two input arrays.
+pub fn union1d<T>(ar1: &Array<T>, ar2: &Array<T>) -> Result<Array<T>>
+where
+    T: SetElement + Clone + Default + Hash + Eq + Ord + 'static,
+{
+    let mut set: HashSet<T> = ar1.iter().cloned().collect();
+    for x in ar2.iter() {
+        set.insert(x.clone());
+    }
+
+    let mut result: Vec<T> = set.into_iter().collect();
+    result.sort();
+    Ok(Array::from_vec(result))
+}
+
+/// Find the set difference of two arrays.
+///
+/// Return the unique values in `ar1` that are not in `ar2`.
+pub fn setdiff1d<T>(ar1: &Array<T>, ar2: &Array<T>) -> Result<Array<T>>
+where
+    T: SetElement + Clone + Default + Hash + Eq + Ord + 'static,
+{
+    let set2: HashSet<T> = ar2.iter().cloned().collect();
+    let set1: HashSet<T> = ar1.iter().cloned().collect();
+
+    let mut result: Vec<T> = set1.into_iter().filter(|x| !set2.contains(x)).collect();
+    result.sort();
+    Ok(Array::from_vec(result))
+}
+
+/// Find the set exclusive-or of two arrays.
+///
+/// Return the sorted, unique values that are in only one (not both) of the input arrays.
+pub fn setxor1d<T>(ar1: &Array<T>, ar2: &Array<T>) -> Result<Array<T>>
+where
+    T: SetElement + Clone + Default + Hash + Eq + Ord + 'static,
+{
+    let set1: HashSet<T> = ar1.iter().cloned().collect();
+    let set2: HashSet<T> = ar2.iter().cloned().collect();
+
+    let mut result: Vec<T> = set1.symmetric_difference(&set2).cloned().collect();
+    result.sort();
+    Ok(Array::from_vec(result))
+}
+
+/// Calculates element in `test_elements`, broadcasting over `element`.
+pub fn isin<T>(element: &Array<T>, test_elements: &Array<T>) -> Result<Array<bool>>
+where
+    T: SetElement + Clone + Default + Hash + Eq + 'static,
+{
+    in1d(element, test_elements, false)
 }
 
 /// Advanced set operations for multi-dimensional arrays
@@ -223,5 +439,8 @@ impl SetOps {
 }
 
 pub mod exports {
-    pub use super::{in1d, unique, SetElement, SetOps, UniqueResult};
+    pub use super::{
+        in1d, intersect1d, isin, setdiff1d, setxor1d, union1d, unique, SetElement, SetOps,
+        UniqueResult,
+    };
 }

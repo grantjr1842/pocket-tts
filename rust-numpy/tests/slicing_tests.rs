@@ -49,7 +49,7 @@ fn test_multidim_slice() {
     //  [3, 4, 5],
     //  [6, 7, 8]]
     let data = (0..9).collect::<Vec<_>>();
-    let arr = Array::from_shape_vec(vec![3, 3], data).unwrap();
+    let arr = Array::from_shape_vec(vec![3, 3], data);
 
     // Slice: arr[:2, 1:]
     // [[1, 2],

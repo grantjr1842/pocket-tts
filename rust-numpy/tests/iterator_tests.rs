@@ -10,7 +10,7 @@ fn test_iter_1d() {
 #[test]
 fn test_iter_2d() {
     // [[0, 1], [2, 3]]
-    let arr = Array::from_shape_vec(vec![2, 2], vec![0, 1, 2, 3]).unwrap();
+    let arr = Array::from_shape_vec(vec![2, 2], vec![0, 1, 2, 3]);
     let collected: Vec<_> = arr.iter().cloned().collect();
     // Iteration should be logical row-major
     assert_eq!(collected, vec![0, 1, 2, 3]);
@@ -30,7 +30,7 @@ fn test_iter_sliced() {
 #[test]
 fn test_iter_transposed() {
     // [[0, 1, 2], [3, 4, 5]]
-    let arr = Array::from_shape_vec(vec![2, 3], vec![0, 1, 2, 3, 4, 5]).unwrap();
+    let arr = Array::from_shape_vec(vec![2, 3], vec![0, 1, 2, 3, 4, 5]);
     // Transpose to [[0, 3], [1, 4], [2, 5]]
     let view = arr.transpose_view(None).unwrap(); // None means default reverse axes
     let collected: Vec<_> = view.iter().cloned().collect();
