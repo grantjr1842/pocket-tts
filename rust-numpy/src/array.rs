@@ -195,7 +195,7 @@ impl<T> Array<T> {
         // Create ndarray2 with proper shape
 
         let array2 = ndarray::Array2::from_shape_vec((rows, cols), data.to_vec())
-            .map_err(|e| NumPyError::invalid_operation(&e.to_string()))?;
+            .map_err(|e| NumPyError::invalid_operation(e.to_string()))?;
 
         Ok(array2)
     }
@@ -374,7 +374,7 @@ pub fn compute_strides(shape: &[usize]) -> Vec<isize> {
     let mut stride = 1;
 
     // Compute strides in reverse order
-    for (i, &dim) in shape.iter().rev().enumerate() {
+    for &dim in shape.iter().rev() {
         strides.push(stride as isize);
         stride *= dim;
     }

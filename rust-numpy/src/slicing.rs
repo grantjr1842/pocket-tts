@@ -150,8 +150,9 @@ impl Slice {
             return 0;
         }
 
-        ((actual_stop - actual_start).abs() as usize + step.abs() as usize - 1)
-            / step.abs() as usize
+        (actual_stop - actual_start)
+            .unsigned_abs()
+            .div_ceil(step.unsigned_abs())
     }
 }
 

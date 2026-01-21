@@ -270,7 +270,7 @@ where
         // b is (M,) -> reshape to (M, 1) to allow dot with (K, M)
         // dot expects (M, 1) to produce (K, 1).
         // Since reshape returns new Array, we keep it alive.
-        let b_reshaped = b.reshape(&vec![m, 1])?;
+        let b_reshaped = b.reshape(&[m, 1])?;
         (q_t.dot(&b_reshaped)?, Some(b_reshaped))
     } else {
         (q_t.dot(b)?, None)
@@ -358,7 +358,7 @@ where
     if b_ndim == 1 {
         // Flatten x: (N, 1) -> (N,)
         let x_size: usize = x.shape.iter().product();
-        let x_flat = x.reshape(&vec![x_size])?;
+        let x_flat = x.reshape(&[x_size])?;
         Ok((x_flat, residuals, rank, s))
     } else {
         Ok((x, residuals, rank, s))

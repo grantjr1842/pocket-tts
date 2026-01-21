@@ -18,7 +18,7 @@ use crate::broadcasting::{broadcast_arrays, compute_broadcast_shape};
 use crate::dtype::DtypeKind;
 use crate::error::{NumPyError, Result};
 use crate::ufunc::{get_ufunc, ArrayView, Ufunc};
-use num_traits::{FloatConst, NumCast, Zero};
+use num_traits::{FloatConst, Zero};
 use std::f64::consts;
 use std::marker::PhantomData;
 
