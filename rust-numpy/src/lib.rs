@@ -46,10 +46,12 @@ pub mod dtype;
 #[cfg(test)]
 mod dtype_tests;
 pub mod error;
+pub mod fft;
 pub mod iterator;
 pub mod linalg;
 pub mod math_ufuncs;
 pub mod memory;
+pub mod polynomial;
 pub mod random;
 pub mod set_ops;
 pub mod slicing;
