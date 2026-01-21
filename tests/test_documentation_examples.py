@@ -69,7 +69,7 @@ def make_my_voice_file():
     import requests
 
     url = "https://huggingface.co/kyutai/tts-voices/resolve/main/expresso/ex01-ex02_default_001_channel1_168s.wav"
-    response = requests.get(url)
+    response = requests.get(url, timeout=60)
     with open("my_voice.wav", "wb") as f:
         f.write(response.content)
 

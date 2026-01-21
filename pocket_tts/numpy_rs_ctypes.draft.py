@@ -1,5 +1,8 @@
 import ctypes
+import logging
 from pathlib import Path
+
+logger = logging.getLogger(__name__)
 
 
 class RustLibraryLoader:
@@ -24,7 +27,8 @@ class RustLibraryLoader:
                     try:
                         self._lib = ctypes.CDLL(str(lib_path))
                         return
-                    except Exception:
+                    except Exception as exc:
+                        logger.debug("Failed to load library from %s: %s", lib_path, exc)
                         continue
 
 
