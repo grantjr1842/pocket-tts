@@ -1,7 +1,6 @@
 use crate::array::Array;
 use crate::error::NumPyError;
 use crate::linalg::LinalgScalar;
-use num_complex::Complex;
 use num_traits::{Float, One, Zero};
 
 /// Cholesky decomposition.

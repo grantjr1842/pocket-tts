@@ -130,12 +130,10 @@ where
             ));
         }
         s[axes.len() - 1]
+    } else if input_len == 0 {
+        0
     } else {
-        if input_len == 0 {
-            0
-        } else {
-            2 * (input_len - 1)
-        }
+        2 * (input_len - 1)
     };
 
     if target_len > 0 {
@@ -402,10 +400,10 @@ fn expand_rfft_axis(
     let input_len = shape[axis];
     let expected = if target_len == 0 {
         0
-    } else if target_len % 2 == 0 {
+    } else if target_len.is_multiple_of(2) {
         target_len / 2 + 1
     } else {
-        (target_len + 1) / 2
+        target_len.div_ceil(2)
     };
     if input_len != expected {
         return Err(NumPyError::fft_error(
@@ -427,7 +425,7 @@ fn expand_rfft_axis(
                 line[k] = data[source_idx];
             }
 
-            if target_len % 2 == 0 {
+            if target_len.is_multiple_of(2) {
                 for k in 1..input_len - 1 {
                     line[target_len - k] = line[k].conj();
                 }
@@ -456,9 +454,9 @@ fn apply_hilbert_filter(data: &mut [Complex64], shape: &[usize], axis: usize, le
                 let idx = outer_index * len * inner + k * inner + inner_index;
                 let scale = if k == 0 {
                     1.0
-                } else if len % 2 == 0 && k == len / 2 {
+                } else if len.is_multiple_of(2) && k == len / 2 {
                     1.0
-                } else if k < (len + 1) / 2 {
+                } else if k < len.div_ceil(2) {
                     2.0
                 } else {
                     0.0

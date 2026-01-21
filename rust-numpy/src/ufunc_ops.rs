@@ -152,17 +152,15 @@ impl UfuncEngine {
 
         if let Some(reduction_axes) = axis {
             self.reduce_along_axes(array, &mut output, reduction_axes, &operation)?;
-        } else {
-            if let Some(initial) = array.get(0) {
-                let mut result = initial.clone();
-                for i in 1..array.size() {
-                    if let Some(element) = array.get(i) {
-                        result = operation(result, element.clone());
-                    }
+        } else if let Some(initial) = array.get(0) {
+            let mut result = initial.clone();
+            for i in 1..array.size() {
+                if let Some(element) = array.get(i) {
+                    result = operation(result, element.clone());
                 }
-                if output.size() == 1 {
-                    output.set(0, result)?;
-                }
+            }
+            if output.size() == 1 {
+                output.set(0, result)?;
             }
         }
 

@@ -250,11 +250,9 @@ where
                         if let Some(ref mut cnts) = result_counts {
                             cnts.push(1);
                         }
-                    } else {
-                        if let Some(ref mut cnts) = result_counts {
-                            let last = cnts.len() - 1;
-                            cnts[last] += 1;
-                        }
+                    } else if let Some(ref mut cnts) = result_counts {
+                        let last = cnts.len() - 1;
+                        cnts[last] += 1;
                     }
                     inverse[idx] = current_pos;
                 }
@@ -348,11 +346,9 @@ where
                 if let Some(ref mut cnts) = result_counts {
                     cnts.push(1);
                 }
-            } else {
-                if let Some(ref mut cnts) = result_counts {
-                    let last = cnts.len() - 1;
-                    cnts[last] += 1;
-                }
+            } else if let Some(ref mut cnts) = result_counts {
+                let last = cnts.len() - 1;
+                cnts[last] += 1;
             }
             inverse[idx] = current_pos;
         }
