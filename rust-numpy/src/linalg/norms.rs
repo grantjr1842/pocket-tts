@@ -1,7 +1,7 @@
 use crate::array::Array;
 use crate::error::NumPyError;
 use crate::linalg::LinalgScalar;
-use num_traits::{Float, One, ToPrimitive, Zero};
+use num_traits::{Float, One, Zero};
 
 /// Compute the determinant of an array.
 pub fn det<T>(a: &Array<T>) -> Result<T, NumPyError>

@@ -1,97 +1,68 @@
 use crate::array::Array;
+use crate::broadcasting::broadcast_shape_for_reduce;
 use crate::error::NumPyError;
+use crate::strides::compute_multi_indices;
 use std::cmp::Ordering;
+use std::f64;
 
 pub fn median<T>(
     a: &Array<T>,
-    _axis: Option<&[isize]>,
+    axis: Option<&[isize]>,
     _out: Option<&mut Array<T>>,
     _overwrite_input: bool,
-    _keepdims: bool,
+    keepdims: bool,
 ) -> Result<Array<T>, NumPyError>
 where
     T: Clone + Default + PartialOrd + AsF64 + FromF64 + 'static,
 {
-    if a.is_empty() {
-        return Err(NumPyError::invalid_value(
-            "Cannot compute median of empty array",
-        ));
-    }
+    let q = Array::from_vec(vec![T::from_f64(50.0)]);
+    percentile_internal(a, &q, axis, keepdims, "linear", 100.0, false)
+}
 
-    let data = a.to_vec();
-    let mut sorted = data.clone();
-    sorted.sort_by(|a, b| {
-        a.as_f64()
-            .unwrap_or(0.0)
-            .partial_cmp(&b.as_f64().unwrap_or(0.0))
-            .unwrap_or(Ordering::Equal)
-    });
-
-    let n = sorted.len();
-    let mid = n / 2;
-
-    let median_value = if n.is_multiple_of(2) {
-        (sorted[mid - 1].as_f64().unwrap_or(0.0) + sorted[mid].as_f64().unwrap_or(0.0)) / 2.0
-    } else {
-        sorted[mid].as_f64().unwrap_or(0.0)
-    };
-
-    Ok(Array::from_vec(vec![T::from_f64(median_value)]))
+pub fn nanmedian<T>(
+    a: &Array<T>,
+    axis: Option<&[isize]>,
+    _out: Option<&mut Array<T>>,
+    _overwrite_input: bool,
+    keepdims: bool,
+) -> Result<Array<T>, NumPyError>
+where
+    T: Clone + Default + PartialOrd + AsF64 + FromF64 + 'static,
+{
+    let q = Array::from_vec(vec![T::from_f64(50.0)]);
+    percentile_internal(a, &q, axis, keepdims, "linear", 100.0, true)
 }
 
 pub fn percentile<T>(
     a: &Array<T>,
     q: &Array<T>,
-    _axis: Option<&[isize]>,
+    axis: Option<&[isize]>,
     _out: Option<&mut Array<T>>,
     _overwrite_input: bool,
     _method: &str,
-    _keepdims: bool,
+    keepdims: bool,
     interpolation: &str,
 ) -> Result<Array<T>, NumPyError>
 where
     T: Clone + Default + PartialOrd + AsF64 + FromF64 + 'static,
 {
-    if a.is_empty() {
-        return Err(NumPyError::invalid_value(
-            "Cannot compute percentile of empty array",
-        ));
-    }
+    percentile_internal(a, q, axis, keepdims, interpolation, 100.0, false)
+}
 
-    let mut data = a.to_vec();
-    data.sort_by(|a, b| {
-        a.as_f64()
-            .unwrap_or(0.0)
-            .partial_cmp(&b.as_f64().unwrap_or(0.0))
-            .unwrap_or(Ordering::Equal)
-    });
-
-    let n = data.len();
-    let mut result = vec![T::default(); q.size()];
-
-    for (i, qv) in q.to_vec().iter().enumerate() {
-        if let Some(percentile) = qv.as_f64() {
-            let idx = (percentile / 100.0 * (n as f64 - 1.0) / 100.0) as usize;
-            let idx_clamped = idx.min(n - 1);
-            let value = if interpolation == "nearest" || interpolation == "lower" {
-                data[idx_clamped].as_f64().unwrap_or(0.0)
-            } else if interpolation == "higher" {
-                data[(idx_clamped + 1).min(n - 1)].as_f64().unwrap_or(0.0)
-            } else if interpolation == "midpoint" {
-                (data[idx_clamped].as_f64().unwrap_or(0.0)
-                    + data[(idx_clamped + 1).min(n - 1)].as_f64().unwrap_or(0.0))
-                    / 2.0
-            } else {
-                let lower = data[idx_clamped].as_f64().unwrap_or(0.0);
-                let upper = data[(idx_clamped + 1).min(n - 1)].as_f64().unwrap_or(0.0);
-                let frac = (percentile / 100.0 * (n as f64 - 1.0) / 100.0) - (idx_clamped as f64);
-                lower * (1.0 - frac) + upper * frac
-            };
-            result[i] = T::from_f64(value);
-        }
-    }
-
-    Ok(Array::from_vec(result))
+pub fn nanpercentile<T>(
+    a: &Array<T>,
+    q: &Array<T>,
+    axis: Option<&[isize]>,
+    _out: Option<&mut Array<T>>,
+    _overwrite_input: bool,
+    _method: &str,
+    keepdims: bool,
+    interpolation: &str,
+) -> Result<Array<T>, NumPyError>
+where
+    T: Clone + Default + PartialOrd + AsF64 + FromF64 + 'static,
+{
+    percentile_internal(a, q, axis, keepdims, interpolation, 100.0, true)
 }
 
 pub fn quantile<T>(
@@ -107,16 +78,24 @@ pub fn quantile<T>(
 where
     T: Clone + Default + PartialOrd + AsF64 + FromF64 + 'static,
 {
-    percentile(
-        a,
-        q,
-        axis,
-        out,
-        overwrite_input,
-        method,
-        keepdims,
-        interpolation,
-    )
+    let _ = (out, overwrite_input, method);
+    percentile_internal(a, q, axis, keepdims, interpolation, 1.0, false)
+}
+
+pub fn nanquantile<T>(
+    a: &Array<T>,
+    q: &Array<T>,
+    axis: Option<&[isize]>,
+    _out: Option<&mut Array<T>>,
+    _overwrite_input: bool,
+    _method: &str,
+    keepdims: bool,
+    interpolation: &str,
+) -> Result<Array<T>, NumPyError>
+where
+    T: Clone + Default + PartialOrd + AsF64 + FromF64 + 'static,
+{
+    percentile_internal(a, q, axis, keepdims, interpolation, 1.0, true)
 }
 
 pub fn average<T>(
@@ -634,8 +613,285 @@ where
 pub mod exports {
     pub use super::{
         average, bincount, corrcoef, cov, digitize, histogram, histogram2d, histogramdd, median,
-        percentile, quantile, std, var,
+        nanmedian, nanpercentile, nanquantile, percentile, quantile, std, var,
     };
+}
+
+fn normalize_axes(axis: Option<&[isize]>, ndim: usize) -> Result<Vec<usize>, NumPyError> {
+    match axis {
+        None => Ok((0..ndim).collect()),
+        Some(axes) => {
+            if ndim == 0 {
+                return Err(NumPyError::invalid_operation(
+                    "Cannot specify axis for 0D array",
+                ));
+            }
+
+            let mut normalized: Vec<usize> = axes
+                .iter()
+                .map(|&ax| {
+                    let axis = if ax < 0 { ax + ndim as isize } else { ax };
+                    if axis < 0 || axis >= ndim as isize {
+                        return Err(NumPyError::index_error(axis as usize, ndim));
+                    }
+                    Ok(axis as usize)
+                })
+                .collect::<Result<_, _>>()?;
+
+            normalized.sort_unstable();
+            normalized.dedup();
+            Ok(normalized)
+        }
+    }
+}
+
+fn percentile_internal<T>(
+    a: &Array<T>,
+    q: &Array<T>,
+    axis: Option<&[isize]>,
+    keepdims: bool,
+    interpolation: &str,
+    q_scale: f64,
+    skip_nan: bool,
+) -> Result<Array<T>, NumPyError>
+where
+    T: Clone + Default + PartialOrd + AsF64 + FromF64 + 'static,
+{
+    if a.is_empty() {
+        return Err(NumPyError::invalid_value(
+            "Cannot compute percentile of empty array",
+        ));
+    }
+
+    let q_values = q
+        .to_vec()
+        .into_iter()
+        .map(|value| {
+            value
+                .as_f64()
+                .ok_or_else(|| NumPyError::invalid_value("Invalid percentile value"))
+        })
+        .collect::<Result<Vec<_>, _>>()?;
+
+    let q_shape = q.shape().to_vec();
+    let q_size = q.size();
+    let q_is_scalar = q_size == 1;
+
+    let reduced_axes = normalize_axes(axis, a.ndim())?;
+    let reduction_shape = if axis.is_none() {
+        if keepdims {
+            vec![1; a.ndim()]
+        } else {
+            vec![]
+        }
+    } else {
+        broadcast_shape_for_reduce(a.shape(), axis.unwrap_or(&[]), keepdims)
+    };
+
+    let mut output_shape = if q_is_scalar {
+        reduction_shape.clone()
+    } else {
+        let mut shape = q_shape.clone();
+        shape.extend(reduction_shape.iter().copied());
+        shape
+    };
+
+    if output_shape.is_empty() {
+        output_shape = vec![];
+    }
+
+    let mut output = Array::zeros(output_shape.clone());
+    let reduction_size = if reduction_shape.is_empty() {
+        1
+    } else {
+        reduction_shape.iter().product()
+    };
+
+    for (q_idx, &q_value) in q_values.iter().enumerate() {
+        validate_q_range(q_value, q_scale)?;
+        let normalized_q = q_value / q_scale;
+
+        for output_idx in 0..reduction_size {
+            let output_indices = if reduction_shape.is_empty() {
+                vec![]
+            } else {
+                compute_multi_indices(output_idx, &reduction_shape)
+            };
+
+            let mut values =
+                collect_reduction_values(a, &output_indices, &reduced_axes, keepdims, skip_nan)?;
+
+            if values.is_empty() {
+                let value = if skip_nan { f64::NAN } else { 0.0 };
+                set_output_value(
+                    &mut output,
+                    q_idx,
+                    &q_shape,
+                    &output_indices,
+                    q_is_scalar,
+                    T::from_f64(value),
+                )?;
+                continue;
+            }
+
+            values.sort_by(|a, b| a.partial_cmp(b).unwrap_or(Ordering::Equal));
+            let value = percentile_from_sorted(&values, normalized_q, interpolation)?;
+
+            set_output_value(
+                &mut output,
+                q_idx,
+                &q_shape,
+                &output_indices,
+                q_is_scalar,
+                T::from_f64(value),
+            )?;
+        }
+    }
+
+    Ok(output)
+}
+
+fn validate_q_range(q: f64, scale: f64) -> Result<(), NumPyError> {
+    let (min, max, label) = if (scale - 100.0).abs() < f64::EPSILON {
+        (0.0, 100.0, "Percentiles must be in the range [0, 100]")
+    } else {
+        (0.0, 1.0, "Quantiles must be in the range [0, 1]")
+    };
+
+    if q < min || q > max {
+        return Err(NumPyError::invalid_value(label));
+    }
+
+    Ok(())
+}
+
+fn collect_reduction_values<T>(
+    a: &Array<T>,
+    output_indices: &[usize],
+    reduced_axes: &[usize],
+    keepdims: bool,
+    skip_nan: bool,
+) -> Result<Vec<f64>, NumPyError>
+where
+    T: Clone + AsF64,
+{
+    let mut values = Vec::new();
+
+    for linear_idx in 0..a.size() {
+        let input_indices = compute_multi_indices(linear_idx, a.shape());
+        if should_include_for_reduction(&input_indices, output_indices, reduced_axes, keepdims) {
+            if let Some(value) = a.get(linear_idx).and_then(|val| val.as_f64()) {
+                if skip_nan && value.is_nan() {
+                    continue;
+                }
+                values.push(value);
+            } else {
+                return Err(NumPyError::invalid_value("Invalid data value"));
+            }
+        }
+    }
+
+    Ok(values)
+}
+
+fn should_include_for_reduction(
+    input_indices: &[usize],
+    output_indices: &[usize],
+    reduced_axes: &[usize],
+    keepdims: bool,
+) -> bool {
+    if keepdims {
+        for (dim_idx, &input_dim_val) in input_indices.iter().enumerate() {
+            if reduced_axes.contains(&dim_idx) {
+                continue;
+            }
+            if output_indices.get(dim_idx) != Some(&input_dim_val) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    let mut output_dim_idx = 0;
+    for (dim_idx, &input_dim_val) in input_indices.iter().enumerate() {
+        if reduced_axes.contains(&dim_idx) {
+            continue;
+        }
+        if output_indices.get(output_dim_idx) != Some(&input_dim_val) {
+            return false;
+        }
+        output_dim_idx += 1;
+    }
+
+    true
+}
+
+fn percentile_from_sorted(sorted: &[f64], q: f64, interpolation: &str) -> Result<f64, NumPyError> {
+    if sorted.is_empty() {
+        return Err(NumPyError::invalid_value(
+            "Cannot compute percentile of empty slice",
+        ));
+    }
+
+    if sorted.len() == 1 {
+        return Ok(sorted[0]);
+    }
+
+    let n = sorted.len() as f64;
+    let pos = q * (n - 1.0);
+    let lower_idx = pos.floor() as usize;
+    let upper_idx = pos.ceil() as usize;
+    let frac = pos - lower_idx as f64;
+
+    let lower = sorted[lower_idx];
+    let upper = sorted[upper_idx];
+
+    let value = match interpolation {
+        "lower" => lower,
+        "higher" => upper,
+        "nearest" => {
+            if frac <= 0.5 {
+                lower
+            } else {
+                upper
+            }
+        }
+        "midpoint" => (lower + upper) / 2.0,
+        "linear" => lower * (1.0 - frac) + upper * frac,
+        _ => return Err(NumPyError::invalid_value("Invalid interpolation method")),
+    };
+
+    Ok(value)
+}
+
+fn set_output_value<T>(
+    output: &mut Array<T>,
+    q_idx: usize,
+    q_shape: &[usize],
+    reduction_indices: &[usize],
+    q_is_scalar: bool,
+    value: T,
+) -> Result<(), NumPyError>
+where
+    T: Clone + Default + 'static,
+{
+    if output.shape().is_empty() {
+        return output.set(0, value);
+    }
+
+    let indices = if q_is_scalar {
+        reduction_indices.to_vec()
+    } else {
+        let mut idx = if q_shape.is_empty() {
+            vec![q_idx]
+        } else {
+            compute_multi_indices(q_idx, q_shape)
+        };
+        idx.extend_from_slice(reduction_indices);
+        idx
+    };
+
+    output.set_by_indices(&indices, value)
 }
 
 pub enum ArrayOrInt<'a, T> {
