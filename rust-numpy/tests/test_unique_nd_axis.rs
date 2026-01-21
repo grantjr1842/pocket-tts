@@ -7,9 +7,9 @@
 //
 //! Tests for N-D axis support in unique() function
 
-use numpyrs::array::Array;
-use numpyrs::error::Result;
-use numpyrs::set_ops::unique;
+use numpy::array::Array;
+use numpy::error::Result;
+use numpy::set_ops::unique;
 
 #[test]
 fn test_unique_2d_axis_0() -> Result<()> {
