@@ -2071,7 +2071,164 @@ pub fn register_math_ufuncs(registry: &mut crate::ufunc::UfuncRegistry) {
     )));
 }
 
+/// Compute sinc function: sin(pi*x) / (pi*x)
+/// For x=0, sinc(0) = 1.0
+pub fn sinc<T>(x: &Array<T>) -> Result<Array<T>>
+where
+    T: Clone + Default + num_traits::Float + num_traits::FloatConst + 'static + Send + Sync,
+{
+    let mut data = Vec::with_capacity(x.size());
+    let pi = T::PI();
+    for i in 0..x.size() {
+        if let Some(val) = x.get(i) {
+            if val.is_zero() {
+                data.push(T::one());
+            } else {
+                let pix = pi * *val;
+                data.push(pix.sin() / pix);
+            }
+        }
+    }
+    Ok(Array::from_data(data, x.shape().to_vec()))
+}
+
+/// Modified Bessel function of the first kind, order 0.
+/// This is a polynomial approximation for I0(x).
+pub fn i0<T>(x: &Array<T>) -> Result<Array<T>>
+where
+    T: Clone + Default + num_traits::Float + 'static + Send + Sync,
+{
+    let mut data = Vec::with_capacity(x.size());
+    for i in 0..x.size() {
+        if let Some(val) = x.get(i) {
+            let ax = val.abs();
+            let y: T;
+            if ax < T::from(3.75).unwrap() {
+                let t = ax / T::from(3.75).unwrap();
+                let t2 = t * t;
+                y = T::one()
+                    + t2 * (T::from(3.5156229).unwrap()
+                        + t2 * (T::from(3.0899424).unwrap()
+                            + t2 * (T::from(1.2067492).unwrap()
+                                + t2 * (T::from(0.2659732).unwrap()
+                                    + t2 * (T::from(0.0360768).unwrap()
+                                        + t2 * T::from(0.0045813).unwrap())))));
+            } else {
+                let t = T::from(3.75).unwrap() / ax;
+                y = ax.exp() / ax.sqrt()
+                    * (T::from(0.39894228).unwrap()
+                        + t * (T::from(0.01328592).unwrap()
+                            + t * (T::from(0.00225319).unwrap()
+                                + t * (T::from(-0.00157565).unwrap()
+                                    + t * (T::from(0.00916281).unwrap()
+                                        + t * (T::from(-0.02057706).unwrap()
+                                            + t * (T::from(0.02635537).unwrap()
+                                                + t * (T::from(-0.01647633).unwrap()
+                                                    + t * T::from(0.00392377).unwrap()))))))));
+            }
+            data.push(y);
+        }
+    }
+    Ok(Array::from_data(data, x.shape().to_vec()))
+}
+
+/// Compute the Heaviside step function.
+/// heaviside(x, h0) = 0 if x < 0, h0 if x == 0, 1 if x > 0
+pub fn heaviside<T>(x: &Array<T>, h0: T) -> Result<Array<T>>
+where
+    T: Clone + Default + PartialOrd + num_traits::Zero + num_traits::One + 'static + Send + Sync,
+{
+    let mut data = Vec::with_capacity(x.size());
+    for i in 0..x.size() {
+        if let Some(val) = x.get(i) {
+            if *val < T::zero() {
+                data.push(T::zero());
+            } else if *val > T::zero() {
+                data.push(T::one());
+            } else {
+                data.push(h0.clone());
+            }
+        }
+    }
+    Ok(Array::from_data(data, x.shape().to_vec()))
+}
+
+/// Discrete, linear convolution of two one-dimensional sequences.
+pub fn convolve<T>(a: &Array<T>, v: &Array<T>, mode: &str) -> Result<Array<T>>
+where
+    T: Clone
+        + Default
+        + std::ops::Add<Output = T>
+        + std::ops::Mul<Output = T>
+        + 'static
+        + Send
+        + Sync,
+{
+    let a_data = a.data();
+    let v_data = v.data();
+    let n = a_data.len();
+    let m = v_data.len();
+
+    if n == 0 || m == 0 {
+        return Err(NumPyError::invalid_value(
+            "convolve: inputs must be non-empty",
+        ));
+    }
+
+    let full_len = n + m - 1;
+    let mut full_result = vec![T::default(); full_len];
+
+    for i in 0..n {
+        for j in 0..m {
+            let prod = a_data[i].clone() * v_data[j].clone();
+            full_result[i + j] = full_result[i + j].clone() + prod;
+        }
+    }
+
+    match mode {
+        "full" => Ok(Array::from_vec(full_result)),
+        "same" => {
+            let start = (m - 1) / 2;
+            let end = start + n;
+            Ok(Array::from_vec(full_result[start..end].to_vec()))
+        }
+        "valid" => {
+            if n >= m {
+                let start = m - 1;
+                let end = n;
+                Ok(Array::from_vec(full_result[start..end].to_vec()))
+            } else {
+                let start = n - 1;
+                let end = m;
+                Ok(Array::from_vec(full_result[start..end].to_vec()))
+            }
+        }
+        _ => Err(NumPyError::invalid_value(
+            "mode must be 'full', 'same', or 'valid'",
+        )),
+    }
+}
+
+/// Cross-correlation of two 1-dimensional sequences.
+pub fn correlate<T>(a: &Array<T>, v: &Array<T>, mode: &str) -> Result<Array<T>>
+where
+    T: Clone
+        + Default
+        + std::ops::Add<Output = T>
+        + std::ops::Mul<Output = T>
+        + 'static
+        + Send
+        + Sync,
+{
+    // correlate(a, v) = convolve(a, v[::-1])
+    let v_data = v.data();
+    let v_reversed: Vec<T> = v_data.iter().rev().cloned().collect();
+    let v_rev = Array::from_vec(v_reversed);
+    convolve(a, &v_rev, mode)
+}
+
 #[cfg(test)]
+
 mod tests {
     use super::*;
     use crate::array::Array;
