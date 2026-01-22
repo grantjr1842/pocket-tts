@@ -625,7 +625,7 @@ where
 /// Find the set difference of two arrays.
 ///
 /// Return the unique values in `ar1` that are not in `ar2`.
-pub fn setdiff1d<T>(ar1: &Array<T>, ar2: &Array<T>, _assume_unique: bool) -> Result<Array<T>>
+pub fn setdiff1d<T>(ar1: &Array<T>, ar2: &Array<T>, assume_unique: bool) -> Result<Array<T>>
 where
     T: SetElement + Clone + Default + 'static,
 {
@@ -638,14 +638,27 @@ where
         }
     }
 
-    // Get unique elements of ar1
-    let u1 = unique(ar1, false, false, false, None)?;
-
     let mut result = Vec::new();
-    for i in 0..u1.values.size() {
-        let val = u1.values.get_linear(i).unwrap();
-        if !set2.contains(&HashWrapper(val)) {
-            result.push(val.clone());
+
+    if assume_unique {
+        // Skip unique() call - ar1 already contains unique values
+        for i in 0..ar1.size() {
+            let val = ar1.get_linear(i).unwrap();
+            if !set2.contains(&HashWrapper(val)) {
+                result.push(val.clone());
+            }
+        }
+        // Sort for consistent output
+        result.sort_by(|a, b| a.compare(b));
+    } else {
+        // Get unique elements of ar1
+        let u1 = unique(ar1, false, false, false, None)?;
+
+        for i in 0..u1.values.size() {
+            let val = u1.values.get_linear(i).unwrap();
+            if !set2.contains(&HashWrapper(val)) {
+                result.push(val.clone());
+            }
         }
     }
 
@@ -655,44 +668,69 @@ where
 /// Find the set exclusive-or of two arrays.
 ///
 /// Return the sorted, unique values that are in only one (not both) of the input arrays.
-pub fn setxor1d<T>(ar1: &Array<T>, ar2: &Array<T>, _assume_unique: bool) -> Result<Array<T>>
+pub fn setxor1d<T>(ar1: &Array<T>, ar2: &Array<T>, assume_unique: bool) -> Result<Array<T>>
 where
     T: SetElement + Clone + Default + 'static,
 {
     use std::collections::HashSet;
 
-    // Count occurrences across both arrays (treating each array as a set of unique values first)
-
-    // Actually, simply: (union) - (intersection)
-
-    let u1 = unique(ar1, false, false, false, None)?;
-    let u2 = unique(ar2, false, false, false, None)?;
-
-    let mut set1 = HashSet::with_capacity(u1.values.size());
-    for i in 0..u1.values.size() {
-        set1.insert(HashWrapper(u1.values.get_linear(i).unwrap()));
-    }
-
-    let mut set2 = HashSet::with_capacity(u2.values.size());
-    for i in 0..u2.values.size() {
-        set2.insert(HashWrapper(u2.values.get_linear(i).unwrap()));
-    }
-
     let mut result_vec = Vec::new();
 
-    // In u1 but not u2
-    for i in 0..u1.values.size() {
-        let val = u1.values.get_linear(i).unwrap();
-        if !set2.contains(&HashWrapper(val)) {
-            result_vec.push(val.clone());
+    if assume_unique {
+        // Skip unique() calls - inputs already contain unique values
+        let mut set1 = HashSet::with_capacity(ar1.size());
+        for i in 0..ar1.size() {
+            set1.insert(HashWrapper(ar1.get_linear(i).unwrap()));
         }
-    }
 
-    // In u2 but not u1
-    for i in 0..u2.values.size() {
-        let val = u2.values.get_linear(i).unwrap();
-        if !set1.contains(&HashWrapper(val)) {
-            result_vec.push(val.clone());
+        let mut set2 = HashSet::with_capacity(ar2.size());
+        for i in 0..ar2.size() {
+            set2.insert(HashWrapper(ar2.get_linear(i).unwrap()));
+        }
+
+        // In ar1 but not ar2
+        for i in 0..ar1.size() {
+            let val = ar1.get_linear(i).unwrap();
+            if !set2.contains(&HashWrapper(val)) {
+                result_vec.push(val.clone());
+            }
+        }
+
+        // In ar2 but not ar1
+        for i in 0..ar2.size() {
+            let val = ar2.get_linear(i).unwrap();
+            if !set1.contains(&HashWrapper(val)) {
+                result_vec.push(val.clone());
+            }
+        }
+    } else {
+        let u1 = unique(ar1, false, false, false, None)?;
+        let u2 = unique(ar2, false, false, false, None)?;
+
+        let mut set1 = HashSet::with_capacity(u1.values.size());
+        for i in 0..u1.values.size() {
+            set1.insert(HashWrapper(u1.values.get_linear(i).unwrap()));
+        }
+
+        let mut set2 = HashSet::with_capacity(u2.values.size());
+        for i in 0..u2.values.size() {
+            set2.insert(HashWrapper(u2.values.get_linear(i).unwrap()));
+        }
+
+        // In u1 but not u2
+        for i in 0..u1.values.size() {
+            let val = u1.values.get_linear(i).unwrap();
+            if !set2.contains(&HashWrapper(val)) {
+                result_vec.push(val.clone());
+            }
+        }
+
+        // In u2 but not u1
+        for i in 0..u2.values.size() {
+            let val = u2.values.get_linear(i).unwrap();
+            if !set1.contains(&HashWrapper(val)) {
+                result_vec.push(val.clone());
+            }
         }
     }
 
