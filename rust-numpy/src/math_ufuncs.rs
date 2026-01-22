@@ -17,7 +17,7 @@ use crate::array::Array;
 use crate::broadcasting::{broadcast_arrays, compute_broadcast_shape};
 use crate::dtype::DtypeKind;
 use crate::error::{NumPyError, Result};
-use crate::ufunc::{get_ufunc, Ufunc};
+use crate::ufunc::{get_ufunc, get_ufunc_typed, Ufunc};
 use num_traits::{FloatConst, Zero};
 use std::f64::consts;
 use std::marker::PhantomData;
@@ -1427,6 +1427,191 @@ where
     }
 }
 
+// Floating-point checking functions
+
+/// Floating-point checking ufunc that returns boolean array
+pub struct FloatCheckUfunc<T, F>
+where
+    T: Clone + 'static,
+    F: Fn(&T) -> bool + Send + Sync,
+{
+    name: &'static str,
+    operation: F,
+    phantom: PhantomData<T>,
+}
+
+impl<T, F> FloatCheckUfunc<T, F>
+where
+    T: Clone + 'static,
+    F: Fn(&T) -> bool + Send + Sync,
+{
+    pub fn new(name: &'static str, operation: F) -> Self {
+        Self {
+            name,
+            operation,
+            phantom: PhantomData,
+        }
+    }
+}
+
+impl<T, F> Ufunc for FloatCheckUfunc<T, F>
+where
+    T: Clone + 'static + Send + Sync,
+    F: Fn(&T) -> bool + Send + Sync,
+{
+    fn name(&self) -> &'static str {
+        self.name
+    }
+
+    fn nin(&self) -> usize {
+        1
+    }
+
+    fn nout(&self) -> usize {
+        1
+    }
+
+    fn supported_dtypes(&self) -> &[DtypeKind] {
+        &[DtypeKind::Float, DtypeKind::Complex]
+    }
+
+    fn type_signature(&self) -> String {
+        format!("{}({})", self.name, std::any::type_name::<T>())
+    }
+
+    fn matches_concrete_types(&self, input_types: &[&'static str]) -> bool {
+        input_types.len() == 1 && input_types[0] == std::any::type_name::<T>()
+    }
+
+    fn input_dtypes(&self) -> Vec<crate::dtype::Dtype> {
+        vec![crate::dtype::Dtype::from_type::<T>()]
+    }
+
+    fn execute(
+        &self,
+        inputs: &[&dyn crate::ufunc::ArrayView],
+        outputs: &mut [&mut dyn crate::ufunc::ArrayViewMut],
+    ) -> Result<()> {
+        if inputs.len() != 1 || outputs.len() != 1 {
+            return Err(NumPyError::ufunc_error(
+                self.name(),
+                format!(
+                    "Expected 1 input, 1 output, got {} inputs, {} outputs",
+                    inputs.len(),
+                    outputs.len()
+                ),
+            ));
+        }
+
+        let input = unsafe { &*(inputs[0] as *const _ as *const Array<T>) };
+        let output = unsafe { &mut *(outputs[0] as *mut _ as *mut Array<bool>) };
+
+        for i in 0..input.size() {
+            if let Some(a) = input.get(i) {
+                let result = (self.operation)(a);
+                output.set(i, result)?;
+            }
+        }
+
+        Ok(())
+    }
+}
+
+/// Test element-wise for NaN and return result as a boolean array
+pub fn isnan<T>(x: &Array<T>) -> Result<Array<bool>>
+where
+    T: Clone + 'static + Send + Sync,
+{
+    if let Some(ufunc) = get_ufunc_typed::<T>("isnan") {
+        let mut output = Array::from_data(vec![false; x.size()], x.shape().to_vec());
+        let x_ref: &dyn crate::ufunc::ArrayView = x;
+        let out_ref: &mut dyn crate::ufunc::ArrayViewMut = &mut output;
+        ufunc.execute(&[x_ref], &mut [out_ref])?;
+        Ok(output)
+    } else {
+        Err(NumPyError::ufunc_error(
+            "isnan",
+            "Ufunc not found".to_string(),
+        ))
+    }
+}
+
+/// Test element-wise for positive or negative infinity and return result as a boolean array
+pub fn isinf<T>(x: &Array<T>) -> Result<Array<bool>>
+where
+    T: Clone + 'static + Send + Sync,
+{
+    if let Some(ufunc) = get_ufunc_typed::<T>("isinf") {
+        let mut output = Array::from_data(vec![false; x.size()], x.shape().to_vec());
+        let x_ref: &dyn crate::ufunc::ArrayView = x;
+        let out_ref: &mut dyn crate::ufunc::ArrayViewMut = &mut output;
+        ufunc.execute(&[x_ref], &mut [out_ref])?;
+        Ok(output)
+    } else {
+        Err(NumPyError::ufunc_error(
+            "isinf",
+            "Ufunc not found".to_string(),
+        ))
+    }
+}
+
+/// Test element-wise for finiteness (not NaN or infinity) and return result as a boolean array
+pub fn isfinite<T>(x: &Array<T>) -> Result<Array<bool>>
+where
+    T: Clone + 'static + Send + Sync,
+{
+    if let Some(ufunc) = get_ufunc_typed::<T>("isfinite") {
+        let mut output = Array::from_data(vec![false; x.size()], x.shape().to_vec());
+        let x_ref: &dyn crate::ufunc::ArrayView = x;
+        let out_ref: &mut dyn crate::ufunc::ArrayViewMut = &mut output;
+        ufunc.execute(&[x_ref], &mut [out_ref])?;
+        Ok(output)
+    } else {
+        Err(NumPyError::ufunc_error(
+            "isfinite",
+            "Ufunc not found".to_string(),
+        ))
+    }
+}
+
+/// Test element-wise for negative infinity and return result as a boolean array
+pub fn isneginf<T>(x: &Array<T>) -> Result<Array<bool>>
+where
+    T: Clone + 'static + Send + Sync,
+{
+    if let Some(ufunc) = get_ufunc_typed::<T>("isneginf") {
+        let mut output = Array::from_data(vec![false; x.size()], x.shape().to_vec());
+        let x_ref: &dyn crate::ufunc::ArrayView = x;
+        let out_ref: &mut dyn crate::ufunc::ArrayViewMut = &mut output;
+        ufunc.execute(&[x_ref], &mut [out_ref])?;
+        Ok(output)
+    } else {
+        Err(NumPyError::ufunc_error(
+            "isneginf",
+            "Ufunc not found".to_string(),
+        ))
+    }
+}
+
+/// Test element-wise for positive infinity and return result as a boolean array
+pub fn isposinf<T>(x: &Array<T>) -> Result<Array<bool>>
+where
+    T: Clone + 'static + Send + Sync,
+{
+    if let Some(ufunc) = get_ufunc_typed::<T>("isposinf") {
+        let mut output = Array::from_data(vec![false; x.size()], x.shape().to_vec());
+        let x_ref: &dyn crate::ufunc::ArrayView = x;
+        let out_ref: &mut dyn crate::ufunc::ArrayViewMut = &mut output;
+        ufunc.execute(&[x_ref], &mut [out_ref])?;
+        Ok(output)
+    } else {
+        Err(NumPyError::ufunc_error(
+            "isposinf",
+            "Ufunc not found".to_string(),
+        ))
+    }
+}
+
 /// Register all mathematical ufuncs
 pub fn register_math_ufuncs(registry: &mut crate::ufunc::UfuncRegistry) {
     // Trigonometric functions
@@ -1808,6 +1993,82 @@ pub fn register_math_ufuncs(registry: &mut crate::ufunc::UfuncRegistry) {
             x.ceil()
         }
     })));
+
+    // Floating-point checking functions
+    registry.register(Box::new(FloatCheckUfunc::new("isnan", |x: &f32| {
+        x.is_nan()
+    })));
+    registry.register(Box::new(FloatCheckUfunc::new("isnan", |x: &f64| {
+        x.is_nan()
+    })));
+    registry.register(Box::new(FloatCheckUfunc::new(
+        "isnan",
+        |x: &num_complex::Complex32| x.re.is_nan() || x.im.is_nan(),
+    )));
+    registry.register(Box::new(FloatCheckUfunc::new(
+        "isnan",
+        |x: &num_complex::Complex64| x.re.is_nan() || x.im.is_nan(),
+    )));
+
+    registry.register(Box::new(FloatCheckUfunc::new("isinf", |x: &f32| {
+        x.is_infinite()
+    })));
+    registry.register(Box::new(FloatCheckUfunc::new("isinf", |x: &f64| {
+        x.is_infinite()
+    })));
+    registry.register(Box::new(FloatCheckUfunc::new(
+        "isinf",
+        |x: &num_complex::Complex32| x.re.is_infinite() || x.im.is_infinite(),
+    )));
+    registry.register(Box::new(FloatCheckUfunc::new(
+        "isinf",
+        |x: &num_complex::Complex64| x.re.is_infinite() || x.im.is_infinite(),
+    )));
+
+    registry.register(Box::new(FloatCheckUfunc::new("isfinite", |x: &f32| {
+        x.is_finite()
+    })));
+    registry.register(Box::new(FloatCheckUfunc::new("isfinite", |x: &f64| {
+        x.is_finite()
+    })));
+    registry.register(Box::new(FloatCheckUfunc::new(
+        "isfinite",
+        |x: &num_complex::Complex32| x.re.is_finite() && x.im.is_finite(),
+    )));
+    registry.register(Box::new(FloatCheckUfunc::new(
+        "isfinite",
+        |x: &num_complex::Complex64| x.re.is_finite() && x.im.is_finite(),
+    )));
+
+    registry.register(Box::new(FloatCheckUfunc::new("isneginf", |x: &f32| {
+        *x == f32::NEG_INFINITY
+    })));
+    registry.register(Box::new(FloatCheckUfunc::new("isneginf", |x: &f64| {
+        *x == f64::NEG_INFINITY
+    })));
+    registry.register(Box::new(FloatCheckUfunc::new(
+        "isneginf",
+        |x: &num_complex::Complex32| x.re == f32::NEG_INFINITY,
+    )));
+    registry.register(Box::new(FloatCheckUfunc::new(
+        "isneginf",
+        |x: &num_complex::Complex64| x.re == f64::NEG_INFINITY,
+    )));
+
+    registry.register(Box::new(FloatCheckUfunc::new("isposinf", |x: &f32| {
+        *x == f32::INFINITY
+    })));
+    registry.register(Box::new(FloatCheckUfunc::new("isposinf", |x: &f64| {
+        *x == f64::INFINITY
+    })));
+    registry.register(Box::new(FloatCheckUfunc::new(
+        "isposinf",
+        |x: &num_complex::Complex32| x.re == f32::INFINITY,
+    )));
+    registry.register(Box::new(FloatCheckUfunc::new(
+        "isposinf",
+        |x: &num_complex::Complex64| x.re == f64::INFINITY,
+    )));
 }
 
 #[cfg(test)]
@@ -1863,5 +2124,94 @@ mod tests {
         assert_eq!(floor_result.size(), 3);
         assert_eq!(ceil_result.size(), 3);
         assert_eq!(round_result.size(), 3);
+    }
+
+    #[test]
+    fn test_isnan() {
+        let x = Array::from_data(vec![1.0, f64::NAN, 3.0], vec![3]);
+
+        let result = isnan(&x).unwrap();
+
+        assert_eq!(result.size(), 3);
+        assert!(!result.get(0).unwrap()); // 1.0 is not NaN
+        assert!(result.get(1).unwrap()); // NaN is NaN
+        assert!(!result.get(2).unwrap()); // 3.0 is not NaN
+    }
+
+    #[test]
+    fn test_isinf() {
+        let x = Array::from_data(vec![1.0, f64::INFINITY, f64::NEG_INFINITY], vec![3]);
+
+        let result = isinf(&x).unwrap();
+
+        assert_eq!(result.size(), 3);
+        assert!(!result.get(0).unwrap()); // 1.0 is not infinite
+        assert!(result.get(1).unwrap()); // INFINITY is infinite
+        assert!(result.get(2).unwrap()); // NEG_INFINITY is infinite
+    }
+
+    #[test]
+    fn test_isfinite() {
+        let x = Array::from_data(vec![1.0, f64::NAN, f64::INFINITY], vec![3]);
+
+        let result = isfinite(&x).unwrap();
+
+        assert_eq!(result.size(), 3);
+        assert!(result.get(0).unwrap()); // 1.0 is finite
+        assert!(!result.get(1).unwrap()); // NaN is not finite
+        assert!(!result.get(2).unwrap()); // INFINITY is not finite
+    }
+
+    #[test]
+    fn test_isneginf() {
+        let x = Array::from_data(vec![1.0, f64::NEG_INFINITY, f64::INFINITY], vec![3]);
+
+        let result = isneginf(&x).unwrap();
+
+        assert_eq!(result.size(), 3);
+        assert!(!result.get(0).unwrap()); // 1.0 is not negative infinity
+        assert!(result.get(1).unwrap()); // NEG_INFINITY is negative infinity
+        assert!(!result.get(2).unwrap()); // INFINITY is not negative infinity
+    }
+
+    #[test]
+    fn test_isposinf() {
+        let x = Array::from_data(vec![1.0, f64::INFINITY, f64::NEG_INFINITY], vec![3]);
+
+        let result = isposinf(&x).unwrap();
+
+        assert_eq!(result.size(), 3);
+        assert!(!result.get(0).unwrap()); // 1.0 is not positive infinity
+        assert!(result.get(1).unwrap()); // INFINITY is positive infinity
+        assert!(!result.get(2).unwrap()); // NEG_INFINITY is not positive infinity
+    }
+
+    #[test]
+    fn test_float_check_edge_cases() {
+        // Test with complex numbers containing NaN/Inf
+        let x = Array::from_data(
+            vec![
+                num_complex::Complex64::new(1.0, 2.0),
+                num_complex::Complex64::new(f64::NAN, 2.0),
+                num_complex::Complex64::new(1.0, f64::INFINITY),
+            ],
+            vec![3],
+        );
+
+        let isnan_result = isnan(&x).unwrap();
+        let isinf_result = isinf(&x).unwrap();
+        let isfinite_result = isfinite(&x).unwrap();
+
+        assert!(!isnan_result.get(0).unwrap()); // (1.0, 2.0) is not NaN
+        assert!(isnan_result.get(1).unwrap()); // (NaN, 2.0) has NaN in real part
+        assert!(!isnan_result.get(2).unwrap()); // (1.0, Inf) is not NaN
+
+        assert!(!isinf_result.get(0).unwrap()); // (1.0, 2.0) is not infinite
+        assert!(!isinf_result.get(1).unwrap()); // (NaN, 2.0) - NaN is not Inf
+        assert!(isinf_result.get(2).unwrap()); // (1.0, Inf) has infinite imag part
+
+        assert!(isfinite_result.get(0).unwrap()); // (1.0, 2.0) is finite
+        assert!(!isfinite_result.get(1).unwrap()); // (NaN, 2.0) is not finite (NaN)
+        assert!(!isfinite_result.get(2).unwrap()); // (1.0, Inf) is not finite (Inf)
     }
 }
