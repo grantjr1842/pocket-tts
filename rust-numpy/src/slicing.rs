@@ -285,28 +285,30 @@ where
         self.reshape(&new_shape)
     }
 
-    /// Advanced indexing with mixed types (arr[1, :, :5])
     pub fn advanced_index(&self, indices: &[crate::slicing::Index]) -> Result<Self> {
-        // Handle mixed indexing types
-        let mut expanded_indices = Vec::new();
+        // For now, if all indices are integers or boolean, we can handle it.
+        // Mixed with slices is still complex.
+
+        let mut has_slice = false;
+
         for idx in indices {
             match idx {
-                crate::slicing::Index::Integer(i) => {
-                    expanded_indices.push(Index::Integer(*i));
+                crate::slicing::Index::Integer(_) => {}
+                crate::slicing::Index::Slice(_) => {
+                    has_slice = true;
                 }
-                Index::Slice(slice) => {
-                    expanded_indices.push(crate::slicing::Index::Slice(slice.clone()));
-                }
-                Index::Ellipsis => {
-                    expanded_indices.push(Index::Ellipsis);
-                }
-                crate::slicing::Index::Boolean(b) => {
-                    expanded_indices.push(Index::Boolean(*b));
+                _ => {
+                    has_slice = true;
                 }
             }
         }
 
-        self.ellipsis_index(&expanded_indices)
+        if !has_slice && indices.len() == self.ndim() {
+            // Simplified: if all are integers, we could use fancy_index by creating 1-elem arrays
+            // But usually this just returns a scalar or reduced-dim array.
+        }
+
+        self.ellipsis_index(indices)
     }
 
     /// Multi-dimensional indexing (arr[1:3, 5:, ::-1])
