@@ -390,6 +390,11 @@ where
     T: Clone + Default + Send + Sync + 'static,
 {
     let ndim = array.ndim();
+    if ndim < 2 {
+        return Err(NumPyError::invalid_value(
+            "diagonal requires at least 2D array",
+        ));
+    }
     let axis1 = normalize_axis(axis1 as isize, ndim)?;
     let axis2 = normalize_axis(axis2 as isize, ndim)?;
     let dim1 = array.shape()[axis1];
@@ -409,6 +414,37 @@ where
         c += 1;
     }
     Ok(Array::from_vec(diag))
+}
+
+/// Extract a diagonal or construct a diagonal array.
+///
+/// If `array` is 2-D, return the diagonal elements (main or offset diagonal).
+/// If `array` is 1-D, return a 2-D array with the input as diagonal.
+pub fn diag<T>(array: &Array<T>, k: isize) -> Result<Array<T>>
+where
+    T: Clone + Default + Send + Sync + 'static,
+{
+    let ndim = array.ndim();
+    if ndim == 1 {
+        // Construct a 2D array with array on the k-th diagonal
+        let n = array.shape()[0];
+        let size = n + k.unsigned_abs();
+        let mut data = vec![T::default(); size * size];
+        for i in 0..n {
+            let (row, col) = if k >= 0 {
+                (i, i + k as usize)
+            } else {
+                (i + (-k) as usize, i)
+            };
+            data[row * size + col] = array.get_linear(i).cloned().unwrap_or_default();
+        }
+        Ok(Array::from_shape_vec(vec![size, size], data))
+    } else if ndim == 2 {
+        // Extract the k-th diagonal
+        diagonal(array, k, 0, 1)
+    } else {
+        Err(NumPyError::invalid_value("diag requires 1D or 2D array"))
+    }
 }
 
 /// Return the upper triangle of an array.
@@ -461,8 +497,81 @@ where
     Ok(result)
 }
 
+/// Stack 1-D arrays as columns into a 2-D array.
+///
+/// Takes a sequence of 1-D arrays and stacks them as columns to make a single 2-D array.
+/// 2-D arrays are stacked as-is, just like with hstack.
+pub fn column_stack<T>(arrays: &[&Array<T>]) -> Result<Array<T>>
+where
+    T: Clone + Default + Send + Sync + 'static,
+{
+    if arrays.is_empty() {
+        return Err(NumPyError::invalid_value(
+            "column_stack: must provide at least one array",
+        ));
+    }
+
+    let mut promoted = Vec::new();
+    for arr in arrays {
+        if arr.ndim() == 1 {
+            // Reshape 1-D to (n, 1)
+            let n = arr.shape()[0];
+            promoted.push(arr.reshape(&[n, 1])?);
+        } else {
+            promoted.push((*arr).clone());
+        }
+    }
+    let refs: Vec<&Array<T>> = promoted.iter().collect();
+    hstack(&refs)
+}
+
+/// Stack arrays in sequence vertically (row wise).
+///
+/// This is equivalent to concatenation along the first axis.
+/// row_stack is an alias for vstack.
+pub fn row_stack<T>(arrays: &[&Array<T>]) -> Result<Array<T>>
+where
+    T: Clone + Default + Send + Sync + 'static,
+{
+    vstack(arrays)
+}
+
+/// Assemble an nd-array from nested sequences of blocks.
+///
+/// Blocks in the innermost lists are concatenated along the last axis (-1),
+/// then these are concatenated along the second-last axis (-2), etc.
+pub fn block<T>(arrays: &[&[&Array<T>]]) -> Result<Array<T>>
+where
+    T: Clone + Default + Send + Sync + 'static,
+{
+    if arrays.is_empty() {
+        return Err(NumPyError::invalid_value(
+            "block: must provide at least one row of arrays",
+        ));
+    }
+
+    // First, concatenate each row along axis 1 (horizontally)
+    let mut rows = Vec::new();
+    for row in arrays {
+        if row.is_empty() {
+            return Err(NumPyError::invalid_value(
+                "block: each row must have at least one array",
+            ));
+        }
+        let row_result = hstack(row)?;
+        rows.push(row_result);
+    }
+
+    // Then concatenate all rows along axis 0 (vertically)
+    let refs: Vec<&Array<T>> = rows.iter().collect();
+    vstack(&refs)
+}
+
 pub mod exports {
-    pub use super::{tril, triu};
+    pub use super::{
+        array_split, block, column_stack, concatenate, diag, diagonal, dsplit, dstack, hsplit,
+        hstack, row_stack, split, stack, tril, triu, vsplit, vstack,
+    };
 }
 
 fn normalize_axis(axis: isize, ndim: usize) -> Result<usize> {
