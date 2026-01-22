@@ -131,6 +131,7 @@ where
         &self,
         inputs: &[&dyn crate::ufunc::ArrayView],
         outputs: &mut [&mut dyn crate::ufunc::ArrayViewMut],
+        where_mask: Option<&Array<bool>>,
     ) -> Result<()> {
         if inputs.len() != 1 || outputs.len() != 1 {
             return Err(NumPyError::ufunc_error(
@@ -146,10 +147,22 @@ where
         let input = unsafe { &*(inputs[0] as *const _ as *const Array<T>) };
         let output = unsafe { &mut *(outputs[0] as *mut _ as *mut Array<T>) };
 
+        // Handle where_mask
+        let mask = if let Some(m) = where_mask {
+            Some(crate::broadcasting::broadcast_to(m, output.shape())?)
+        } else {
+            None
+        };
+
         for i in 0..input.size() {
-            if let Some(a) = input.get(i) {
-                let result = (self.operation)(a);
-                output.set(i, result)?;
+            if mask
+                .as_ref()
+                .map_or(true, |m| *m.get_linear(i).unwrap_or(&false))
+            {
+                if let Some(a) = input.get(i) {
+                    let result = (self.operation)(a);
+                    output.set(i, result)?;
+                }
             }
         }
 
@@ -222,6 +235,7 @@ where
         &self,
         inputs: &[&dyn crate::ufunc::ArrayView],
         outputs: &mut [&mut dyn crate::ufunc::ArrayViewMut],
+        where_mask: Option<&Array<bool>>,
     ) -> Result<()> {
         if inputs.len() != 2 || outputs.len() != 1 {
             return Err(NumPyError::ufunc_error(
@@ -238,19 +252,26 @@ where
         let input1 = unsafe { &*(inputs[1] as *const _ as *const Array<T>) };
         let output = unsafe { &mut *(outputs[0] as *mut _ as *mut Array<T>) };
 
-        let shape0 = input0.shape();
-        let shape1 = input1.shape();
-        let broadcast_shape = compute_broadcast_shape(shape0, shape1);
+        // Handle where_mask
+        let mask = if let Some(m) = where_mask {
+            Some(crate::broadcasting::broadcast_to(m, output.shape())?)
+        } else {
+            None
+        };
 
         let broadcasted = broadcast_arrays(&[input0, input1])?;
-
         let arr0 = &broadcasted[0];
         let arr1 = &broadcasted[1];
 
-        for i in 0..broadcast_shape.iter().product::<usize>() {
-            if let (Some(a), Some(b)) = (arr0.get(i), arr1.get(i)) {
-                let result = (self.operation)(a, b);
-                output.set(i, result)?;
+        for i in 0..output.size() {
+            if mask
+                .as_ref()
+                .map_or(true, |m| *m.get_linear(i).unwrap_or(&false))
+            {
+                if let (Some(a), Some(b)) = (arr0.get(i), arr1.get(i)) {
+                    let result = (self.operation)(a, b);
+                    output.set(i, result)?;
+                }
             }
         }
 
@@ -320,6 +341,7 @@ where
         &self,
         inputs: &[&dyn crate::ufunc::ArrayView],
         outputs: &mut [&mut dyn crate::ufunc::ArrayViewMut],
+        where_mask: Option<&Array<bool>>,
     ) -> Result<()> {
         if inputs.len() != 1 || outputs.len() != 1 {
             return Err(NumPyError::ufunc_error(
@@ -335,10 +357,22 @@ where
         let input = unsafe { &*(inputs[0] as *const _ as *const Array<T>) };
         let output = unsafe { &mut *(outputs[0] as *mut _ as *mut Array<T>) };
 
+        // Handle where_mask
+        let mask = if let Some(m) = where_mask {
+            Some(crate::broadcasting::broadcast_to(m, output.shape())?)
+        } else {
+            None
+        };
+
         for i in 0..input.size() {
-            if let Some(a) = input.get(i) {
-                let result = (self.operation)(a)?;
-                output.set(i, result)?;
+            if mask
+                .as_ref()
+                .map_or(true, |m| *m.get_linear(i).unwrap_or(&false))
+            {
+                if let Some(a) = input.get(i) {
+                    let result = (self.operation)(a)?;
+                    output.set(i, result)?;
+                }
             }
         }
 
@@ -728,7 +762,7 @@ where
 
     if let Some(ufunc) = get_ufunc("sin") {
         let mut output = Array::from_data(vec![T::default(); x.size()], x.shape().to_vec());
-        ufunc.execute(&[x], &mut [&mut output])?;
+        ufunc.execute(&[x], &mut [&mut output], None)?;
         Ok(output)
     } else {
         Err(NumPyError::ufunc_error(
@@ -745,7 +779,7 @@ where
 {
     if let Some(ufunc) = get_ufunc("sin") {
         let mut output = Array::from_data(vec![T::default(); x.size()], x.shape().to_vec());
-        ufunc.execute(&[x], &mut [&mut output])?;
+        ufunc.execute(&[x], &mut [&mut output], None)?;
         Ok(output)
     } else {
         Err(NumPyError::ufunc_error(
@@ -789,7 +823,7 @@ where
 {
     if let Some(ufunc) = get_ufunc("cos") {
         let mut output = Array::from_data(vec![T::default(); x.size()], x.shape().to_vec());
-        ufunc.execute(&[x], &mut [&mut output])?;
+        ufunc.execute(&[x], &mut [&mut output], None)?;
         Ok(output)
     } else {
         Err(NumPyError::ufunc_error(
@@ -806,7 +840,7 @@ where
 {
     if let Some(ufunc) = get_ufunc("cos") {
         let mut output = Array::from_data(vec![T::default(); x.size()], x.shape().to_vec());
-        ufunc.execute(&[x], &mut [&mut output])?;
+        ufunc.execute(&[x], &mut [&mut output], None)?;
         Ok(output)
     } else {
         Err(NumPyError::ufunc_error(
@@ -823,7 +857,7 @@ where
 {
     if let Some(ufunc) = get_ufunc("tan") {
         let mut output = Array::from_data(vec![T::default(); x.size()], x.shape().to_vec());
-        ufunc.execute(&[x], &mut [&mut output])?;
+        ufunc.execute(&[x], &mut [&mut output], None)?;
         Ok(output)
     } else {
         Err(NumPyError::ufunc_error(
@@ -840,7 +874,7 @@ where
 {
     if let Some(ufunc) = get_ufunc("arcsin") {
         let mut output = Array::from_data(vec![T::default(); x.size()], x.shape().to_vec());
-        ufunc.execute(&[x], &mut [&mut output])?;
+        ufunc.execute(&[x], &mut [&mut output], None)?;
         Ok(output)
     } else {
         Err(NumPyError::ufunc_error(
@@ -857,7 +891,7 @@ where
 {
     if let Some(ufunc) = get_ufunc("arccos") {
         let mut output = Array::from_data(vec![T::default(); x.size()], x.shape().to_vec());
-        ufunc.execute(&[x], &mut [&mut output])?;
+        ufunc.execute(&[x], &mut [&mut output], None)?;
         Ok(output)
     } else {
         Err(NumPyError::ufunc_error(
@@ -874,7 +908,7 @@ where
 {
     if let Some(ufunc) = get_ufunc("arctan") {
         let mut output = Array::from_data(vec![T::default(); x.size()], x.shape().to_vec());
-        ufunc.execute(&[x], &mut [&mut output])?;
+        ufunc.execute(&[x], &mut [&mut output], None)?;
         Ok(output)
     } else {
         Err(NumPyError::ufunc_error(
@@ -895,7 +929,7 @@ where
             vec![T::default(); broadcast_shape.iter().product::<usize>()],
             broadcast_shape,
         );
-        ufunc.execute(&[x1, x2], &mut [&mut output])?;
+        ufunc.execute(&[x1, x2], &mut [&mut output], None)?;
         Ok(output)
     } else {
         Err(NumPyError::ufunc_error(
@@ -916,7 +950,7 @@ where
             vec![T::default(); broadcast_shape.iter().product::<usize>()],
             broadcast_shape,
         );
-        ufunc.execute(&[x1, x2], &mut [&mut output])?;
+        ufunc.execute(&[x1, x2], &mut [&mut output], None)?;
         Ok(output)
     } else {
         Err(NumPyError::ufunc_error(
@@ -933,7 +967,7 @@ where
 {
     if let Some(ufunc) = get_ufunc("degrees") {
         let mut output = Array::from_data(vec![T::default(); x.size()], x.shape().to_vec());
-        ufunc.execute(&[x], &mut [&mut output])?;
+        ufunc.execute(&[x], &mut [&mut output], None)?;
         Ok(output)
     } else {
         Err(NumPyError::ufunc_error(
@@ -950,7 +984,7 @@ where
 {
     if let Some(ufunc) = get_ufunc("radians") {
         let mut output = Array::from_data(vec![T::default(); x.size()], x.shape().to_vec());
-        ufunc.execute(&[x], &mut [&mut output])?;
+        ufunc.execute(&[x], &mut [&mut output], None)?;
         Ok(output)
     } else {
         Err(NumPyError::ufunc_error(
@@ -969,7 +1003,7 @@ where
 {
     if let Some(ufunc) = get_ufunc("sinh") {
         let mut output = Array::from_data(vec![T::default(); x.size()], x.shape().to_vec());
-        ufunc.execute(&[x], &mut [&mut output])?;
+        ufunc.execute(&[x], &mut [&mut output], None)?;
         Ok(output)
     } else {
         Err(NumPyError::ufunc_error(
@@ -986,7 +1020,7 @@ where
 {
     if let Some(ufunc) = get_ufunc("cosh") {
         let mut output = Array::from_data(vec![T::default(); x.size()], x.shape().to_vec());
-        ufunc.execute(&[x], &mut [&mut output])?;
+        ufunc.execute(&[x], &mut [&mut output], None)?;
         Ok(output)
     } else {
         Err(NumPyError::ufunc_error(
@@ -1003,7 +1037,7 @@ where
 {
     if let Some(ufunc) = get_ufunc("tanh") {
         let mut output = Array::from_data(vec![T::default(); x.size()], x.shape().to_vec());
-        ufunc.execute(&[x], &mut [&mut output])?;
+        ufunc.execute(&[x], &mut [&mut output], None)?;
         Ok(output)
     } else {
         Err(NumPyError::ufunc_error(
@@ -1020,7 +1054,7 @@ where
 {
     if let Some(ufunc) = get_ufunc("arcsinh") {
         let mut output = Array::from_data(vec![T::default(); x.size()], x.shape().to_vec());
-        ufunc.execute(&[x], &mut [&mut output])?;
+        ufunc.execute(&[x], &mut [&mut output], None)?;
         Ok(output)
     } else {
         Err(NumPyError::ufunc_error(
@@ -1037,7 +1071,7 @@ where
 {
     if let Some(ufunc) = get_ufunc("arccosh") {
         let mut output = Array::from_data(vec![T::default(); x.size()], x.shape().to_vec());
-        ufunc.execute(&[x], &mut [&mut output])?;
+        ufunc.execute(&[x], &mut [&mut output], None)?;
         Ok(output)
     } else {
         Err(NumPyError::ufunc_error(
@@ -1054,7 +1088,7 @@ where
 {
     if let Some(ufunc) = get_ufunc("arctanh") {
         let mut output = Array::from_data(vec![T::default(); x.size()], x.shape().to_vec());
-        ufunc.execute(&[x], &mut [&mut output])?;
+        ufunc.execute(&[x], &mut [&mut output], None)?;
         Ok(output)
     } else {
         Err(NumPyError::ufunc_error(
@@ -1100,7 +1134,7 @@ where
 {
     if let Some(ufunc) = get_ufunc("exp") {
         let mut output = Array::from_data(vec![T::default(); x.size()], x.shape().to_vec());
-        ufunc.execute(&[x], &mut [&mut output])?;
+        ufunc.execute(&[x], &mut [&mut output], None)?;
         Ok(output)
     } else {
         Err(NumPyError::ufunc_error(
@@ -1117,7 +1151,7 @@ where
 {
     if let Some(ufunc) = get_ufunc("exp") {
         let mut output = Array::from_data(vec![T::default(); x.size()], x.shape().to_vec());
-        ufunc.execute(&[x], &mut [&mut output])?;
+        ufunc.execute(&[x], &mut [&mut output], None)?;
         Ok(output)
     } else {
         Err(NumPyError::ufunc_error(
@@ -1134,7 +1168,7 @@ where
 {
     if let Some(ufunc) = get_ufunc("exp2") {
         let mut output = Array::from_data(vec![T::default(); x.size()], x.shape().to_vec());
-        ufunc.execute(&[x], &mut [&mut output])?;
+        ufunc.execute(&[x], &mut [&mut output], None)?;
         Ok(output)
     } else {
         Err(NumPyError::ufunc_error(
@@ -1151,7 +1185,7 @@ where
 {
     if let Some(ufunc) = get_ufunc("expm1") {
         let mut output = Array::from_data(vec![T::default(); x.size()], x.shape().to_vec());
-        ufunc.execute(&[x], &mut [&mut output])?;
+        ufunc.execute(&[x], &mut [&mut output], None)?;
         Ok(output)
     } else {
         Err(NumPyError::ufunc_error(
@@ -1195,7 +1229,7 @@ where
 {
     if let Some(ufunc) = get_ufunc("log") {
         let mut output = Array::from_data(vec![T::default(); x.size()], x.shape().to_vec());
-        ufunc.execute(&[x], &mut [&mut output])?;
+        ufunc.execute(&[x], &mut [&mut output], None)?;
         Ok(output)
     } else {
         Err(NumPyError::ufunc_error(
@@ -1212,7 +1246,7 @@ where
 {
     if let Some(ufunc) = get_ufunc("log") {
         let mut output = Array::from_data(vec![T::default(); x.size()], x.shape().to_vec());
-        ufunc.execute(&[x], &mut [&mut output])?;
+        ufunc.execute(&[x], &mut [&mut output], None)?;
         Ok(output)
     } else {
         Err(NumPyError::ufunc_error(
@@ -1229,7 +1263,7 @@ where
 {
     if let Some(ufunc) = get_ufunc("log2") {
         let mut output = Array::from_data(vec![T::default(); x.size()], x.shape().to_vec());
-        ufunc.execute(&[x], &mut [&mut output])?;
+        ufunc.execute(&[x], &mut [&mut output], None)?;
         Ok(output)
     } else {
         Err(NumPyError::ufunc_error(
@@ -1246,7 +1280,7 @@ where
 {
     if let Some(ufunc) = get_ufunc("log10") {
         let mut output = Array::from_data(vec![T::default(); x.size()], x.shape().to_vec());
-        ufunc.execute(&[x], &mut [&mut output])?;
+        ufunc.execute(&[x], &mut [&mut output], None)?;
         Ok(output)
     } else {
         Err(NumPyError::ufunc_error(
@@ -1263,7 +1297,7 @@ where
 {
     if let Some(ufunc) = get_ufunc("log1p") {
         let mut output = Array::from_data(vec![T::default(); x.size()], x.shape().to_vec());
-        ufunc.execute(&[x], &mut [&mut output])?;
+        ufunc.execute(&[x], &mut [&mut output], None)?;
         Ok(output)
     } else {
         Err(NumPyError::ufunc_error(
@@ -1284,7 +1318,7 @@ where
             vec![T::default(); broadcast_shape.iter().product::<usize>()],
             broadcast_shape,
         );
-        ufunc.execute(&[x1, x2], &mut [&mut output])?;
+        ufunc.execute(&[x1, x2], &mut [&mut output], None)?;
         Ok(output)
     } else {
         Err(NumPyError::ufunc_error(
@@ -1305,7 +1339,7 @@ where
             vec![T::default(); broadcast_shape.iter().product::<usize>()],
             broadcast_shape,
         );
-        ufunc.execute(&[x1, x2], &mut [&mut output])?;
+        ufunc.execute(&[x1, x2], &mut [&mut output], None)?;
         Ok(output)
     } else {
         Err(NumPyError::ufunc_error(
@@ -1349,7 +1383,7 @@ where
 {
     if let Some(ufunc) = get_ufunc("rint") {
         let mut output = Array::from_data(vec![T::default(); x.size()], x.shape().to_vec());
-        ufunc.execute(&[x], &mut [&mut output])?;
+        ufunc.execute(&[x], &mut [&mut output], None)?;
         Ok(output)
     } else {
         Err(NumPyError::ufunc_error(
@@ -1366,7 +1400,7 @@ where
 {
     if let Some(ufunc) = get_ufunc("floor") {
         let mut output = Array::from_data(vec![T::default(); x.size()], x.shape().to_vec());
-        ufunc.execute(&[x], &mut [&mut output])?;
+        ufunc.execute(&[x], &mut [&mut output], None)?;
         Ok(output)
     } else {
         Err(NumPyError::ufunc_error(
@@ -1383,7 +1417,7 @@ where
 {
     if let Some(ufunc) = get_ufunc("ceil") {
         let mut output = Array::from_data(vec![T::default(); x.size()], x.shape().to_vec());
-        ufunc.execute(&[x], &mut [&mut output])?;
+        ufunc.execute(&[x], &mut [&mut output], None)?;
         Ok(output)
     } else {
         Err(NumPyError::ufunc_error(
@@ -1400,7 +1434,7 @@ where
 {
     if let Some(ufunc) = get_ufunc("trunc") {
         let mut output = Array::from_data(vec![T::default(); x.size()], x.shape().to_vec());
-        ufunc.execute(&[x], &mut [&mut output])?;
+        ufunc.execute(&[x], &mut [&mut output], None)?;
         Ok(output)
     } else {
         Err(NumPyError::ufunc_error(
@@ -1417,7 +1451,7 @@ where
 {
     if let Some(ufunc) = get_ufunc("fix") {
         let mut output = Array::from_data(vec![T::default(); x.size()], x.shape().to_vec());
-        ufunc.execute(&[x], &mut [&mut output])?;
+        ufunc.execute(&[x], &mut [&mut output], None)?;
         Ok(output)
     } else {
         Err(NumPyError::ufunc_error(
