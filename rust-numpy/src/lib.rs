@@ -66,6 +66,7 @@ pub mod window;
 
 // Re-export key types for convenience
 pub use crate::array_extra::exports::*;
+pub use crate::comparison_ufuncs::exports::*;
 pub use crate::fft::*;
 pub use array::Array;
 pub use array_manipulation::exports::*;
