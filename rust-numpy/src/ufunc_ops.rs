@@ -2,7 +2,7 @@ use crate::array::Array;
 use crate::broadcasting::{broadcast_arrays, compute_broadcast_shape};
 
 use crate::error::{NumPyError, Result};
-use crate::ufunc::{get_ufunc, get_ufunc_typed, get_ufunc_typed_binary, UfuncRegistry};
+use crate::ufunc::UfuncRegistry;
 use std::sync::Arc;
 
 /// Ufunc execution engine
@@ -25,24 +25,19 @@ impl UfuncEngine {
         ufunc_name: &str,
         a: &Array<T>,
         b: &Array<T>,
+        where_mask: Option<&Array<bool>>,
+        casting: crate::dtype::Casting,
     ) -> Result<Array<T>>
     where
         T: Clone + Default + 'static,
     {
-        let ufunc = get_ufunc_typed_binary::<T>(ufunc_name)
-            .ok_or_else(|| NumPyError::ufunc_error(ufunc_name, "Function not found"))?;
-
-        // Check if ufunc supports the dtype
-        if !ufunc.supports_dtypes(&[a.dtype(), b.dtype()]) {
-            return Err(NumPyError::ufunc_error(
-                ufunc_name,
-                format!(
-                    "Unsupported dtype combination: {:?} and {:?}",
-                    a.dtype(),
-                    b.dtype()
-                ),
-            ));
-        }
+        let input_dtypes = vec![a.dtype().clone(), b.dtype().clone()];
+        let (ufunc, _target_dtypes) = self
+            .registry
+            .resolve_ufunc(ufunc_name, &input_dtypes, casting)
+            .ok_or_else(|| {
+                NumPyError::ufunc_error(ufunc_name, "Function not found or unsupported casting")
+            })?;
 
         // Broadcast arrays to common shape
         let broadcasted = broadcast_arrays(&[a, b])?;
@@ -60,58 +55,30 @@ impl UfuncEngine {
         let mut outputs: Vec<&mut dyn crate::ufunc::ArrayViewMut> = vec![&mut output];
 
         // Execute ufunc
-        ufunc.execute(&views, &mut outputs)?;
+        ufunc.execute(&views, &mut outputs, where_mask)?;
 
         Ok(output)
     }
 
-    /// Execute unary ufunc on single array
-    pub fn execute_unary<T>(&self, ufunc_name: &str, a: &Array<T>) -> Result<Array<T>>
-    where
-        T: Clone + Default + 'static,
-    {
-        let ufunc = get_ufunc_typed::<T>(ufunc_name)
-            .ok_or_else(|| NumPyError::ufunc_error(ufunc_name, "Function not found"))?;
-
-        if !ufunc.supports_dtypes(&[a.dtype()]) {
-            return Err(NumPyError::ufunc_error(
-                ufunc_name,
-                format!("Unsupported dtype: {:?}", a.dtype()),
-            ));
-        }
-
-        let mut output = a.clone();
-
-        let input_views: Vec<&dyn crate::ufunc::ArrayView> = vec![a];
-        let mut outputs: Vec<&mut dyn crate::ufunc::ArrayViewMut> = vec![&mut output];
-
-        ufunc.execute(&input_views, &mut outputs)?;
-
-        Ok(output)
-    }
-
+    /// Execute comparison ufunc on two arrays
     pub fn execute_comparison<T>(
         &self,
         ufunc_name: &str,
         a: &Array<T>,
         b: &Array<T>,
+        where_mask: Option<&Array<bool>>,
+        casting: crate::dtype::Casting,
     ) -> Result<Array<bool>>
     where
         T: Clone + Default + 'static,
     {
-        let ufunc = get_ufunc_typed_binary::<T>(ufunc_name)
-            .ok_or_else(|| NumPyError::ufunc_error(ufunc_name, "Function not found"))?;
-
-        if !ufunc.supports_dtypes(&[a.dtype(), b.dtype()]) {
-            return Err(NumPyError::ufunc_error(
-                ufunc_name,
-                format!(
-                    "Unsupported dtype combination: {:?} and {:?}",
-                    a.dtype(),
-                    b.dtype()
-                ),
-            ));
-        }
+        let input_dtypes = vec![a.dtype().clone(), b.dtype().clone()];
+        let (ufunc, _target_dtypes) = self
+            .registry
+            .resolve_ufunc(ufunc_name, &input_dtypes, casting)
+            .ok_or_else(|| {
+                NumPyError::ufunc_error(ufunc_name, "Function not found or unsupported casting")
+            })?;
 
         let broadcasted = broadcast_arrays(&[a, b])?;
 
@@ -125,7 +92,65 @@ impl UfuncEngine {
 
         let mut outputs: Vec<&mut dyn crate::ufunc::ArrayViewMut> = vec![&mut output];
 
-        ufunc.execute(&views, &mut outputs)?;
+        ufunc.execute(&views, &mut outputs, where_mask)?;
+
+        Ok(output)
+    }
+
+    /// Execute unary ufunc on single array
+    pub fn execute_unary_bool<T>(
+        &self,
+        ufunc_name: &str,
+        a: &Array<T>,
+        where_mask: Option<&Array<bool>>,
+        casting: crate::dtype::Casting,
+    ) -> Result<Array<bool>>
+    where
+        T: Clone + Default + 'static,
+    {
+        let input_dtypes = vec![a.dtype().clone()];
+        let (ufunc, _target_dtypes) = self
+            .registry
+            .resolve_ufunc(ufunc_name, &input_dtypes, casting)
+            .ok_or_else(|| {
+                NumPyError::ufunc_error(ufunc_name, "Function not found or unsupported casting")
+            })?;
+
+        let output_shape = a.shape().to_vec();
+        let mut output = Array::<bool>::zeros(output_shape);
+
+        let input_views: Vec<&dyn crate::ufunc::ArrayView> = vec![a];
+        let mut outputs: Vec<&mut dyn crate::ufunc::ArrayViewMut> = vec![&mut output];
+
+        ufunc.execute(&input_views, &mut outputs, where_mask)?;
+
+        Ok(output)
+    }
+
+    pub fn execute_unary<T>(
+        &self,
+        ufunc_name: &str,
+        a: &Array<T>,
+        where_mask: Option<&Array<bool>>,
+        casting: crate::dtype::Casting,
+    ) -> Result<Array<T>>
+    where
+        T: Clone + Default + 'static,
+    {
+        let input_dtypes = vec![a.dtype().clone()];
+        let (ufunc, _target_dtypes) = self
+            .registry
+            .resolve_ufunc(ufunc_name, &input_dtypes, casting)
+            .ok_or_else(|| {
+                NumPyError::ufunc_error(ufunc_name, "Function not found or unsupported casting")
+            })?;
+
+        let mut output = a.clone();
+
+        let input_views: Vec<&dyn crate::ufunc::ArrayView> = vec![a];
+        let mut outputs: Vec<&mut dyn crate::ufunc::ArrayViewMut> = vec![&mut output];
+
+        ufunc.execute(&input_views, &mut outputs, where_mask)?;
 
         Ok(output)
     }
@@ -242,39 +267,67 @@ where
     T: Clone + Default + 'static,
 {
     /// Element-wise addition
-    pub fn add(&self, other: &Array<T>) -> Result<Array<T>> {
+    pub fn add(
+        &self,
+        other: &Array<T>,
+        where_mask: Option<&Array<bool>>,
+        casting: crate::dtype::Casting,
+    ) -> Result<Array<T>> {
         let engine = UfuncEngine::new();
-        engine.execute_binary("add", self, other)
+        engine.execute_binary("add", self, other, where_mask, casting)
     }
 
     /// Element-wise subtraction
-    pub fn subtract(&self, other: &Array<T>) -> Result<Array<T>> {
+    pub fn subtract(
+        &self,
+        other: &Array<T>,
+        where_mask: Option<&Array<bool>>,
+        casting: crate::dtype::Casting,
+    ) -> Result<Array<T>> {
         let engine = UfuncEngine::new();
-        engine.execute_binary("subtract", self, other)
+        engine.execute_binary("subtract", self, other, where_mask, casting)
     }
 
     /// Element-wise multiplication
-    pub fn multiply(&self, other: &Array<T>) -> Result<Array<T>> {
+    pub fn multiply(
+        &self,
+        other: &Array<T>,
+        where_mask: Option<&Array<bool>>,
+        casting: crate::dtype::Casting,
+    ) -> Result<Array<T>> {
         let engine = UfuncEngine::new();
-        engine.execute_binary("multiply", self, other)
+        engine.execute_binary("multiply", self, other, where_mask, casting)
     }
 
     /// Element-wise division
-    pub fn divide(&self, other: &Array<T>) -> Result<Array<T>> {
+    pub fn divide(
+        &self,
+        other: &Array<T>,
+        where_mask: Option<&Array<bool>>,
+        casting: crate::dtype::Casting,
+    ) -> Result<Array<T>> {
         let engine = UfuncEngine::new();
-        engine.execute_binary("divide", self, other)
+        engine.execute_binary("divide", self, other, where_mask, casting)
     }
 
     /// Element-wise negation
-    pub fn negative(&self) -> Result<Array<T>> {
+    pub fn negative(
+        &self,
+        where_mask: Option<&Array<bool>>,
+        casting: crate::dtype::Casting,
+    ) -> Result<Array<T>> {
         let engine = UfuncEngine::new();
-        engine.execute_unary("negative", self)
+        engine.execute_unary("negative", self, where_mask, casting)
     }
 
     /// Absolute value
-    pub fn abs(&self) -> Result<Array<T>> {
+    pub fn abs(
+        &self,
+        where_mask: Option<&Array<bool>>,
+        casting: crate::dtype::Casting,
+    ) -> Result<Array<T>> {
         let engine = UfuncEngine::new();
-        engine.execute_unary("absolute", self)
+        engine.execute_unary("absolute", self, where_mask, casting)
     }
 
     /// Sum of elements
@@ -1093,75 +1146,82 @@ where
 {
     pub fn greater(&self, other: &Array<T>) -> Result<Array<bool>> {
         let engine = UfuncEngine::new();
-        engine.execute_comparison("greater", self, other)
+        engine.execute_comparison("greater", self, other, None, crate::dtype::Casting::Safe)
     }
 
     pub fn less(&self, other: &Array<T>) -> Result<Array<bool>> {
         let engine = UfuncEngine::new();
-        engine.execute_comparison("less", self, other)
+        engine.execute_comparison("less", self, other, None, crate::dtype::Casting::Safe)
     }
 
     pub fn greater_equal(&self, other: &Array<T>) -> Result<Array<bool>> {
         let engine = UfuncEngine::new();
-        engine.execute_comparison("greater_equal", self, other)
+        engine.execute_comparison(
+            "greater_equal",
+            self,
+            other,
+            None,
+            crate::dtype::Casting::Safe,
+        )
     }
 
     pub fn less_equal(&self, other: &Array<T>) -> Result<Array<bool>> {
         let engine = UfuncEngine::new();
-        engine.execute_comparison("less_equal", self, other)
+        engine.execute_comparison("less_equal", self, other, None, crate::dtype::Casting::Safe)
     }
 
     pub fn equal(&self, other: &Array<T>) -> Result<Array<bool>> {
         let engine = UfuncEngine::new();
-        engine.execute_comparison("equal", self, other)
+        engine.execute_comparison("equal", self, other, None, crate::dtype::Casting::Safe)
     }
 
     pub fn not_equal(&self, other: &Array<T>) -> Result<Array<bool>> {
         let engine = UfuncEngine::new();
-        engine.execute_comparison("not_equal", self, other)
+        engine.execute_comparison("not_equal", self, other, None, crate::dtype::Casting::Safe)
     }
 
     pub fn maximum(&self, other: &Array<T>) -> Result<Array<T>> {
         let engine = UfuncEngine::new();
-        engine.execute_binary("maximum", self, other)
+        engine.execute_binary("maximum", self, other, None, crate::dtype::Casting::Safe)
     }
 
     pub fn minimum(&self, other: &Array<T>) -> Result<Array<T>> {
         let engine = UfuncEngine::new();
-        engine.execute_binary("minimum", self, other)
+        engine.execute_binary("minimum", self, other, None, crate::dtype::Casting::Safe)
     }
 
     pub fn logical_and(&self, other: &Array<T>) -> Result<Array<bool>> {
         let engine = UfuncEngine::new();
-        engine.execute_comparison("logical_and", self, other)
+        engine.execute_comparison(
+            "logical_and",
+            self,
+            other,
+            None,
+            crate::dtype::Casting::Safe,
+        )
     }
 
     pub fn logical_or(&self, other: &Array<T>) -> Result<Array<bool>> {
         let engine = UfuncEngine::new();
-        engine.execute_comparison("logical_or", self, other)
+        engine.execute_comparison("logical_or", self, other, None, crate::dtype::Casting::Safe)
     }
 
     pub fn logical_xor(&self, other: &Array<T>) -> Result<Array<bool>> {
         let engine = UfuncEngine::new();
-        engine.execute_comparison("logical_xor", self, other)
+        engine.execute_comparison(
+            "logical_xor",
+            self,
+            other,
+            None,
+            crate::dtype::Casting::Safe,
+        )
     }
 
     pub fn logical_not(&self) -> Result<Array<bool>>
     where
         T: PartialEq + Clone + Default + 'static,
     {
-        let _ufunc = get_ufunc("logical_not")
-            .ok_or_else(|| NumPyError::ufunc_error("logical_not", "Function not found"))?;
-
-        let output_shape = self.shape().to_vec();
-        let mut output = Array::<bool>::zeros(output_shape);
-
-        for i in 0..self.size() {
-            if let Some(val) = self.get(i) {
-                output.set(i, val.clone() == T::default())?;
-            }
-        }
-
-        Ok(output)
+        let engine = UfuncEngine::new();
+        engine.execute_unary_bool("logical_not", self, None, crate::dtype::Casting::Safe)
     }
 }

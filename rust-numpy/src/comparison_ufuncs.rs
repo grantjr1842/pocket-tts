@@ -1,5 +1,5 @@
 use crate::array::Array;
-use crate::broadcasting::{broadcast_arrays, compute_broadcast_shape};
+use crate::broadcasting::broadcast_arrays;
 use crate::dtype::{Dtype, DtypeKind};
 use crate::error::{NumPyError, Result};
 use crate::ufunc::Ufunc;
@@ -71,6 +71,7 @@ where
         &self,
         inputs: &[&dyn crate::ufunc::ArrayView],
         outputs: &mut [&mut dyn crate::ufunc::ArrayViewMut],
+        where_mask: Option<&Array<bool>>,
     ) -> Result<()> {
         if inputs.len() != 2 || outputs.len() != 1 {
             return Err(NumPyError::ufunc_error(
@@ -87,19 +88,28 @@ where
         let input1 = unsafe { &*(inputs[1] as *const _ as *const Array<T>) };
         let output = unsafe { &mut *(outputs[0] as *mut _ as *mut Array<bool>) };
 
-        let shape0 = input0.shape();
-        let shape1 = input1.shape();
-        let broadcast_shape = compute_broadcast_shape(shape0, shape1);
+        let broadcast_shape = output.shape();
+
+        // Handle where_mask
+        let mask = if let Some(m) = where_mask {
+            Some(crate::broadcasting::broadcast_to(m, broadcast_shape)?)
+        } else {
+            None
+        };
 
         let broadcasted = broadcast_arrays(&[input0, input1])?;
-
         let arr0 = &broadcasted[0];
         let arr1 = &broadcasted[1];
 
-        for i in 0..broadcast_shape.iter().product::<usize>() {
-            if let (Some(a), Some(b)) = (arr0.get(i), arr1.get(i)) {
-                let result = (self.operation)(a, b);
-                output.set(i, result)?;
+        for i in 0..output.size() {
+            if mask
+                .as_ref()
+                .map_or(true, |m| *m.get_linear(i).unwrap_or(&false))
+            {
+                if let (Some(a), Some(b)) = (arr0.get(i), arr1.get(i)) {
+                    let result = (self.operation)(a, b);
+                    output.set(i, result)?;
+                }
             }
         }
 
@@ -173,6 +183,7 @@ where
         &self,
         inputs: &[&dyn crate::ufunc::ArrayView],
         outputs: &mut [&mut dyn crate::ufunc::ArrayViewMut],
+        where_mask: Option<&Array<bool>>,
     ) -> Result<()> {
         if inputs.len() != 1 || outputs.len() != 1 {
             return Err(NumPyError::ufunc_error(
@@ -188,10 +199,22 @@ where
         let input = unsafe { &*(inputs[0] as *const _ as *const Array<T>) };
         let output = unsafe { &mut *(outputs[0] as *mut _ as *mut Array<bool>) };
 
+        // Handle where_mask
+        let mask = if let Some(m) = where_mask {
+            Some(crate::broadcasting::broadcast_to(m, output.shape())?)
+        } else {
+            None
+        };
+
         for i in 0..input.size() {
-            if let Some(a) = input.get(i) {
-                let result = (self.operation)(a);
-                output.set(i, result)?;
+            if mask
+                .as_ref()
+                .map_or(true, |m| *m.get_linear(i).unwrap_or(&false))
+            {
+                if let Some(a) = input.get(i) {
+                    let result = (self.operation)(a);
+                    output.set(i, result)?;
+                }
             }
         }
 
@@ -265,6 +288,7 @@ where
         &self,
         inputs: &[&dyn crate::ufunc::ArrayView],
         outputs: &mut [&mut dyn crate::ufunc::ArrayViewMut],
+        where_mask: Option<&Array<bool>>,
     ) -> Result<()> {
         if inputs.len() != 2 || outputs.len() != 1 {
             return Err(NumPyError::ufunc_error(
@@ -281,19 +305,28 @@ where
         let input1 = unsafe { &*(inputs[1] as *const _ as *const Array<T>) };
         let output = unsafe { &mut *(outputs[0] as *mut _ as *mut Array<T>) };
 
-        let shape0 = input0.shape();
-        let shape1 = input1.shape();
-        let broadcast_shape = compute_broadcast_shape(shape0, shape1);
+        let broadcast_shape = output.shape();
+
+        // Handle where_mask
+        let mask = if let Some(m) = where_mask {
+            Some(crate::broadcasting::broadcast_to(m, broadcast_shape)?)
+        } else {
+            None
+        };
 
         let broadcasted = broadcast_arrays(&[input0, input1])?;
-
         let arr0 = &broadcasted[0];
         let arr1 = &broadcasted[1];
 
-        for i in 0..broadcast_shape.iter().product::<usize>() {
-            if let (Some(a), Some(b)) = (arr0.get(i), arr1.get(i)) {
-                let result = (self.operation)(a, b);
-                output.set(i, result)?;
+        for i in 0..output.size() {
+            if mask
+                .as_ref()
+                .map_or(true, |m| *m.get_linear(i).unwrap_or(&false))
+            {
+                if let (Some(a), Some(b)) = (arr0.get(i), arr1.get(i)) {
+                    let result = (self.operation)(a, b);
+                    output.set(i, result)?;
+                }
             }
         }
 
