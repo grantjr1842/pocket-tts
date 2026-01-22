@@ -1,5 +1,6 @@
+use approx::assert_abs_diff_eq;
+use numpy::array2;
 use numpy::linalg::qr;
-use numpy::{array2, Array};
 
 #[test]
 fn test_qr_basic_reduced() {
