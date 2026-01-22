@@ -1,5 +1,5 @@
 use num_complex::Complex64;
-use numpy::fft::{fft2, fftn, ifft2, ifftn, fftshift, ifftshift, irfftn, rfftn};
+use numpy::fft::{fft2, fftn, fftshift, ifft2, ifftn, ifftshift, irfftn, rfftn};
 use numpy::*;
 
 #[test]

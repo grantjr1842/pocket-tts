@@ -243,7 +243,7 @@ where
 /// Count the number of non-zero elements
 pub fn count_nonzero<T>(a: &Array<T>) -> Result<usize>
 where
-    T: ComparisonOps<T> + Clone + Default + PartialEq + Send + Sync + 'static,
+    T: Clone + Default + PartialEq + Send + Sync + 'static,
 {
     let mut count = 0;
 
@@ -261,7 +261,7 @@ where
 /// Return indices of non-zero elements
 pub fn nonzero<T>(a: &Array<T>) -> Result<Vec<Array<isize>>>
 where
-    T: ComparisonOps<T> + Clone + Default + PartialEq + Send + Sync + 'static,
+    T: Clone + Default + PartialEq + Send + Sync + 'static,
 {
     let mut indices = Vec::new();
 
@@ -314,7 +314,7 @@ where
 /// Return flattened indices of non-zero elements
 pub fn flatnonzero<T>(a: &Array<T>) -> Result<Array<isize>>
 where
-    T: ComparisonOps<T> + Clone + Default + PartialEq + Send + Sync + 'static,
+    T: Clone + Default + PartialEq + Send + Sync + 'static,
 {
     let mut indices = Vec::new();
 
@@ -327,6 +327,77 @@ where
     }
 
     Ok(Array::from_shape_vec(vec![indices.len()], indices))
+}
+
+/// Return indices of non-zero elements as (N, ndim) array
+///
+/// Unlike `nonzero` which returns a tuple of arrays (one per dimension),
+/// `argwhere` returns a single array where each row contains the full
+/// coordinate of a non-zero element.
+///
+/// # Arguments
+/// * `a` - Input array
+///
+/// # Returns
+/// * Array of shape (N, ndim) where N is the number of non-zero elements
+///
+/// # Examples
+/// ```rust,ignore
+/// let a = array2![[1, 0, 0], [0, 2, 0], [0, 0, 3]];
+/// let result = argwhere(&a).unwrap();
+/// // Result: [[0, 0], [1, 1], [2, 2]]
+/// ```
+pub fn argwhere<T>(a: &Array<T>) -> Result<Array<isize>>
+where
+    T: Clone + Default + PartialEq + Send + Sync + 'static,
+{
+    let shape = a.shape();
+    let ndim = a.ndim();
+
+    // Collect linear indices of non-zero elements
+    let mut linear_indices = Vec::new();
+    for i in 0..a.size() {
+        if let Some(val) = a.get(i) {
+            if val != &T::default() {
+                linear_indices.push(i);
+            }
+        }
+    }
+
+    let n = linear_indices.len();
+
+    // Handle empty case
+    if n == 0 {
+        // Return empty array with shape (0, ndim)
+        return Ok(Array::from_shape_vec(vec![0, ndim.max(1)], vec![]));
+    }
+
+    // Convert linear indices to multi-dimensional coordinates
+    // Each row is a coordinate: [dim0_idx, dim1_idx, ..., dimN_idx]
+    let mut result_data = Vec::with_capacity(n * ndim.max(1));
+
+    for &linear_idx in &linear_indices {
+        if ndim == 0 {
+            // 0D array (scalar) with non-zero value
+            result_data.push(0isize);
+        } else {
+            // Convert linear index to multi-dimensional index
+            // Using row-major (C) order
+            let mut remaining = linear_idx;
+            let mut coords = vec![0isize; ndim];
+
+            for d in (0..ndim).rev() {
+                coords[d] = (remaining % shape[d]) as isize;
+                remaining /= shape[d];
+            }
+
+            result_data.extend(coords);
+        }
+    }
+
+    let out_shape = if ndim == 0 { vec![n, 1] } else { vec![n, ndim] };
+
+    Ok(Array::from_shape_vec(out_shape, result_data))
 }
 
 /// Return elements chosen from x or y depending on condition
@@ -1468,5 +1539,51 @@ mod tests {
 
         assert_eq!(max_idx.to_vec()[0], 3); // index of 9
         assert_eq!(min_idx.to_vec()[0], 0); // index of 1
+    }
+
+    #[test]
+    fn test_argwhere_1d() {
+        let data = vec![0, 1, 0, 2, 0, 3];
+        let array = Array::from_vec(data);
+        let result = argwhere(&array).unwrap();
+        assert_eq!(result.shape(), &[3, 1]);
+        assert_eq!(result.to_vec(), vec![1, 3, 5]);
+    }
+
+    #[test]
+    fn test_argwhere_2d() {
+        let data = vec![1, 0, 0, 0, 2, 0, 0, 0, 3];
+        let array = Array::from_shape_vec(vec![3, 3], data);
+        let result = argwhere(&array).unwrap();
+        assert_eq!(result.shape(), &[3, 2]);
+        let coords = result.to_vec();
+        assert_eq!(coords, vec![0, 0, 1, 1, 2, 2]);
+    }
+
+    #[test]
+    fn test_argwhere_3d() {
+        let data = vec![1, 0, 0, 0, 0, 0, 0, 2];
+        let array = Array::from_shape_vec(vec![2, 2, 2], data);
+        let result = argwhere(&array).unwrap();
+        assert_eq!(result.shape(), &[2, 3]);
+        let coords = result.to_vec();
+        assert_eq!(coords, vec![0, 0, 0, 1, 1, 1]);
+    }
+
+    #[test]
+    fn test_argwhere_boolean() {
+        let data = vec![true, false, true, false, true];
+        let array = Array::from_vec(data);
+        let result = argwhere(&array).unwrap();
+        assert_eq!(result.shape(), &[3, 1]);
+        assert_eq!(result.to_vec(), vec![0, 2, 4]);
+    }
+
+    #[test]
+    fn test_argwhere_empty() {
+        let data: Vec<i32> = vec![];
+        let array = Array::from_vec(data);
+        let result = argwhere(&array).unwrap();
+        assert_eq!(result.shape(), &[0, 1]);
     }
 }
