@@ -495,7 +495,116 @@ where
 }
 
 /// Create array from string data
-pub fn fromstring<T>(string: &str, dtype: Dtype, count: isize, sep: &str) -> Result<Array<T>>
+pub fn genfromtxt<T>(
+    fname: &str,
+    dtype: Option<Dtype>,
+    delimiter: &str,
+    skiprows: usize,
+    usecols: Option<&[usize]>,
+    converters: Option<Vec<fn(&str) -> T>>,
+    unpack: bool,
+    ndmin: isize,
+    encoding: &str,
+    max_rows: Option<usize>,
+) -> Result<Array<T>>
+where
+    T: Clone + Default + std::str::FromStr + 'static,
+    T::Err: std::fmt::Display,
+{
+    let file = File::open(fname)
+        .map_err(|e| NumPyError::io_error(format!("Failed to open file: {}", e)))?;
+    let mut data = Vec::new();
+    let mut rows = 0;
+    let mut cols = 0;
+
+    for (line_num, line_result) in BufReader::new(file).lines().enumerate() {
+        if line_num < skiprows {
+            continue;
+        }
+
+        let line = line_result.map_err(|e| NumPyError::io_error(format!("Read error: {}", e)))?;
+        let trimmed = line.trim();
+
+        if trimmed.starts_with(delimiter) || trimmed.is_empty() {
+            continue;
+        }
+
+        let parts: Vec<&str> = if delimiter.is_empty() {
+            trimmed.split_whitespace().collect()
+        } else {
+            trimmed.split(delimiter).collect()
+        };
+
+        let selected_parts = if let Some(cols) = usecols {
+            cols.iter()
+                .filter_map(|&col| parts.get(col).copied())
+                .collect()
+        } else {
+            parts
+        };
+
+        let row_data = if let Some(ref converters) = converters {
+            selected_parts
+                .iter()
+                .enumerate()
+                .map(|(i, part)| {
+                    if i < converters.len() {
+                        Ok(converters[i](part))
+                    } else {
+                        part.trim().parse().map_err(|_| {
+                            NumPyError::value_error(part.to_string(), "numeric conversion")
+                        })
+                    }
+                })
+                .collect::<std::result::Result<Vec<_>, _>>()?
+        } else {
+            selected_parts
+                .iter()
+                .map(|part| {
+                    part.trim().parse().map_err(|_| {
+                        NumPyError::value_error(part.to_string(), "numeric conversion")
+                    })
+                })
+                .collect::<std::result::Result<Vec<_>, _>>()?
+        };
+
+        if rows == 0 {
+            cols = row_data.len();
+        }
+
+        data.extend(row_data);
+        rows += 1;
+
+        if let Some(max_rows) = max_rows {
+            if rows >= max_rows {
+                break;
+            }
+        }
+    }
+
+    let final_shape = match ndmin {
+        0 | 1 => {
+            if unpack {
+                vec![cols, rows]
+            } else {
+                vec![rows, cols]
+            }
+        }
+        2 => vec![1, rows, cols],
+        _ => return Err(NumPyError::invalid_operation("ndmin must be 0, 1, or 2")),
+    };
+
+    let shape = if final_shape.last() == Some(&1) && final_shape.len() > 1 {
+        final_shape[..final_shape.len() - 1].to_vec()
+    } else {
+        final_shape
+    };
+
+    let dtype = dtype.unwrap_or_else(|| Dtype::from_type::<T>());
+    Ok(Array::from_shape_vec(shape, data))
+}
+
+fn fromstring<T>(string: &str, dtype: Dtype, count: isize, sep: &str) -> Result<Array<T>>
 where
     T: Clone + Default + std::str::FromStr + Pod + 'static,
     T::Err: std::fmt::Display,
