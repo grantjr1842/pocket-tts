@@ -934,6 +934,138 @@ where
         }
     }
 
+    /// Cumulative sum, treating NaNs as zero.
+    pub fn nancumsum(&self, axis: Option<isize>) -> Result<Array<T>>
+    where
+        T: Clone + Default + std::ops::Add<Output = T> + num_traits::Float,
+    {
+        match axis {
+            None => {
+                let mut data = Vec::with_capacity(self.size());
+                let mut running_sum = T::zero();
+
+                for i in 0..self.size() {
+                    if let Some(val) = self.get(i) {
+                        if !val.is_nan() {
+                            running_sum = running_sum + val.clone();
+                        }
+                        data.push(running_sum);
+                    }
+                }
+
+                Ok(Array::from_vec(data))
+            }
+            Some(ax) => {
+                let ax = if ax < 0 {
+                    ax + self.ndim() as isize
+                } else {
+                    ax
+                } as usize;
+
+                if ax >= self.ndim() {
+                    return Err(NumPyError::index_error(ax, self.ndim()));
+                }
+
+                let mut result = Array::zeros(self.shape().to_vec());
+
+                let stride_before = if ax > 0 {
+                    self.shape()[..ax].iter().product::<usize>()
+                } else {
+                    1
+                };
+                let stride_after = if ax + 1 < self.ndim() {
+                    self.shape()[ax + 1..].iter().product::<usize>()
+                } else {
+                    1
+                };
+                let axis_size = self.shape()[ax];
+
+                for outer in 0..stride_before {
+                    for inner in 0..stride_after {
+                        let mut running = T::zero();
+                        for pos in 0..axis_size {
+                            let idx = outer * axis_size * stride_after + pos * stride_after + inner;
+                            if let Some(val) = self.get(idx) {
+                                if !val.is_nan() {
+                                    running = running + val.clone();
+                                }
+                                result.set(idx, running)?;
+                            }
+                        }
+                    }
+                }
+
+                Ok(result)
+            }
+        }
+    }
+
+    /// Cumulative product, treating NaNs as one.
+    pub fn nancumprod(&self, axis: Option<isize>) -> Result<Array<T>>
+    where
+        T: Clone + Default + std::ops::Mul<Output = T> + num_traits::Float,
+    {
+        match axis {
+            None => {
+                let mut data = Vec::with_capacity(self.size());
+                let mut running_prod = T::one();
+
+                for i in 0..self.size() {
+                    if let Some(val) = self.get(i) {
+                        if !val.is_nan() {
+                            running_prod = running_prod * val.clone();
+                        }
+                        data.push(running_prod);
+                    }
+                }
+
+                Ok(Array::from_vec(data))
+            }
+            Some(ax) => {
+                let ax = if ax < 0 {
+                    ax + self.ndim() as isize
+                } else {
+                    ax
+                } as usize;
+
+                if ax >= self.ndim() {
+                    return Err(NumPyError::index_error(ax, self.ndim()));
+                }
+
+                let mut result = Array::zeros(self.shape().to_vec());
+
+                let stride_before = if ax > 0 {
+                    self.shape()[..ax].iter().product::<usize>()
+                } else {
+                    1
+                };
+                let stride_after = if ax + 1 < self.ndim() {
+                    self.shape()[ax + 1..].iter().product::<usize>()
+                } else {
+                    1
+                };
+                let axis_size = self.shape()[ax];
+
+                for outer in 0..stride_before {
+                    for inner in 0..stride_after {
+                        let mut running = T::one();
+                        for pos in 0..axis_size {
+                            let idx = outer * axis_size * stride_after + pos * stride_after + inner;
+                            if let Some(val) = self.get(idx) {
+                                if !val.is_nan() {
+                                    running = running * val.clone();
+                                }
+                                result.set(idx, running)?;
+                            }
+                        }
+                    }
+                }
+
+                Ok(result)
+            }
+        }
+    }
+
     fn get_mean_for_index(
         mean_array: &Array<f64>,
         linear_idx: usize,

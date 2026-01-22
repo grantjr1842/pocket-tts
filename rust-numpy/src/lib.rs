@@ -54,6 +54,7 @@ pub mod linalg;
 pub mod math_ufuncs;
 pub mod memory;
 pub mod random;
+pub mod rec;
 pub mod set_ops;
 pub mod slicing;
 pub mod sorting;
@@ -65,6 +66,8 @@ pub mod ufunc_ops;
 pub mod window;
 
 // Re-export key types for convenience
+pub use crate::array_extra::exports::*;
+pub use crate::comparison_ufuncs::exports::*;
 pub use crate::fft::*;
 pub use array::Array;
 pub use array_manipulation::exports::*;
@@ -72,6 +75,7 @@ pub use bitwise::*;
 pub use dtype::{Casting, Dtype, DtypeKind};
 pub use error::{NumPyError, Result};
 pub use linalg::norm;
+pub use rec::{array as rec_array, fromarrays, fromrecords, RecArray};
 pub use set_ops::exports::*;
 pub use statistics::{ptp, std, var};
 pub use type_promotion::promote_types;
