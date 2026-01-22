@@ -65,11 +65,15 @@ impl<T> Array<T> {
             return true;
         }
         let mut stride = 1;
-        let f_strides: Vec<isize> = self.shape.iter().map(|&dim| {
-            let s = stride as isize;
-            stride *= dim;
-            s
-        }).collect();
+        let f_strides: Vec<isize> = self
+            .shape
+            .iter()
+            .map(|&dim| {
+                let s = stride as isize;
+                stride *= dim;
+                s
+            })
+            .collect();
         self.strides == f_strides
     }
 
@@ -438,6 +442,76 @@ impl<T> Array<T> {
                 Ok(result)
             }
         }
+    }
+
+    /// Fancy indexing with multiple integer arrays (Fancy Indexing)
+    pub fn fancy_index(&self, indices: &[&Array<usize>]) -> Result<Self, NumPyError>
+    where
+        T: Clone + Default + 'static,
+    {
+        if indices.is_empty() {
+            return Ok(self.clone());
+        }
+
+        if indices.len() > self.ndim() {
+            return Err(NumPyError::invalid_operation(format!(
+                "Too many indices for array: {} > {}",
+                indices.len(),
+                self.ndim()
+            )));
+        }
+
+        // 1. Determine broadcasted shape of index arrays
+        let mut broadcast_shape = indices[0].shape().to_vec();
+        for idx in indices.iter().skip(1) {
+            broadcast_shape =
+                crate::broadcasting::compute_broadcast_shape(&broadcast_shape, idx.shape());
+        }
+
+        // 2. Broadcast all index arrays to the common shape
+        let mut broadcasted_indices = Vec::with_capacity(indices.len());
+        for idx in indices {
+            broadcasted_indices.push(idx.broadcast_to(&broadcast_shape)?);
+        }
+
+        // 3. Create result array
+        let total_elements = broadcast_shape.iter().product();
+        let mut result_data = Vec::with_capacity(total_elements);
+
+        // 4. Iterate over indices and extract data
+        for i in 0..total_elements {
+            let mut coords = vec![0; self.ndim()];
+
+            // For indices that were provided
+            for (dim, b_idx) in broadcasted_indices.iter().enumerate() {
+                let idx_val = *b_idx
+                    .get_linear(i)
+                    .ok_or_else(|| NumPyError::index_error(i, b_idx.size()))?;
+
+                if idx_val >= self.shape[dim] {
+                    return Err(NumPyError::index_error(idx_val, self.shape[dim]));
+                }
+                coords[dim] = idx_val;
+            }
+
+            // For dimensions not covered by fancy indexing, this basic implementation
+            // assumes all dimensions are indexed. If fewer indices are provided,
+            // NumPy's behavior is more complex (mixing fancy and basic indexing).
+            // For Phase 3.7, we'll implement the "pure" fancy indexing where all
+            // indices are provided or the remaining are treated as full slices if needed.
+            // BUT, usually fancy indexing replaces the dimensions it covers.
+
+            if indices.len() < self.ndim() {
+                return Err(NumPyError::not_implemented(
+                    "Mixed fancy and basic indexing",
+                ));
+            }
+
+            let val = self.get_multi(&coords)?;
+            result_data.push(val);
+        }
+
+        Ok(Array::from_data(result_data, broadcast_shape))
     }
 
     /// Reshape array
