@@ -42,8 +42,7 @@ fn test_diagonal_lower() {
 
 #[test]
 fn test_diagonal_rectangular() {
-    let data = vec
-![1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0];
+    let data = vec![1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0];
     let arr = Array::from_shape_vec(vec![2, 4], data);
 
     let result = diagonal(&arr, 0, 0, 1).unwrap();
@@ -121,12 +120,8 @@ fn test_diag_construct_1d() {
     // Construct with upper diagonal (k=1)
     let result = diag(&arr, 1).unwrap();
     assert_eq!(result.shape(), &[4, 4]);
-    let expected = vec
-![
-        0.0, 1.0, 0.0, 0.0,
-        0.0, 0.0, 2.0, 0.0,
-        0.0, 0.0, 0.0, 3.0,
-        0.0, 0.0, 0.0, 0.0,
+    let expected = vec![
+        0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 2.0, 0.0, 0.0, 0.0, 0.0, 3.0, 0.0, 0.0, 0.0, 0.0,
     ];
     assert_eq!(result.to_vec(), expected);
 
@@ -134,10 +129,7 @@ fn test_diag_construct_1d() {
     let result = diag(&arr, -1).unwrap();
     assert_eq!(result.shape(), &[4, 4]);
     let expected = vec![
-        0.0, 0.0, 0.0, 0.0,
-        1.0, 0.0, 0.0, 0.0,
-        0.0, 2.0, 0.0, 0.0,
-        0.0, 0.0, 3.0, 0.0,
+        0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 2.0, 0.0, 0.0, 0.0, 0.0, 3.0, 0.0,
     ];
     assert_eq!(result.to_vec(), expected);
 }
@@ -155,8 +147,7 @@ fn test_diag_1d_integer() {
 
 #[test]
 fn test_diag_3d_error() {
-    let data = vec
-![1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0];
+    let data = vec![1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0];
     let arr = Array::from_shape_vec(vec![2, 2, 2], data);
 
     let result = diag(&arr, 0);

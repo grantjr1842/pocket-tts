@@ -684,12 +684,7 @@ where
 ///
 /// # Returns
 /// 1D array containing the specified diagonal
-pub fn diagonal<T>(
-    array: &Array<T>,
-    offset: isize,
-    axis1: usize,
-    axis2: usize,
-) -> Result<Array<T>>
+pub fn diagonal<T>(array: &Array<T>, offset: isize, axis1: usize, axis2: usize) -> Result<Array<T>>
 where
     T: Clone + Default + 'static,
 {
@@ -774,7 +769,13 @@ where
         indices[axis2] = d2;
 
         // Collect all elements for this diagonal position across other dimensions
-        collect_diagonal_elements(array, &mut indices, axis1.min(axis2), 0, &mut diagonal_elements);
+        collect_diagonal_elements(
+            array,
+            &mut indices,
+            axis1.min(axis2),
+            0,
+            &mut diagonal_elements,
+        );
 
         d1 += 1;
         d2 += 1;
@@ -906,9 +907,7 @@ where
     T: Clone + Default + 'static,
 {
     if choices.is_empty() {
-        return Err(NumPyError::invalid_value(
-            "need at least one choice array",
-        ));
+        return Err(NumPyError::invalid_value("need at least one choice array"));
     }
 
     let n_choices = choices.len();
@@ -926,12 +925,7 @@ where
         // First, compute the adjusted choice index based on mode
         let choice_idx = if idx < 0 {
             match mode {
-                "raise" => {
-                    return Err(NumPyError::index_error(
-                        (-idx) as usize,
-                        n_choices,
-                    ))
-                }
+                "raise" => return Err(NumPyError::index_error((-idx) as usize, n_choices)),
                 "wrap" => {
                     let mut i = idx % n_choices as i32;
                     if i < 0 {
@@ -944,12 +938,7 @@ where
             }
         } else if (idx as usize) >= n_choices {
             match mode {
-                "raise" => {
-                    return Err(NumPyError::index_error(
-                        idx as usize,
-                        n_choices,
-                    ))
-                }
+                "raise" => return Err(NumPyError::index_error(idx as usize, n_choices)),
                 "wrap" => idx as usize % n_choices,
                 "clip" => n_choices - 1,
                 _ => unreachable!(),
@@ -998,7 +987,11 @@ where
 ///
 /// # Returns
 /// Array with selected elements
-pub fn compress<T>(condition: &Array<bool>, array: &Array<T>, axis: Option<isize>) -> Result<Array<T>>
+pub fn compress<T>(
+    condition: &Array<bool>,
+    array: &Array<T>,
+    axis: Option<isize>,
+) -> Result<Array<T>>
 where
     T: Clone + Default + 'static,
 {
