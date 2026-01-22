@@ -476,6 +476,7 @@ where
         return Err(NumPyError::invalid_operation(
             "in1d requires 1-dimensional arrays",
         ));
+    let _ = assume_unique;
     }
 
     use std::collections::HashSet;
@@ -512,7 +513,7 @@ where
 pub fn intersect1d<T>(
     ar1: &Array<T>,
     ar2: &Array<T>,
-    assume_unique: bool,
+    _assume_unique: bool,
     return_indices: bool,
 ) -> Result<UniqueResult<T>>
 where
@@ -632,6 +633,7 @@ where
     use std::collections::HashSet;
 
     let mut set2 = HashSet::with_capacity(ar2.size());
+    let _ = assume_unique;
     for i in 0..ar2.size() {
         if let Some(val) = ar2.get_linear(i) {
             set2.insert(HashWrapper(val));
@@ -661,6 +663,7 @@ where
 {
     use std::collections::HashSet;
 
+    let _ = assume_unique;
     // Count occurrences across both arrays (treating each array as a set of unique values first)
 
     // Actually, simply: (union) - (intersection)
@@ -726,7 +729,7 @@ where
 pub fn isin<T>(
     element: &Array<T>,
     test_elements: &Array<T>,
-    assume_unique: bool,
+    _assume_unique: bool,
     invert: bool,
 ) -> Result<Array<bool>>
 where
