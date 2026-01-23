@@ -2,6 +2,7 @@ use numpy::*;
 #[cfg(test)]
 mod tests {
     use super::*;
+    use numpy::array_manipulation::pad;
 
     fn linear_index<T>(array: &Array<T>, indices: &[usize]) -> usize {
         numpy::strides::compute_linear_index(indices, array.strides()) as usize
@@ -23,7 +24,7 @@ mod tests {
 
         assert_eq!(result.shape(), &[5, 5]);
         let expected = vec![
-            0, 0, 0, 0, 0, 0, 1, 2, 0, 0, 0, 3, 4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 1, 2, 0, 0, 0, 3, 4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
         ];
         assert_eq!(result.to_vec(), expected);
     }
@@ -150,8 +151,8 @@ mod tests {
         assert_eq!(result.shape(), &[4, 2, 4]);
         assert_eq!(result.get_linear(0), Some(&0));
         assert_eq!(result.get_linear(1), Some(&0));
-        assert_eq!(result.get_linear(8), Some(&1));
-        assert_eq!(result.get_linear(9), Some(&2));
+        assert_eq!(result.get_linear(9), Some(&1));
+        assert_eq!(result.get_linear(10), Some(&2));
     }
 
     #[test]
@@ -199,14 +200,14 @@ mod tests {
         let arr = array2![[1, 2], [3, 4], [5, 6], [7, 8]];
         let result = pad(&arr, &[(1, 1), (0, 0)], "reflect", None).unwrap();
 
-        assert_eq!(result.shape(), &[4, 3]);
+        assert_eq!(result.shape(), &[6, 2]);
 
         // Check reflection for the longer dimension
 
-        assert_eq!(result.get_linear(linear_index(&result, &[0, 0])), Some(&2));
-        assert_eq!(result.get_linear(linear_index(&result, &[0, 1])), Some(&1));
-        assert_eq!(result.get_linear(linear_index(&result, &[3, 0])), Some(&6));
-        assert_eq!(result.get_linear(linear_index(&result, &[3, 1])), Some(&5));
+        assert_eq!(result.get_linear(linear_index(&result, &[0, 0])), Some(&3));
+        assert_eq!(result.get_linear(linear_index(&result, &[0, 1])), Some(&4));
+        assert_eq!(result.get_linear(linear_index(&result, &[5, 0])), Some(&5));
+        assert_eq!(result.get_linear(linear_index(&result, &[5, 1])), Some(&6));
     }
 
     #[test]
@@ -214,14 +215,14 @@ mod tests {
         let arr = array2![[1, 2], [3, 4], [5, 6], [7, 8]];
         let result = pad(&arr, &[(1, 1), (0, 0)], "symmetric", None).unwrap();
 
-        assert_eq!(result.shape(), &[4, 3]);
+        assert_eq!(result.shape(), &[6, 2]);
 
         // Check symmetric reflection for the longer dimension
 
         assert_eq!(result.get_linear(linear_index(&result, &[0, 0])), Some(&1));
-        assert_eq!(result.get_linear(linear_index(&result, &[0, 1])), Some(&1));
-        assert_eq!(result.get_linear(linear_index(&result, &[3, 0])), Some(&7));
-        assert_eq!(result.get_linear(linear_index(&result, &[3, 1])), Some(&7));
+        assert_eq!(result.get_linear(linear_index(&result, &[0, 1])), Some(&2));
+        assert_eq!(result.get_linear(linear_index(&result, &[5, 0])), Some(&7));
+        assert_eq!(result.get_linear(linear_index(&result, &[5, 1])), Some(&8));
     }
 
     #[test]
