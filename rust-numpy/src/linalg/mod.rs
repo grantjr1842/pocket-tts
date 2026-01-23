@@ -137,5 +137,7 @@ pub use decompositions::*;
 pub use eigen::*;
 pub use einsum::{einsum, einsum_path};
 pub use norms::*;
-pub use products::{dot, matmul, tensor_dot, trace};
+pub use products::{
+    cross, dot, inner, kron, matmul, matrix_power, multi_dot, outer, tensor_dot, trace, vdot,
+};
 pub use solvers::{det, inv, lstsq, pinv, solve, tensor_inv, tensor_solve};

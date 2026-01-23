@@ -1525,6 +1525,7 @@ where
         &self,
         inputs: &[&dyn crate::ufunc::ArrayView],
         outputs: &mut [&mut dyn crate::ufunc::ArrayViewMut],
+        _where_mask: Option<&Array<bool>>,
     ) -> Result<()> {
         if inputs.len() != 1 || outputs.len() != 1 {
             return Err(NumPyError::ufunc_error(
@@ -1560,7 +1561,7 @@ where
         let mut output = Array::from_data(vec![false; x.size()], x.shape().to_vec());
         let x_ref: &dyn crate::ufunc::ArrayView = x;
         let out_ref: &mut dyn crate::ufunc::ArrayViewMut = &mut output;
-        ufunc.execute(&[x_ref], &mut [out_ref])?;
+        ufunc.execute(&[x_ref], &mut [out_ref], None)?;
         Ok(output)
     } else {
         Err(NumPyError::ufunc_error(
@@ -1579,7 +1580,7 @@ where
         let mut output = Array::from_data(vec![false; x.size()], x.shape().to_vec());
         let x_ref: &dyn crate::ufunc::ArrayView = x;
         let out_ref: &mut dyn crate::ufunc::ArrayViewMut = &mut output;
-        ufunc.execute(&[x_ref], &mut [out_ref])?;
+        ufunc.execute(&[x_ref], &mut [out_ref], None)?;
         Ok(output)
     } else {
         Err(NumPyError::ufunc_error(
@@ -1598,7 +1599,7 @@ where
         let mut output = Array::from_data(vec![false; x.size()], x.shape().to_vec());
         let x_ref: &dyn crate::ufunc::ArrayView = x;
         let out_ref: &mut dyn crate::ufunc::ArrayViewMut = &mut output;
-        ufunc.execute(&[x_ref], &mut [out_ref])?;
+        ufunc.execute(&[x_ref], &mut [out_ref], None)?;
         Ok(output)
     } else {
         Err(NumPyError::ufunc_error(
@@ -1617,7 +1618,7 @@ where
         let mut output = Array::from_data(vec![false; x.size()], x.shape().to_vec());
         let x_ref: &dyn crate::ufunc::ArrayView = x;
         let out_ref: &mut dyn crate::ufunc::ArrayViewMut = &mut output;
-        ufunc.execute(&[x_ref], &mut [out_ref])?;
+        ufunc.execute(&[x_ref], &mut [out_ref], None)?;
         Ok(output)
     } else {
         Err(NumPyError::ufunc_error(
@@ -1636,7 +1637,7 @@ where
         let mut output = Array::from_data(vec![false; x.size()], x.shape().to_vec());
         let x_ref: &dyn crate::ufunc::ArrayView = x;
         let out_ref: &mut dyn crate::ufunc::ArrayViewMut = &mut output;
-        ufunc.execute(&[x_ref], &mut [out_ref])?;
+        ufunc.execute(&[x_ref], &mut [out_ref], None)?;
         Ok(output)
     } else {
         Err(NumPyError::ufunc_error(
