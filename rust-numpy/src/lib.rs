@@ -67,6 +67,7 @@ pub mod window;
 // Re-export key types for convenience
 pub use crate::fft::*;
 pub use array::Array;
+pub use array_extra::{diff, ediff1d, gradient};
 pub use array_manipulation::exports::*;
 pub use bitwise::*;
 pub use dtype::{Casting, Dtype, DtypeKind};
