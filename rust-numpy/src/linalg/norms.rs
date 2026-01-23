@@ -160,6 +160,36 @@ where
     Ok(rank)
 }
 
+/// Normalize axis parameter, handling negative indices
+fn normalize_axis(axis: isize, ndim: usize) -> Result<usize, NumPyError> {
+    let normalized = if axis < 0 { axis + ndim as isize } else { axis };
+
+    if normalized < 0 || normalized >= ndim as isize {
+        return Err(NumPyError::index_error(axis as usize, ndim));
+    }
+
+    Ok(normalized as usize)
+}
+
+/// Normalize multiple axes, handling negative indices and duplicates
+fn normalize_axes(axes: &[isize], ndim: usize) -> Result<Vec<usize>, NumPyError> {
+    let mut seen = std::collections::HashSet::new();
+    let mut result = Vec::with_capacity(axes.len());
+
+    for &axis in axes {
+        let normalized = normalize_axis(axis, ndim)?;
+        if !seen.insert(normalized) {
+            return Err(NumPyError::value_error(
+                format!("duplicate axis in normalization: {}", axis),
+                "linalg",
+            ));
+        }
+        result.push(normalized);
+    }
+
+    Ok(result)
+}
+
 /// Compute matrix or vector norm.
 ///
 /// # Arguments
@@ -172,7 +202,7 @@ where
 ///   - `Some(p)`: Lp norm for any positive integer p
 ///   - `Some("fro")`: Frobenius norm
 ///   - `Some("nuc")`: Nuclear norm (sum of singular values)
-/// * `axis` - Axis along which to compute the norm (None for entire array)
+/// * `axis` - Axis along which to compute the norm (None for entire array, single axis, or multiple axes)
 /// * `keepdims` - If true, keep the reduced dimensions
 ///
 /// # Returns
@@ -181,33 +211,30 @@ where
 pub fn norm<T>(
     x: &Array<T>,
     ord: Option<&str>,
-    axis: Option<usize>,
-    _keepdims: bool,
+    axis: Option<&[isize]>,
+    keepdims: bool,
 ) -> Result<Array<T>, NumPyError>
 where
     T: LinalgScalar + num_traits::Float,
 {
-    // Handle axis parameter (simplified: only None supported for now)
-    if axis.is_some() {
-        return Err(NumPyError::not_implemented(
-            "norm with axis parameter not yet implemented",
-        ));
-    }
-
     // Determine norm type
     let norm_type = match ord {
         None | Some("fro") => NormType::Frobenius,
         Some("nuc") => NormType::Nuclear,
         Some("1") => NormType::L1,
         Some("2") => NormType::L2,
+        Some("inf") => NormType::Linf,
+        Some("-inf") => NormType::LNegInf,
         Some(s) => {
             // Try to parse as integer for Lp norm
-            if let Ok(p) = s.parse::<u32>() {
+            if let Ok(p) = s.parse::<i32>() {
                 if p > 0 {
-                    NormType::Lp(p)
+                    NormType::Lp(p as u32)
+                } else if p < 0 {
+                    NormType::LNegP(p.abs() as u32)
                 } else {
                     return Err(NumPyError::value_error(
-                        "ord must be positive for Lp norms",
+                        "ord must be non-zero for Lp norms",
                         "linalg",
                     ));
                 }
@@ -220,12 +247,29 @@ where
         }
     };
 
+    // Handle axis parameter
+    let axes = match axis {
+        None => None,
+        Some(axes_slice) => Some(normalize_axes(axes_slice, x.ndim())?),
+    };
+
     match norm_type {
-        NormType::Nuclear => compute_nuclear_norm(x),
-        NormType::Frobenius => compute_frobenius_norm(x),
-        NormType::L1 => compute_lp_norm(x, 1),
-        NormType::L2 => compute_lp_norm(x, 2),
-        NormType::Lp(p) => compute_lp_norm(x, p),
+        NormType::Nuclear => {
+            if axes.is_some() {
+                return Err(NumPyError::value_error(
+                    "nuclear norm does not support axis parameter",
+                    "linalg",
+                ));
+            }
+            compute_nuclear_norm(x)
+        }
+        NormType::Frobenius => compute_norm_with_axis(x, 2, axes.as_deref(), keepdims),
+        NormType::L1 => compute_norm_with_axis(x, 1, axes.as_deref(), keepdims),
+        NormType::L2 => compute_norm_with_axis(x, 2, axes.as_deref(), keepdims),
+        NormType::Linf => compute_norm_inf_with_axis(x, true, axes.as_deref(), keepdims),
+        NormType::LNegInf => compute_norm_inf_with_axis(x, false, axes.as_deref(), keepdims),
+        NormType::Lp(p) => compute_norm_with_axis(x, p, axes.as_deref(), keepdims),
+        NormType::LNegP(p) => compute_norm_neg_p_with_axis(x, p, axes.as_deref(), keepdims),
     }
 }
 
@@ -236,6 +280,455 @@ enum NormType {
     L1,
     L2,
     Lp(u32),
+    Linf,
+    LNegInf,
+    LNegP(u32),
+}
+
+/// Helper function to compute output shape after axis reduction
+fn compute_output_shape(shape: &[usize], axes: Option<&[usize]>, keepdims: bool) -> Vec<usize> {
+    match axes {
+        None => {
+            if keepdims {
+                vec![1; shape.len()]
+            } else {
+                vec![]
+            }
+        }
+        Some(axes_to_reduce) => {
+            let mut result = if keepdims {
+                shape.to_vec()
+            } else {
+                let mut temp = shape.to_vec();
+                // Sort axes in descending order for removal
+                let mut sorted_axes: Vec<usize> = axes_to_reduce.to_vec();
+                sorted_axes.sort_unstable_by(|a, b| b.cmp(a));
+                for &ax in &sorted_axes {
+                    temp.remove(ax);
+                }
+                temp
+            };
+
+            if keepdims {
+                for &ax in axes_to_reduce {
+                    result[ax] = 1;
+                }
+            }
+
+            result
+        }
+    }
+}
+
+/// Compute Lp norm along specified axis/axes
+fn compute_norm_with_axis<T>(
+    x: &Array<T>,
+    p: u32,
+    axes: Option<&[usize]>,
+    keepdims: bool,
+) -> Result<Array<T>, NumPyError>
+where
+    T: LinalgScalar + num_traits::Float,
+{
+    let output_shape = compute_output_shape(x.shape(), axes, keepdims);
+    let output_size: usize = output_shape.iter().product();
+
+    // Handle scalar output case
+    if output_shape.is_empty() || output_size == 1 {
+        return compute_lp_norm(x, p);
+    }
+
+    let mut result = vec![T::Real::zero(); output_size];
+    let strides = x.strides();
+    let shape = x.shape();
+    let ndim = shape.len();
+
+    // Generate all indices in the output array
+    let mut output_idx = vec![0usize; output_shape.len()];
+    let mut output_flat = 0usize;
+
+    loop {
+        // Compute norm for this output position
+        let mut sum_abs_p = T::Real::zero();
+
+        // Build the base index from output_idx (non-reduced dimensions)
+        let mut base_idx = vec![0usize; ndim];
+        if let Some(axes_to_reduce) = axes {
+            let mut out_idx = 0;
+            for dim in 0..ndim {
+                if !axes_to_reduce.contains(&dim) {
+                    base_idx[dim] = output_idx[out_idx];
+                    out_idx += 1;
+                }
+            }
+        } else {
+            // No reduction - this shouldn't happen given the early return above
+            base_idx = output_idx.clone();
+        }
+
+        // Iterate over all combinations of reduced axes
+        if let Some(axes_to_reduce) = axes {
+            // Create a list of (dimension, max_value) for reduced axes
+            let reduced_dims: Vec<(usize, usize)> =
+                axes_to_reduce.iter().map(|&ax| (ax, shape[ax])).collect();
+
+            // Use nested iteration through all combinations
+            let mut reduced_iter = reduced_dims
+                .iter()
+                .map(|&(_dim, _)| 0usize)
+                .collect::<Vec<_>>();
+            loop {
+                // Build complete index by combining base_idx and reduced_iter
+                let mut input_idx = base_idx.clone();
+                for (i, &(dim, _)) in reduced_dims.iter().enumerate() {
+                    input_idx[dim] = reduced_iter[i];
+                }
+
+                // Compute linear index and accumulate
+                let linear_idx = input_idx.iter().enumerate().fold(0usize, |acc, (i, &idx)| {
+                    acc + idx as usize * strides[i] as usize
+                });
+
+                if let Some(val) = x.get(linear_idx) {
+                    let abs_val = LinalgScalar::abs(*val);
+                    sum_abs_p = sum_abs_p + num_traits::Float::powi(abs_val, p as i32);
+                }
+
+                // Increment reduced_iter (like a multi-digit counter)
+                let mut carry = true;
+                for (i, &(_, max_val)) in reduced_dims.iter().enumerate() {
+                    if carry {
+                        if reduced_iter[i] + 1 < max_val {
+                            reduced_iter[i] += 1;
+                            carry = false;
+                        } else {
+                            reduced_iter[i] = 0;
+                        }
+                    }
+                }
+
+                if carry {
+                    break; // All combinations exhausted
+                }
+            }
+        }
+
+        // Compute p-th root
+        result[output_flat] = if p == 1 {
+            sum_abs_p
+        } else if p == 2 {
+            num_traits::Float::sqrt(sum_abs_p)
+        } else {
+            let log_sum = num_traits::Float::ln(sum_abs_p);
+            let inv_p = T::Real::one() / num_traits::cast(p as f64).unwrap();
+            num_traits::Float::exp(log_sum * inv_p)
+        };
+
+        // Increment output_idx
+        let mut carry = true;
+        for dim in 0..output_shape.len() {
+            if carry {
+                if output_idx[dim] + 1 < output_shape[dim] {
+                    output_idx[dim] += 1;
+                    carry = false;
+                } else {
+                    output_idx[dim] = 0;
+                }
+            }
+        }
+
+        output_flat += 1;
+        if carry {
+            break;
+        }
+    }
+
+    // Convert Real type back to T
+    let result_t: Vec<T> = result.into_iter().map(|r| T::from(r).unwrap()).collect();
+    Ok(Array::from_shape_vec(output_shape, result_t))
+}
+
+/// Compute L-infinity or L-negative-infinity norm along specified axis/axes
+fn compute_norm_inf_with_axis<T>(
+    x: &Array<T>,
+    max_norm: bool,
+    axes: Option<&[usize]>,
+    keepdims: bool,
+) -> Result<Array<T>, NumPyError>
+where
+    T: LinalgScalar + num_traits::Float,
+{
+    let output_shape = compute_output_shape(x.shape(), axes, keepdims);
+    let output_size: usize = output_shape.iter().product();
+
+    // Handle scalar output case
+    if output_shape.is_empty() || output_size == 1 {
+        let mut result = if max_norm {
+            T::Real::zero()
+        } else {
+            T::Real::infinity()
+        };
+
+        for i in 0..x.size() {
+            if let Some(val) = x.get_linear(i) {
+                let abs_val = LinalgScalar::abs(*val);
+                if max_norm {
+                    result = result.max(abs_val);
+                } else {
+                    result = result.min(abs_val);
+                }
+            }
+        }
+
+        return Ok(Array::from_vec(vec![T::from(result).unwrap()]));
+    }
+
+    let mut result = vec![
+        if max_norm {
+            T::Real::zero()
+        } else {
+            T::Real::infinity()
+        };
+        output_size
+    ];
+    let strides = x.strides();
+    let shape = x.shape();
+    let ndim = shape.len();
+
+    // Generate all indices in the output array
+    let mut output_idx = vec![0usize; output_shape.len()];
+    let mut output_flat = 0usize;
+
+    loop {
+        // Compute norm for this output position
+        let mut current_result = if max_norm {
+            T::Real::zero()
+        } else {
+            T::Real::infinity()
+        };
+
+        // Build the base index from output_idx (non-reduced dimensions)
+        let mut base_idx = vec![0usize; ndim];
+        if let Some(axes_to_reduce) = axes {
+            let mut out_idx = 0;
+            for dim in 0..ndim {
+                if !axes_to_reduce.contains(&dim) {
+                    base_idx[dim] = output_idx[out_idx];
+                    out_idx += 1;
+                }
+            }
+        }
+
+        // Iterate over all combinations of reduced axes
+        if let Some(axes_to_reduce) = axes {
+            let reduced_dims: Vec<(usize, usize)> =
+                axes_to_reduce.iter().map(|&ax| (ax, shape[ax])).collect();
+
+            let mut reduced_iter = reduced_dims
+                .iter()
+                .map(|&(_dim, _)| 0usize)
+                .collect::<Vec<_>>();
+            loop {
+                // Build complete index
+                let mut input_idx = base_idx.clone();
+                for (i, &(dim, _)) in reduced_dims.iter().enumerate() {
+                    input_idx[dim] = reduced_iter[i];
+                }
+
+                // Compute linear index
+                let linear_idx = input_idx.iter().enumerate().fold(0usize, |acc, (i, &idx)| {
+                    acc + idx as usize * strides[i] as usize
+                });
+
+                if let Some(val) = x.get(linear_idx) {
+                    let abs_val = LinalgScalar::abs(*val);
+                    current_result = if max_norm {
+                        current_result.max(abs_val)
+                    } else {
+                        current_result.min(abs_val)
+                    };
+                }
+
+                // Increment reduced_iter
+                let mut carry = true;
+                for (i, &(_, max_val)) in reduced_dims.iter().enumerate() {
+                    if carry {
+                        if reduced_iter[i] + 1 < max_val {
+                            reduced_iter[i] += 1;
+                            carry = false;
+                        } else {
+                            reduced_iter[i] = 0;
+                        }
+                    }
+                }
+
+                if carry {
+                    break;
+                }
+            }
+        }
+
+        result[output_flat] = current_result;
+
+        // Increment output_idx
+        let mut carry = true;
+        for dim in 0..output_shape.len() {
+            if carry {
+                if output_idx[dim] + 1 < output_shape[dim] {
+                    output_idx[dim] += 1;
+                    carry = false;
+                } else {
+                    output_idx[dim] = 0;
+                }
+            }
+        }
+
+        output_flat += 1;
+        if carry {
+            break;
+        }
+    }
+
+    let result_t: Vec<T> = result.into_iter().map(|r| T::from(r).unwrap()).collect();
+    Ok(Array::from_shape_vec(output_shape, result_t))
+}
+
+/// Compute negative Lp norm along specified axis/axes
+fn compute_norm_neg_p_with_axis<T>(
+    x: &Array<T>,
+    p: u32,
+    axes: Option<&[usize]>,
+    keepdims: bool,
+) -> Result<Array<T>, NumPyError>
+where
+    T: LinalgScalar + num_traits::Float,
+{
+    let output_shape = compute_output_shape(x.shape(), axes, keepdims);
+    let output_size: usize = output_shape.iter().product();
+
+    // Handle scalar output case
+    if output_shape.is_empty() || output_size == 1 {
+        let mut sum_abs_neg_p = T::Real::zero();
+
+        for i in 0..x.size() {
+            if let Some(val) = x.get_linear(i) {
+                let abs_val = LinalgScalar::abs(*val);
+                if abs_val > T::Real::zero() {
+                    sum_abs_neg_p = sum_abs_neg_p + num_traits::Float::powi(abs_val, -(p as i32));
+                }
+            }
+        }
+
+        let result = if sum_abs_neg_p > T::Real::zero() {
+            num_traits::Float::powi(sum_abs_neg_p, -(1 as i32))
+        } else {
+            T::Real::infinity()
+        };
+
+        return Ok(Array::from_vec(vec![T::from(result).unwrap()]));
+    }
+
+    let mut result = vec![T::Real::zero(); output_size];
+    let strides = x.strides();
+    let shape = x.shape();
+    let ndim = shape.len();
+
+    // Generate all indices in the output array
+    let mut output_idx = vec![0usize; output_shape.len()];
+    let mut output_flat = 0usize;
+
+    loop {
+        // Compute norm for this output position
+        let mut sum_abs_neg_p = T::Real::zero();
+
+        // Build the base index from output_idx (non-reduced dimensions)
+        let mut base_idx = vec![0usize; ndim];
+        if let Some(axes_to_reduce) = axes {
+            let mut out_idx = 0;
+            for dim in 0..ndim {
+                if !axes_to_reduce.contains(&dim) {
+                    base_idx[dim] = output_idx[out_idx];
+                    out_idx += 1;
+                }
+            }
+        }
+
+        // Iterate over all combinations of reduced axes
+        if let Some(axes_to_reduce) = axes {
+            let reduced_dims: Vec<(usize, usize)> =
+                axes_to_reduce.iter().map(|&ax| (ax, shape[ax])).collect();
+
+            let mut reduced_iter = reduced_dims
+                .iter()
+                .map(|&(_dim, _)| 0usize)
+                .collect::<Vec<_>>();
+            loop {
+                // Build complete index
+                let mut input_idx = base_idx.clone();
+                for (i, &(dim, _)) in reduced_dims.iter().enumerate() {
+                    input_idx[dim] = reduced_iter[i];
+                }
+
+                // Compute linear index
+                let linear_idx = input_idx.iter().enumerate().fold(0usize, |acc, (i, &idx)| {
+                    acc + idx as usize * strides[i] as usize
+                });
+
+                if let Some(val) = x.get(linear_idx) {
+                    let abs_val = LinalgScalar::abs(*val);
+                    if abs_val > T::Real::zero() {
+                        sum_abs_neg_p =
+                            sum_abs_neg_p + num_traits::Float::powi(abs_val, -(p as i32));
+                    }
+                }
+
+                // Increment reduced_iter
+                let mut carry = true;
+                for (i, &(_, max_val)) in reduced_dims.iter().enumerate() {
+                    if carry {
+                        if reduced_iter[i] + 1 < max_val {
+                            reduced_iter[i] += 1;
+                            carry = false;
+                        } else {
+                            reduced_iter[i] = 0;
+                        }
+                    }
+                }
+
+                if carry {
+                    break;
+                }
+            }
+        }
+
+        // Compute negative p-th root
+        result[output_flat] = if sum_abs_neg_p > T::Real::zero() {
+            num_traits::Float::powi(sum_abs_neg_p, -(1 as i32))
+        } else {
+            T::Real::infinity()
+        };
+
+        // Increment output_idx
+        let mut carry = true;
+        for dim in 0..output_shape.len() {
+            if carry {
+                if output_idx[dim] + 1 < output_shape[dim] {
+                    output_idx[dim] += 1;
+                    carry = false;
+                } else {
+                    output_idx[dim] = 0;
+                }
+            }
+        }
+
+        output_flat += 1;
+        if carry {
+            break;
+        }
+    }
+
+    let result_t: Vec<T> = result.into_iter().map(|r| T::from(r).unwrap()).collect();
+    Ok(Array::from_shape_vec(output_shape, result_t))
 }
 
 /// Compute nuclear norm (sum of singular values)
