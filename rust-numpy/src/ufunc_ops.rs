@@ -436,6 +436,11 @@ where
     {
         match axis {
             None => {
+                if self.is_empty() {
+                    return Err(NumPyError::invalid_operation(
+                        "Cannot compute argmin of empty array",
+                    ));
+                }
                 let mut min_idx = 0;
                 let mut min_val = self.get(0);
 
@@ -450,48 +455,47 @@ where
                     }
                 }
 
-                Ok(Array::from_vec(vec![min_idx]))
+                Ok(Array::from_scalar(min_idx, vec![]))
             }
             Some(ax) => {
-                let ax = if ax < 0 {
-                    ax + self.ndim() as isize
-                } else {
-                    ax
-                } as usize;
+                let ndim = self.ndim();
+                if ndim == 0 {
+                    return Err(NumPyError::invalid_operation(
+                        "Cannot specify axis for 0D array",
+                    ));
+                }
+                let ax = if ax < 0 { ax + ndim as isize } else { ax } as usize;
 
-                if ax >= self.ndim() {
-                    return Err(NumPyError::index_error(ax, self.ndim()));
+                if ax >= ndim {
+                    return Err(NumPyError::index_error(ax, ndim));
                 }
 
-                let output_shape: Vec<usize> = self
-                    .shape()
-                    .iter()
-                    .enumerate()
-                    .filter(|(i, _)| *i != ax)
-                    .map(|(_, &dim)| dim)
-                    .collect();
-
-                if output_shape.is_empty() {
-                    return Err(NumPyError::invalid_operation("Cannot reduce all axes"));
+                let shape = self.shape();
+                let mut output_shape = Vec::with_capacity(ndim - 1);
+                for (i, &dim) in shape.iter().enumerate() {
+                    if i != ax {
+                        output_shape.push(dim);
+                    }
                 }
 
                 let mut result = Array::zeros(output_shape.clone());
+                let axis_len = shape[ax];
 
                 for output_idx in 0..result.size() {
                     let output_indices =
                         crate::strides::compute_multi_indices(output_idx, &output_shape);
 
                     let mut min_pos = 0;
-                    let mut min_val: Option<&T> = None;
+                    let mut min_val: Option<T> = None;
 
-                    for pos in 0..self.shape()[ax] {
+                    for pos in 0..axis_len {
                         let mut full_indices = output_indices.clone();
                         full_indices.insert(ax, pos);
 
                         if let Ok(val) = self.get_by_indices(&full_indices) {
-                            if min_val.is_none() || val < min_val.unwrap() {
+                            if min_val.is_none() || val < min_val.as_ref().unwrap() {
                                 min_pos = pos;
-                                min_val = Some(val);
+                                min_val = Some(val.clone());
                             }
                         }
                     }
@@ -510,6 +514,11 @@ where
     {
         match axis {
             None => {
+                if self.is_empty() {
+                    return Err(NumPyError::invalid_operation(
+                        "Cannot compute argmax of empty array",
+                    ));
+                }
                 let mut max_idx = 0;
                 let mut max_val = self.get(0);
 
@@ -524,48 +533,47 @@ where
                     }
                 }
 
-                Ok(Array::from_vec(vec![max_idx]))
+                Ok(Array::from_scalar(max_idx, vec![]))
             }
             Some(ax) => {
-                let ax = if ax < 0 {
-                    ax + self.ndim() as isize
-                } else {
-                    ax
-                } as usize;
+                let ndim = self.ndim();
+                if ndim == 0 {
+                    return Err(NumPyError::invalid_operation(
+                        "Cannot specify axis for 0D array",
+                    ));
+                }
+                let ax = if ax < 0 { ax + ndim as isize } else { ax } as usize;
 
-                if ax >= self.ndim() {
-                    return Err(NumPyError::index_error(ax, self.ndim()));
+                if ax >= ndim {
+                    return Err(NumPyError::index_error(ax, ndim));
                 }
 
-                let output_shape: Vec<usize> = self
-                    .shape()
-                    .iter()
-                    .enumerate()
-                    .filter(|(i, _)| *i != ax)
-                    .map(|(_, &dim)| dim)
-                    .collect();
-
-                if output_shape.is_empty() {
-                    return Err(NumPyError::invalid_operation("Cannot reduce all axes"));
+                let shape = self.shape();
+                let mut output_shape = Vec::with_capacity(ndim - 1);
+                for (i, &dim) in shape.iter().enumerate() {
+                    if i != ax {
+                        output_shape.push(dim);
+                    }
                 }
 
                 let mut result = Array::zeros(output_shape.clone());
+                let axis_len = shape[ax];
 
                 for output_idx in 0..result.size() {
                     let output_indices =
                         crate::strides::compute_multi_indices(output_idx, &output_shape);
 
                     let mut max_pos = 0;
-                    let mut max_val: Option<&T> = None;
+                    let mut max_val: Option<T> = None;
 
-                    for pos in 0..self.shape()[ax] {
+                    for pos in 0..axis_len {
                         let mut full_indices = output_indices.clone();
                         full_indices.insert(ax, pos);
 
                         if let Ok(val) = self.get_by_indices(&full_indices) {
-                            if max_val.is_none() || val > max_val.unwrap() {
+                            if max_val.is_none() || val > max_val.as_ref().unwrap() {
                                 max_pos = pos;
-                                max_val = Some(val);
+                                max_val = Some(val.clone());
                             }
                         }
                     }
