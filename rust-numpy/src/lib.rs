@@ -91,6 +91,7 @@ pub type Complex = num_complex::Complex<f64>;
 
 // Re-export common constants
 pub use constants::*;
+pub use math_ufuncs::{abs, absolute, copysign, fabs, sign, signbit};
 /// Create array macro for convenient array creation
 #[macro_export]
 macro_rules! array {

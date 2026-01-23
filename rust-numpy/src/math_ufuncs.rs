@@ -17,7 +17,7 @@ use crate::array::Array;
 use crate::broadcasting::{broadcast_arrays, compute_broadcast_shape};
 use crate::dtype::DtypeKind;
 use crate::error::{NumPyError, Result};
-use crate::ufunc::{get_ufunc, Ufunc};
+use crate::ufunc::{get_ufunc, get_ufunc_typed, get_ufunc_typed_binary, Ufunc};
 use num_traits::{FloatConst, Zero};
 use std::f64::consts;
 use std::marker::PhantomData;
@@ -1427,6 +1427,103 @@ where
     }
 }
 
+/// Compute sign of each element (-1, 0, or 1)
+pub fn sign<T>(x: &Array<T>) -> Result<Array<T>>
+where
+    T: Clone + Default + 'static,
+{
+    if let Some(ufunc) = get_ufunc_typed::<T>("sign") {
+        let mut output = Array::from_data(vec![T::default(); x.size()], x.shape().to_vec());
+        ufunc.execute(&[x], &mut [&mut output])?;
+        Ok(output)
+    } else {
+        Err(NumPyError::ufunc_error(
+            "sign",
+            "Ufunc not found".to_string(),
+        ))
+    }
+}
+
+/// Test if sign bit is set in each element (true for negative numbers, -0.0, and NaN)
+pub fn signbit<T>(x: &Array<T>) -> Result<Array<T>>
+where
+    T: Clone + Default + 'static,
+{
+    if let Some(ufunc) = get_ufunc_typed::<T>("signbit") {
+        let mut output = Array::from_data(vec![T::default(); x.size()], x.shape().to_vec());
+        ufunc.execute(&[x], &mut [&mut output])?;
+        Ok(output)
+    } else {
+        Err(NumPyError::ufunc_error(
+            "signbit",
+            "Ufunc not found".to_string(),
+        ))
+    }
+}
+
+/// Copy sign of x2 to x1
+pub fn copysign<T>(x1: &Array<T>, x2: &Array<T>) -> Result<Array<T>>
+where
+    T: Clone + Default + 'static,
+{
+    if let Some(ufunc) = get_ufunc_typed_binary::<T>("copysign") {
+        let shape = compute_broadcast_shape(x1.shape(), x2.shape());
+        let broadcasted = broadcast_arrays(&[x1, x2])?;
+
+        let mut output =
+            Array::from_data(vec![T::default(); shape.iter().product::<usize>()], shape);
+        ufunc.execute(&[&broadcasted[0], &broadcasted[1]], &mut [&mut output])?;
+        Ok(output)
+    } else {
+        Err(NumPyError::ufunc_error(
+            "copysign",
+            "Ufunc not found".to_string(),
+        ))
+    }
+}
+
+/// Compute absolute value element-wise
+pub fn absolute<T>(x: &Array<T>) -> Result<Array<T>>
+where
+    T: Clone + Default + 'static,
+{
+    if let Some(ufunc) = get_ufunc_typed::<T>("absolute") {
+        let mut output = Array::from_data(vec![T::default(); x.size()], x.shape().to_vec());
+        ufunc.execute(&[x], &mut [&mut output])?;
+        Ok(output)
+    } else {
+        Err(NumPyError::ufunc_error(
+            "absolute",
+            "Ufunc not found".to_string(),
+        ))
+    }
+}
+
+/// Compute absolute value element-wise (alias for absolute)
+pub fn abs<T>(x: &Array<T>) -> Result<Array<T>>
+where
+    T: Clone + Default + 'static,
+{
+    absolute(x)
+}
+
+/// Compute absolute value for floating point types (float only)
+pub fn fabs<T>(x: &Array<T>) -> Result<Array<T>>
+where
+    T: Clone + Default + 'static,
+{
+    if let Some(ufunc) = get_ufunc_typed::<T>("fabs") {
+        let mut output = Array::from_data(vec![T::default(); x.size()], x.shape().to_vec());
+        ufunc.execute(&[x], &mut [&mut output])?;
+        Ok(output)
+    } else {
+        Err(NumPyError::ufunc_error(
+            "fabs",
+            "Ufunc not found".to_string(),
+        ))
+    }
+}
+
 /// Register all mathematical ufuncs
 pub fn register_math_ufuncs(registry: &mut crate::ufunc::UfuncRegistry) {
     // Trigonometric functions
@@ -1808,6 +1905,65 @@ pub fn register_math_ufuncs(registry: &mut crate::ufunc::UfuncRegistry) {
             x.ceil()
         }
     })));
+
+    // Sign and absolute value functions
+    // sign: returns -1, 0, or 1 based on sign
+    registry.register(Box::new(MathUnaryUfunc::new("sign", |x: &f32| {
+        if x.is_nan() {
+            f32::NAN
+        } else if *x == 0.0 {
+            0.0
+        } else if *x > 0.0 {
+            1.0
+        } else {
+            -1.0
+        }
+    })));
+    registry.register(Box::new(MathUnaryUfunc::new("sign", |x: &f64| {
+        if x.is_nan() {
+            f64::NAN
+        } else if *x == 0.0 {
+            0.0
+        } else if *x > 0.0 {
+            1.0
+        } else {
+            -1.0
+        }
+    })));
+
+    // signbit: returns 1.0 if sign bit is set (negative), 0.0 otherwise
+    registry.register(Box::new(MathUnaryUfunc::new("signbit", |x: &f32| {
+        if x.is_sign_negative() {
+            1.0
+        } else {
+            0.0
+        }
+    })));
+    registry.register(Box::new(MathUnaryUfunc::new("signbit", |x: &f64| {
+        if x.is_sign_negative() {
+            1.0
+        } else {
+            0.0
+        }
+    })));
+
+    // copysign: copy sign from x2 to x1
+    registry.register(Box::new(MathBinaryUfunc::new(
+        "copysign",
+        |x: &f32, y: &f32| x.copysign(*y),
+    )));
+    registry.register(Box::new(MathBinaryUfunc::new(
+        "copysign",
+        |x: &f64, y: &f64| x.copysign(*y),
+    )));
+
+    // absolute/abs: absolute value (float types only for now)
+    registry.register(Box::new(MathUnaryUfunc::new("absolute", |x: &f32| x.abs())));
+    registry.register(Box::new(MathUnaryUfunc::new("absolute", |x: &f64| x.abs())));
+
+    // fabs: absolute value for float types (alias for absolute)
+    registry.register(Box::new(MathUnaryUfunc::new("fabs", |x: &f32| x.abs())));
+    registry.register(Box::new(MathUnaryUfunc::new("fabs", |x: &f64| x.abs())));
 }
 
 #[cfg(test)]
@@ -1863,5 +2019,75 @@ mod tests {
         assert_eq!(floor_result.size(), 3);
         assert_eq!(ceil_result.size(), 3);
         assert_eq!(round_result.size(), 3);
+    }
+
+    #[test]
+    fn test_sign() {
+        let x = Array::from_data(vec![-2.5_f64, -0.0, 0.0, 1.5, f64::NAN], vec![5]);
+        let result = sign(&x).unwrap();
+
+        let vals = result.to_vec();
+        assert!((vals[0] - (-1.0_f64)).abs() < 1e-10);
+        assert!((vals[1] - 0.0_f64).abs() < 1e-10);
+        assert!((vals[2] - 0.0_f64).abs() < 1e-10);
+        assert!((vals[3] - 1.0_f64).abs() < 1e-10);
+        assert!(vals[4].is_nan());
+    }
+
+    #[test]
+    fn test_signbit() {
+        let x = Array::from_data(vec![-1.5_f64, -0.0, 0.0, 2.5], vec![4]);
+        let result = signbit(&x).unwrap();
+
+        let vals = result.to_vec();
+        assert!((vals[0] - 1.0_f64).abs() < 1e-10);
+        assert!((vals[1] - 1.0_f64).abs() < 1e-10);
+        assert!((vals[2] - 0.0_f64).abs() < 1e-10);
+        assert!((vals[3] - 0.0_f64).abs() < 1e-10);
+    }
+
+    #[test]
+    fn test_copysign() {
+        let x1 = Array::from_data(vec![1.5_f64, -2.5, 3.14], vec![3]);
+        let x2 = Array::from_data(vec![-1.0_f64, 1.0, -1.0], vec![3]);
+        let result = copysign(&x1, &x2).unwrap();
+
+        let vals = result.to_vec();
+        assert!((vals[0] - (-1.5_f64)).abs() < 1e-10);
+        assert!((vals[1] - 2.5_f64).abs() < 1e-10);
+        assert!((vals[2] - (-3.14_f64)).abs() < 1e-10);
+    }
+
+    #[test]
+    fn test_absolute() {
+        let x = Array::from_data(vec![-1.5_f64, -0.0, 0.0, 2.71], vec![4]);
+        let result = absolute(&x).unwrap();
+
+        let vals = result.to_vec();
+        assert!((vals[0] - 1.5_f64).abs() < 1e-10);
+        assert!((vals[1] - 0.0_f64).abs() < 1e-10);
+        assert!((vals[2] - 0.0_f64).abs() < 1e-10);
+        assert!((vals[3] - 2.71_f64).abs() < 1e-10);
+    }
+
+    #[test]
+    fn test_abs_alias() {
+        let x = Array::from_data(vec![-2.5_f64, 1.5], vec![2]);
+        let abs_result = abs(&x).unwrap();
+        let absolute_result = absolute(&x).unwrap();
+
+        assert_eq!(abs_result.to_vec(), absolute_result.to_vec());
+    }
+
+    #[test]
+    fn test_fabs() {
+        let x = Array::from_data(vec![-1.5_f64, -0.0, 0.0, 2.71], vec![4]);
+        let result = fabs(&x).unwrap();
+
+        let vals = result.to_vec();
+        assert!((vals[0] - 1.5_f64).abs() < 1e-10);
+        assert!((vals[1] - 0.0_f64).abs() < 1e-10);
+        assert!((vals[2] - 0.0_f64).abs() < 1e-10);
+        assert!((vals[3] - 2.71_f64).abs() < 1e-10);
     }
 }
