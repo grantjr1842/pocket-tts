@@ -2045,7 +2045,7 @@ where
 {
     let mut result = a.clone();
     let mut sorted_axes: Vec<isize> = axes.to_vec();
-    sorted_axes.sort_by_key(|&ax| (ax as i64));
+    sorted_axes.sort_by_key(|&ax| ax as i64);
 
     for &axis in &sorted_axes {
         result = func(&result, axis);
