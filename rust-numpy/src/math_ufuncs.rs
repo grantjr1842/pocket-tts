@@ -1659,6 +1659,142 @@ where
     }
 }
 
+/// Return the phase angle (also called argument) of a complex number
+/// For real input, the result is 0 for positive numbers and pi for negative numbers
+pub fn angle(z: &Array<num_complex::Complex64>) -> Result<Array<f64>> {
+    let mut data = Vec::with_capacity(z.size());
+    for i in 0..z.size() {
+        if let Some(val) = z.get(i) {
+            data.push(val.im.atan2(val.re));
+        }
+    }
+    Ok(Array::from_data(data, z.shape().to_vec()))
+}
+
+/// Return the phase angle for Complex32 arrays
+pub fn angle32(z: &Array<num_complex::Complex32>) -> Result<Array<f32>> {
+    let mut data = Vec::with_capacity(z.size());
+    for i in 0..z.size() {
+        if let Some(val) = z.get(i) {
+            data.push(val.im.atan2(val.re));
+        }
+    }
+    Ok(Array::from_data(data, z.shape().to_vec()))
+}
+
+/// Return the real part of the Complex64 number
+pub fn real(z: &Array<num_complex::Complex64>) -> Result<Array<f64>> {
+    let mut data = Vec::with_capacity(z.size());
+    for i in 0..z.size() {
+        if let Some(val) = z.get(i) {
+            data.push(val.re);
+        }
+    }
+    Ok(Array::from_data(data, z.shape().to_vec()))
+}
+
+/// Return the real part of the Complex32 number
+pub fn real32(z: &Array<num_complex::Complex32>) -> Result<Array<f32>> {
+    let mut data = Vec::with_capacity(z.size());
+    for i in 0..z.size() {
+        if let Some(val) = z.get(i) {
+            data.push(val.re);
+        }
+    }
+    Ok(Array::from_data(data, z.shape().to_vec()))
+}
+
+/// Return the imaginary part of the Complex64 number
+pub fn imag(z: &Array<num_complex::Complex64>) -> Result<Array<f64>> {
+    let mut data = Vec::with_capacity(z.size());
+    for i in 0..z.size() {
+        if let Some(val) = z.get(i) {
+            data.push(val.im);
+        }
+    }
+    Ok(Array::from_data(data, z.shape().to_vec()))
+}
+
+/// Return the imaginary part of the Complex32 number
+pub fn imag32(z: &Array<num_complex::Complex32>) -> Result<Array<f32>> {
+    let mut data = Vec::with_capacity(z.size());
+    for i in 0..z.size() {
+        if let Some(val) = z.get(i) {
+            data.push(val.im);
+        }
+    }
+    Ok(Array::from_data(data, z.shape().to_vec()))
+}
+
+/// Return the complex conjugate, element-wise
+/// The conjugate of a complex number is obtained by changing the sign of its imaginary part
+pub fn conj(z: &Array<num_complex::Complex64>) -> Result<Array<num_complex::Complex64>> {
+    let mut data = Vec::with_capacity(z.size());
+    for i in 0..z.size() {
+        if let Some(val) = z.get(i) {
+            data.push(num_complex::Complex64::new(val.re, -val.im));
+        }
+    }
+    Ok(Array::from_data(data, z.shape().to_vec()))
+}
+
+/// Return the complex conjugate for Complex32 arrays
+pub fn conj32(z: &Array<num_complex::Complex32>) -> Result<Array<num_complex::Complex32>> {
+    let mut data = Vec::with_capacity(z.size());
+    for i in 0..z.size() {
+        if let Some(val) = z.get(i) {
+            data.push(num_complex::Complex32::new(val.re, -val.im));
+        }
+    }
+    Ok(Array::from_data(data, z.shape().to_vec()))
+}
+
+/// Return the complex conjugate, element-wise (alias for conj)
+pub fn conjugate(z: &Array<num_complex::Complex64>) -> Result<Array<num_complex::Complex64>> {
+    conj(z)
+}
+
+/// Return the complex conjugate for Complex32 arrays (alias for conj32)
+pub fn conjugate32(z: &Array<num_complex::Complex32>) -> Result<Array<num_complex::Complex32>> {
+    conj32(z)
+}
+
+/// Return the real part of the array if the imaginary part is close to zero
+/// If the imaginary part is not close to zero, return the array as is
+pub fn real_if_close(a: &Array<num_complex::Complex64>, tol: Option<f64>) -> Result<Array<num_complex::Complex64>> {
+    let tolerance = tol.unwrap_or(1e-10);
+    let mut data = Vec::with_capacity(a.size());
+
+    for i in 0..a.size() {
+        if let Some(val) = a.get(i) {
+            if val.im.abs() < tolerance {
+                // Return real part as a complex number with zero imaginary part
+                data.push(num_complex::Complex64::new(val.re, 0.0));
+            } else {
+                data.push(val.clone());
+            }
+        }
+    }
+    Ok(Array::from_data(data, a.shape().to_vec()))
+}
+
+/// Return the real part of the array if the imaginary part is close to zero (Complex32 version)
+pub fn real_if_close32(a: &Array<num_complex::Complex32>, tol: Option<f32>) -> Result<Array<num_complex::Complex32>> {
+    let tolerance = tol.unwrap_or(1e-10);
+    let mut data = Vec::with_capacity(a.size());
+
+    for i in 0..a.size() {
+        if let Some(val) = a.get(i) {
+            if val.im.abs() < tolerance {
+                data.push(num_complex::Complex32::new(val.re, 0.0));
+            } else {
+                data.push(val.clone());
+            }
+        }
+    }
+    Ok(Array::from_data(data, a.shape().to_vec()))
+}
+
 /// Register all mathematical ufuncs
 pub fn register_math_ufuncs(registry: &mut crate::ufunc::UfuncRegistry) {
     // Trigonometric functions
