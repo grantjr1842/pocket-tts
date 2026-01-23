@@ -86,6 +86,58 @@ mod tests {
         assert_eq!(trimmed.to_vec(), vec![1.5f64, 2.5]);
     }
 
+    // ==================== diff tests ====================
+
+    #[test]
+    fn test_diff_basic_1d() {
+        let arr = array![1, 2, 4, 7];
+        let diff = array_extra::diff(&arr, 1, -1, None, None).unwrap();
+        assert_eq!(diff.to_vec(), vec![1i32, 2, 3]);
+    }
+
+    #[test]
+    fn test_diff_n_two() {
+        let arr = array![1, 2, 4, 7];
+        let diff = array_extra::diff(&arr, 2, -1, None, None).unwrap();
+        assert_eq!(diff.to_vec(), vec![1i32, 1]);
+    }
+
+    #[test]
+    fn test_diff_axis_2d() {
+        let arr = Array::from_shape_vec(vec![2, 3], vec![1, 2, 4, 0, 1, 3]);
+        let diff = array_extra::diff(&arr, 1, 1, None, None).unwrap();
+        assert_eq!(diff.shape(), &[2, 2]);
+        assert_eq!(diff.to_vec(), vec![1i32, 2, 1, 2]);
+    }
+
+    #[test]
+    fn test_diff_prepend_append() {
+        let arr = array![1, 2, 4, 7];
+        let prepend = Array::from_vec(vec![0]);
+        let append = Array::from_vec(vec![10]);
+        let diff = array_extra::diff(&arr, 1, -1, Some(&prepend), Some(&append)).unwrap();
+        assert_eq!(diff.to_vec(), vec![1i32, 1, 2, 3, 3]);
+    }
+
+    // ==================== gradient tests ====================
+
+    #[test]
+    fn test_gradient_1d() {
+        let arr = Array::from_vec(vec![1.0, 2.0, 4.0, 7.0]);
+        let gradients = array_extra::gradient(&arr).unwrap();
+        assert_eq!(gradients.len(), 1);
+        assert_eq!(gradients[0].to_vec(), vec![1.0, 1.5, 2.5, 3.0]);
+    }
+
+    #[test]
+    fn test_gradient_2d() {
+        let arr = Array::from_shape_vec(vec![2, 3], vec![1.0, 2.0, 3.0, 4.0, 5.0, 6.0]);
+        let gradients = array_extra::gradient(&arr).unwrap();
+        assert_eq!(gradients.len(), 2);
+        assert_eq!(gradients[0].to_vec(), vec![3.0, 3.0, 3.0, 3.0, 3.0, 3.0]);
+        assert_eq!(gradients[1].to_vec(), vec![1.0, 1.0, 1.0, 1.0, 1.0, 1.0]);
+    }
+
     // ==================== ediff1d tests ====================
 
     #[test]
