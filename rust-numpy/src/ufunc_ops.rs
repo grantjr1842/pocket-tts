@@ -151,7 +151,7 @@ impl UfuncEngine {
         let mut output = Array::zeros(output_shape);
 
         if let Some(reduction_axes) = axis {
-            self.reduce_along_axes(array, &mut output, reduction_axes, &operation)?;
+            self.reduce_along_axes(array, &mut output, reduction_axes, keepdims, &operation)?;
         } else if let Some(initial) = array.get(0) {
             let mut result = initial.clone();
             for i in 1..array.size() {
@@ -172,6 +172,7 @@ impl UfuncEngine {
         input: &Array<T>,
         output: &mut Array<T>,
         axes: &[isize],
+        keepdims: bool,
         operation: F,
     ) -> Result<()>
     where
@@ -191,9 +192,6 @@ impl UfuncEngine {
             })
             .collect();
 
-        // Initialize output with default or first elements if necessary
-        // In many cases, the caller might have initialized it, but let's ensure it's handled.
-        // For simplicity in this O(N) pass, we'll use a tracker to know if it's the first element for that output slot.
         let mut initialized = vec![false; output.size()];
 
         for input_idx in 0..input.size() {
@@ -204,6 +202,8 @@ impl UfuncEngine {
             for (dim_idx, &idx_val) in input_indices.iter().enumerate() {
                 if !reduced_axes_mask[dim_idx] {
                     output_indices.push(idx_val);
+                } else if keepdims {
+                    output_indices.push(0);
                 }
             }
 
@@ -277,7 +277,7 @@ where
         engine.execute_unary("absolute", self)
     }
 
-    /// Sum of elements
+    /// Sum of elements along given axes.
     pub fn sum(&self, axis: Option<&[isize]>, keepdims: bool) -> Result<Array<T>>
     where
         T: std::ops::Add<Output = T>,
@@ -286,12 +286,13 @@ where
         engine.execute_reduction("sum", self, axis, keepdims, |a, b| a + b)
     }
 
-    pub fn product(&self, axis: Option<&[isize]>, keepdims: bool) -> Result<Array<T>>
+    /// Product of elements along given axes.
+    pub fn prod(&self, axis: Option<&[isize]>, keepdims: bool) -> Result<Array<T>>
     where
         T: std::ops::Mul<Output = T>,
     {
         let engine = UfuncEngine::new();
-        engine.execute_reduction("product", self, axis, keepdims, |a, b| a * b)
+        engine.execute_reduction("prod", self, axis, keepdims, |a, b| a * b)
     }
 
     pub fn count_reduced_elements(
