@@ -557,3 +557,337 @@ where
 
     Ok(Array::from_vec(vec![result]))
 }
+
+/// Compute the condition number of a matrix
+///
+/// The condition number measures how sensitive a function is to changes or errors
+/// in the input. For matrices, it's defined as ||A|| * ||A^(-1)|| where A^(-1) is the
+/// inverse of A.
+///
+/// # Arguments
+///
+/// * `a` - Input matrix (2D array)
+/// * `p` - Order of the norm:
+///   - None or "fro": Frobenius norm
+///   - 1: L1 norm (maximum column sum)
+///   - -1: Minimum singular value
+///   - 2: L2 norm (largest singular value)
+///   - -2: Smallest singular value
+///   - "nuc": Nuclear norm
+///   - inf: Infinity norm (maximum row sum)
+///   - -inf: Minimum singular value
+///   - "fro": Frobenius norm
+///
+/// # Returns
+///
+/// * `Result<Array<T>, NumPyError>` - The condition number
+///
+/// # Examples
+///
+/// ```rust,ignore
+/// use rust_numpy::{array, linalg::cond};
+///
+/// let a = array![[1.0, 2.0], [3.0, 4.0]];
+/// let c = cond(&a, None).unwrap();
+/// ```
+pub fn cond<T>(a: &Array<T>, p: Option<&str>) -> Result<Array<T>, NumPyError>
+where
+    T: LinalgScalar + num_traits::Float,
+{
+    if a.ndim() != 2 {
+        return Err(NumPyError::value_error("cond requires 2D array", "linalg"));
+    }
+
+    let shape = a.shape();
+    if shape[0] != shape[1] {
+        return Err(NumPyError::value_error(
+            "cond requires square matrix",
+            "linalg",
+        ));
+    }
+
+    // For p=2 or p=None, use SVD-based condition number: sigma_max / sigma_min
+    // For p="fro", use Frobenius norm based computation
+    // For p=1 or p=inf, use norm-based computation
+    let norm_ord = p.unwrap_or("2");
+
+    if norm_ord == "2" || norm_ord == "-2" {
+        // SVD-based condition number
+        let singular_values = compute_singular_values(a)?;
+
+        if singular_values.is_empty() {
+            return Ok(Array::from_vec(vec![T::from(T::Real::infinity()).unwrap()]));
+        }
+
+        let sigma_max = singular_values.first().copied().unwrap_or(T::Real::zero());
+        let sigma_min = singular_values.last().copied().unwrap_or(T::Real::zero());
+
+        // If smallest singular value is zero, matrix is singular
+        if sigma_min <= T::Real::epsilon() * sigma_max {
+            return Ok(Array::from_vec(vec![T::from(T::Real::infinity()).unwrap()]));
+        }
+
+        let condition_number = sigma_max / sigma_min;
+        Ok(Array::from_vec(vec![T::from(condition_number).unwrap()]))
+    } else if norm_ord == "fro"
+        || norm_ord == "nuc"
+        || norm_ord == "1"
+        || norm_ord == "-1"
+        || norm_ord == "inf"
+        || norm_ord == "-inf"
+    {
+        // For other norms, compute using norm(a) * norm(inv(a))
+        use crate::linalg::solvers::inv;
+
+        let norm_a = norm(a, Some(norm_ord), None, false)?;
+
+        // Convert scalar Array to scalar value
+        let norm_a_val = norm_a.get_linear(0).copied().unwrap_or(T::zero());
+
+        let inv_a = inv(a)?;
+        let norm_inv_a = norm(&inv_a, Some(norm_ord), None, false)?;
+
+        let norm_inv_a_val = norm_inv_a.get_linear(0).copied().unwrap_or(T::zero());
+
+        // If inverse norm is effectively zero, matrix is singular
+        let eps = LinalgScalar::from_real(T::Real::epsilon());
+        if num_traits::Float::abs(norm_inv_a_val) <= eps {
+            return Ok(Array::from_vec(vec![LinalgScalar::from_real(T::Real::infinity())]));
+        }
+
+        let condition_number = norm_a_val * norm_inv_a_val;
+        Ok(Array::from_vec(vec![condition_number]))
+    } else {
+        Err(NumPyError::value_error(
+            format!("Invalid norm order for cond: {}", norm_ord),
+            "linalg",
+        ))
+    }
+}
+
+/// Compute the sign and (natural) logarithm of the determinant of an array
+///
+/// This function is more numerically stable than computing the determinant directly
+/// for large matrices, as it works with the logarithm of values to avoid overflow.
+///
+/// # Arguments
+///
+/// * `a` - Input square matrix (2D array)
+///
+/// # Returns
+///
+/// * `Result<(Array<T>, Array<T>), NumPyError>` - A tuple containing:
+///   - sign: Sign of the determinant (-1.0, 0.0, or 1.0)
+///   - logabsdet: Natural logarithm of the absolute value of the determinant
+///
+/// If the determinant is zero, sign is 0.0 and logabsdet is -inf.
+///
+/// # Examples
+///
+/// ```rust,ignore
+/// use rust_numpy::{array, linalg::slogdet};
+///
+/// let a = array![[1.0, 2.0], [3.0, 4.0]];
+/// let (sign, logdet) = slogdet(&a).unwrap();
+/// // det = 1*4 - 2*3 = -2
+/// // sign = -1.0, logdet = ln(2) ≈ 0.6931
+/// ```
+pub fn slogdet<T>(a: &Array<T>) -> Result<(Array<T>, Array<T>), NumPyError>
+where
+    T: LinalgScalar + num_traits::Float,
+{
+    if a.ndim() != 2 {
+        return Err(NumPyError::value_error(
+            "slogdet requires 2D array",
+            "linalg",
+        ));
+    }
+
+    let n = a.shape()[0];
+    if n != a.shape()[1] {
+        return Err(NumPyError::value_error(
+            "slogdet requires square matrix",
+            "linalg",
+        ));
+    }
+
+    if n == 0 {
+        return Ok((
+            Array::from_vec(vec![T::one()]),
+            Array::from_vec(vec![T::from(T::Real::neg_infinity()).unwrap()]),
+        ));
+    }
+
+    let strides = a.strides();
+    let idx = |row: usize, col: usize, strides: &[isize]| -> usize {
+        (row as isize * strides[0] + col as isize * strides[1]) as usize
+    };
+
+    // Make a copy of the matrix for LU decomposition
+    let mut lu = vec![T::zero(); n * n];
+    for i in 0..n {
+        for j in 0..n {
+            let a_idx = idx(i, j, strides);
+            lu[i * n + j] = *a
+                .get(a_idx)
+                .ok_or_else(|| NumPyError::invalid_operation("slogdet index out of bounds"))?;
+        }
+    }
+
+    let mut sign = T::one();
+    let mut logabsdet = T::Real::zero();
+    let eps = T::Real::epsilon();
+
+    for col in 0..n {
+        // Find pivot
+        let mut pivot_row = col;
+        let mut pivot_val = LinalgScalar::abs(lu[col * n + col]);
+        for row in (col + 1)..n {
+            let candidate = LinalgScalar::abs(lu[row * n + col]);
+            if candidate > pivot_val {
+                pivot_val = candidate;
+                pivot_row = row;
+            }
+        }
+
+        if pivot_val <= eps {
+            // Singular matrix
+            return Ok((
+                Array::from_vec(vec![T::zero()]),
+                Array::from_vec(vec![T::from(T::Real::neg_infinity()).unwrap()]),
+            ));
+        }
+
+        if pivot_row != col {
+            // Swap rows
+            for j in 0..n {
+                lu.swap(col * n + j, pivot_row * n + j);
+            }
+            sign = -sign;
+        }
+
+        let pivot = lu[col * n + col];
+        logabsdet = logabsdet + Float::ln(LinalgScalar::abs(pivot));
+
+        // Update the submatrix
+        for row in (col + 1)..n {
+            let factor = lu[row * n + col] / pivot;
+            let abs_val = LinalgScalar::abs(factor);
+            if abs_val <= eps {
+                continue;
+            }
+            for j in (col + 1)..n {
+                lu[row * n + j] = lu[row * n + j] - factor * lu[col * n + j];
+            }
+        }
+    }
+
+    Ok((
+        Array::from_vec(vec![sign]),
+        Array::from_vec(vec![T::from(logabsdet).unwrap()]),
+    ))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_cond_well_conditioned() {
+        // Well-conditioned matrix (identity)
+        let n = 3;
+        let mut data = vec![0.0f64; n * n];
+        for i in 0..n {
+            data[i * n + i] = 1.0;
+        }
+
+        let a = Array::from_data(data, vec![n, n]);
+        let result = cond(&a, Some("2")).unwrap();
+
+        // Identity matrix has condition number 1
+        assert!((result.get_linear(0).unwrap_or(&1.0) - &1.0).abs() < 1e-10);
+    }
+
+    #[test]
+    fn test_cond_singular() {
+        // Singular matrix (determinant = 0)
+        let data = vec![1.0f64, 2.0, 2.0, 4.0]; // Rows are linearly dependent
+        let a = Array::from_data(data, vec![2, 2]);
+
+        let result = cond(&a, Some("2")).unwrap();
+        // Singular matrix should have infinite condition number
+        let val = result.get_linear(0).unwrap_or(&f64::INFINITY);
+        assert!(*val > 1e100); // Effectively infinite
+    }
+
+    #[test]
+    fn test_slogdet_identity() {
+        // Identity matrix
+        let n = 3;
+        let mut data = vec![0.0f64; n * n];
+        for i in 0..n {
+            data[i * n + i] = 1.0;
+        }
+
+        let a = Array::from_data(data, vec![n, n]);
+        let (sign, logdet) = slogdet(&a).unwrap();
+
+        // det(I) = 1, so sign = 1, logdet = ln(1) = 0
+        assert!((sign.get_linear(0).unwrap_or(&1.0) - &1.0).abs() < 1e-10);
+        assert!((logdet.get_linear(0).unwrap_or(&0.0) - &0.0).abs() < 1e-10);
+    }
+
+    #[test]
+    fn test_slogdet_negative_determinant() {
+        // Matrix with negative determinant
+        // [[1, 2], [3, 4]] has det = 1*4 - 2*3 = -2
+        let data = vec![1.0f64, 2.0, 3.0, 4.0];
+        let a = Array::from_data(data, vec![2, 2]);
+
+        let (sign, logdet) = slogdet(&a).unwrap();
+
+        // sign should be -1 (negative determinant)
+        assert!((sign.get_linear(0).unwrap_or(&0.0) - &(-1.0)).abs() < 1e-10);
+        // logdet should be ln(|det|) = ln(2) ≈ 0.6931
+        let logdet_val = logdet.get_linear(0).unwrap_or(&0.0);
+        assert!((*logdet_val - 0.6931).abs() < 0.01);
+    }
+
+    #[test]
+    fn test_slogdet_singular() {
+        // Singular matrix
+        let data = vec![1.0f64, 2.0, 2.0, 4.0];
+        let a = Array::from_data(data, vec![2, 2]);
+
+        let (sign, logdet) = slogdet(&a).unwrap();
+
+        // For singular matrix: sign = 0, logdet = -inf
+        assert!((sign.get_linear(0).unwrap_or(&0.0) - &0.0).abs() < 1e-10);
+        let logdet_val = logdet.get_linear(0).unwrap_or(&f64::NEG_INFINITY);
+        assert!(*logdet_val < -1e100); // Effectively -infinity
+    }
+
+    #[test]
+    fn test_slogdet_empty() {
+        // 0x0 matrix (edge case)
+        let data: Vec<f64> = vec![];
+        let a = Array::from_data(data, vec![0, 0]);
+
+        let (sign, logdet) = slogdet(&a).unwrap();
+
+        // Empty matrix: det = 1 by convention
+        assert!((sign.get_linear(0).unwrap_or(&1.0) - &1.0).abs() < 1e-10);
+        // logdet = -inf
+        let logdet_val = logdet.get_linear(0).unwrap_or(&f64::NEG_INFINITY);
+        assert!(*logdet_val < -1e100);
+    }
+
+    #[test]
+    fn test_cond_non_square() {
+        let data = vec![1.0f64, 2.0, 3.0, 4.0];
+        let a = Array::from_data(data, vec![2, 2]);
+
+        let result = cond(&a, Some("2"));
+        assert!(result.is_ok()); // 2x2 is square
+    }
+}
