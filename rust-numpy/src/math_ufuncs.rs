@@ -1761,7 +1761,10 @@ pub fn conjugate32(z: &Array<num_complex::Complex32>) -> Result<Array<num_comple
 
 /// Return the real part of the array if the imaginary part is close to zero
 /// If the imaginary part is not close to zero, return the array as is
-pub fn real_if_close(a: &Array<num_complex::Complex64>, tol: Option<f64>) -> Result<Array<num_complex::Complex64>> {
+pub fn real_if_close(
+    a: &Array<num_complex::Complex64>,
+    tol: Option<f64>,
+) -> Result<Array<num_complex::Complex64>> {
     let tolerance = tol.unwrap_or(1e-10);
     let mut data = Vec::with_capacity(a.size());
 
@@ -1779,7 +1782,10 @@ pub fn real_if_close(a: &Array<num_complex::Complex64>, tol: Option<f64>) -> Res
 }
 
 /// Return the real part of the array if the imaginary part is close to zero (Complex32 version)
-pub fn real_if_close32(a: &Array<num_complex::Complex32>, tol: Option<f32>) -> Result<Array<num_complex::Complex32>> {
+pub fn real_if_close32(
+    a: &Array<num_complex::Complex32>,
+    tol: Option<f32>,
+) -> Result<Array<num_complex::Complex32>> {
     let tolerance = tol.unwrap_or(1e-10);
     let mut data = Vec::with_capacity(a.size());
 
@@ -2553,5 +2559,265 @@ mod tests {
         assert!(isfinite_result.get(0).unwrap()); // (1.0, 2.0) is finite
         assert!(!isfinite_result.get(1).unwrap()); // (NaN, 2.0) is not finite (NaN)
         assert!(!isfinite_result.get(2).unwrap()); // (1.0, Inf) is not finite (Inf)
+    }
+
+    #[test]
+    fn test_angle() {
+        // Test with complex numbers on the unit circle
+        let z = Array::from_data(
+            vec![
+                num_complex::Complex64::new(1.0, 0.0),  // angle = 0
+                num_complex::Complex64::new(0.0, 1.0),  // angle = π/2
+                num_complex::Complex64::new(-1.0, 0.0), // angle = π
+                num_complex::Complex64::new(0.0, -1.0), // angle = -π/2
+                num_complex::Complex64::new(1.0, 1.0),  // angle = π/4
+            ],
+            vec![5],
+        );
+
+        let result = angle(&z).unwrap();
+
+        assert!((result.get(0).unwrap() - 0.0).abs() < 1e-10);
+        assert!((result.get(1).unwrap() - std::f64::consts::FRAC_PI_2).abs() < 1e-10);
+        assert!((result.get(2).unwrap() - std::f64::consts::PI).abs() < 1e-10);
+        assert!((result.get(3).unwrap() - (-std::f64::consts::FRAC_PI_2)).abs() < 1e-10);
+        assert!((result.get(4).unwrap() - std::f64::consts::FRAC_PI_4).abs() < 1e-10);
+    }
+
+    #[test]
+    fn test_angle32() {
+        // Test with Complex32 numbers
+        let z = Array::from_data(
+            vec![
+                num_complex::Complex32::new(1.0, 0.0),
+                num_complex::Complex32::new(0.0, 1.0),
+                num_complex::Complex32::new(-1.0, 0.0),
+            ],
+            vec![3],
+        );
+
+        let result = angle32(&z).unwrap();
+
+        assert!((result.get(0).unwrap() - 0.0).abs() < 1e-6);
+        assert!((result.get(1).unwrap() - std::f32::consts::FRAC_PI_2).abs() < 1e-6);
+        assert!((result.get(2).unwrap() - std::f32::consts::PI).abs() < 1e-6);
+    }
+
+    #[test]
+    fn test_real_imag() {
+        // Test real part extraction
+        let z = Array::from_data(
+            vec![
+                num_complex::Complex64::new(1.0, 2.0),
+                num_complex::Complex64::new(-3.0, 4.5),
+                num_complex::Complex64::new(0.0, -1.0),
+            ],
+            vec![3],
+        );
+
+        let real_result = real(&z).unwrap();
+        let imag_result = imag(&z).unwrap();
+
+        assert_eq!(real_result.get(0).unwrap(), &1.0);
+        assert_eq!(real_result.get(1).unwrap(), &(-3.0));
+        assert_eq!(real_result.get(2).unwrap(), &0.0);
+
+        assert_eq!(imag_result.get(0).unwrap(), &2.0);
+        assert_eq!(imag_result.get(1).unwrap(), &4.5);
+        assert_eq!(imag_result.get(2).unwrap(), &(-1.0));
+    }
+
+    #[test]
+    fn test_real32_imag32() {
+        // Test Complex32 versions
+        let z = Array::from_data(
+            vec![
+                num_complex::Complex32::new(1.5, 2.5),
+                num_complex::Complex32::new(-3.0, 4.0),
+            ],
+            vec![2],
+        );
+
+        let real_result = real32(&z).unwrap();
+        let imag_result = imag32(&z).unwrap();
+
+        assert_eq!(real_result.get(0).unwrap(), &1.5);
+        assert_eq!(real_result.get(1).unwrap(), &(-3.0));
+
+        assert_eq!(imag_result.get(0).unwrap(), &2.5);
+        assert_eq!(imag_result.get(1).unwrap(), &4.0);
+    }
+
+    #[test]
+    fn test_conj() {
+        // Test complex conjugate
+        let z = Array::from_data(
+            vec![
+                num_complex::Complex64::new(1.0, 2.0),
+                num_complex::Complex64::new(-3.0, 4.5),
+                num_complex::Complex64::new(0.0, -1.0),
+            ],
+            vec![3],
+        );
+
+        let result = conj(&z).unwrap();
+
+        assert_eq!(
+            result.get(0).unwrap(),
+            &num_complex::Complex64::new(1.0, -2.0)
+        );
+        assert_eq!(
+            result.get(1).unwrap(),
+            &num_complex::Complex64::new(-3.0, -4.5)
+        );
+        assert_eq!(
+            result.get(2).unwrap(),
+            &num_complex::Complex64::new(0.0, 1.0)
+        );
+    }
+
+    #[test]
+    fn test_conj32() {
+        // Test complex conjugate for Complex32
+        let z = Array::from_data(
+            vec![
+                num_complex::Complex32::new(1.0, 2.0),
+                num_complex::Complex32::new(-3.0, 4.0),
+            ],
+            vec![2],
+        );
+
+        let result = conj32(&z).unwrap();
+
+        assert_eq!(
+            result.get(0).unwrap(),
+            &num_complex::Complex32::new(1.0, -2.0)
+        );
+        assert_eq!(
+            result.get(1).unwrap(),
+            &num_complex::Complex32::new(-3.0, -4.0)
+        );
+    }
+
+    #[test]
+    fn test_conjugate() {
+        // Test that conjugate is an alias for conj
+        let z = Array::from_data(
+            vec![
+                num_complex::Complex64::new(1.0, 2.0),
+                num_complex::Complex64::new(-3.0, 4.5),
+            ],
+            vec![2],
+        );
+
+        let conj_result = conj(&z).unwrap();
+        let conjugate_result = conjugate(&z).unwrap();
+
+        assert_eq!(
+            conj_result.get(0).unwrap(),
+            conjugate_result.get(0).unwrap()
+        );
+        assert_eq!(
+            conj_result.get(1).unwrap(),
+            conjugate_result.get(1).unwrap()
+        );
+    }
+
+    #[test]
+    fn test_real_if_close() {
+        // Test real_if_close with negligible imaginary part
+        let z = Array::from_data(
+            vec![
+                num_complex::Complex64::new(1.0, 0.0),     // already real
+                num_complex::Complex64::new(2.0, 1e-12),   // negligible imag
+                num_complex::Complex64::new(3.0, 0.5),     // significant imag
+                num_complex::Complex64::new(-1.0, -1e-11), // negligible imag
+            ],
+            vec![4],
+        );
+
+        let result = real_if_close(&z, Some(1e-10)).unwrap();
+
+        // Should have zero imaginary part for first, second, and fourth elements
+        assert_eq!(
+            result.get(0).unwrap(),
+            &num_complex::Complex64::new(1.0, 0.0)
+        );
+        assert_eq!(
+            result.get(1).unwrap(),
+            &num_complex::Complex64::new(2.0, 0.0)
+        );
+        assert_eq!(
+            result.get(2).unwrap(),
+            &num_complex::Complex64::new(3.0, 0.5)
+        ); // unchanged
+        assert_eq!(
+            result.get(3).unwrap(),
+            &num_complex::Complex64::new(-1.0, 0.0)
+        );
+    }
+
+    #[test]
+    fn test_real_if_close32() {
+        // Test real_if_close32 with Complex32
+        let z = Array::from_data(
+            vec![
+                num_complex::Complex32::new(1.0, 0.0),
+                num_complex::Complex32::new(2.0, 1e-7),
+                num_complex::Complex32::new(3.0, 0.5),
+            ],
+            vec![3],
+        );
+
+        let result = real_if_close32(&z, Some(1e-6)).unwrap();
+
+        assert_eq!(
+            result.get(0).unwrap(),
+            &num_complex::Complex32::new(1.0, 0.0)
+        );
+        assert_eq!(
+            result.get(1).unwrap(),
+            &num_complex::Complex32::new(2.0, 0.0)
+        );
+        assert_eq!(
+            result.get(2).unwrap(),
+            &num_complex::Complex32::new(3.0, 0.5)
+        ); // unchanged
+    }
+
+    #[test]
+    fn test_complex_utilities_2d_array() {
+        // Test with 2D complex arrays
+        let z = Array::from_data(
+            vec![
+                num_complex::Complex64::new(1.0, 2.0),
+                num_complex::Complex64::new(3.0, 4.0),
+                num_complex::Complex64::new(5.0, 6.0),
+                num_complex::Complex64::new(7.0, 8.0),
+            ],
+            vec![2, 2],
+        );
+
+        let real_result = real(&z).unwrap();
+        let imag_result = imag(&z).unwrap();
+        let conj_result = conj(&z).unwrap();
+
+        assert_eq!(real_result.shape(), &vec![2, 2]);
+        assert_eq!(imag_result.shape(), &vec![2, 2]);
+        assert_eq!(conj_result.shape(), &vec![2, 2]);
+
+        assert_eq!(real_result.get(0).unwrap(), &1.0);
+        assert_eq!(imag_result.get(0).unwrap(), &2.0);
+        assert_eq!(
+            conj_result.get(0).unwrap(),
+            &num_complex::Complex64::new(1.0, -2.0)
+        );
+
+        assert_eq!(real_result.get(3).unwrap(), &7.0);
+        assert_eq!(imag_result.get(3).unwrap(), &8.0);
+        assert_eq!(
+            conj_result.get(3).unwrap(),
+            &num_complex::Complex64::new(7.0, -8.0)
+        );
     }
 }
