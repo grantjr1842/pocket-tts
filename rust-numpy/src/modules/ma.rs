@@ -82,12 +82,11 @@ where
         let mut result = self.data.clone();
         let fill = self.fill_value();
 
-        let data_mut = result.data_mut();
         let mask_data = self.mask.data();
 
         for (i, &is_masked) in mask_data.iter().enumerate() {
             if is_masked {
-                data_mut[i] = fill.clone();
+                result.set_linear(i, fill.clone());
             }
         }
         result
@@ -96,7 +95,7 @@ where
     /// Sum of array elements over a given axis, respecting the mask.
     pub fn sum(&self) -> Result<T>
     where
-        T: std::iter::Sum + crate::array::Numeric,
+        T: std::iter::Sum + Clone,
     {
         let mask_data = self.mask.data();
         let data = self.data.data();
@@ -114,7 +113,7 @@ where
     /// Mean of array elements, respecting the mask.
     pub fn mean(&self) -> Result<T>
     where
-        T: std::iter::Sum + crate::array::Numeric + num_traits::FromPrimitive,
+        T: std::iter::Sum + Clone + num_traits::FromPrimitive + std::ops::Div<Output = T>,
     {
         let mask_data = self.mask.data();
         let data = self.data.data();
@@ -133,11 +132,9 @@ where
 
         let sum: T = filtered.into_iter().sum();
         let count_t = T::from_usize(count)
-            .ok_or_else(|| NumPyError::runtime_error("Failed to convert count to type T"))?;
+            .ok_or_else(|| NumPyError::value_error("Failed to convert count to type T", "usize"))?;
 
-        // This is a simplification for mean, ideally we'd use a trait for division
-        // But for now we just handle it via basic numeric ops if available or return error
-        Err(NumPyError::not_implemented("mean for MaskedArray"))
+        Ok(sum / count_t)
     }
 
     /// Perform a binary operation between two masked arrays.

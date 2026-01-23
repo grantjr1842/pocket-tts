@@ -55,6 +55,7 @@ pub mod math_ufuncs;
 pub mod memory;
 pub mod modules;
 pub mod random;
+pub mod rec;
 pub mod set_ops;
 pub mod slicing;
 pub mod sorting;
@@ -66,6 +67,8 @@ pub mod ufunc_ops;
 pub mod window;
 
 // Re-export key types for convenience
+pub use crate::array_extra::exports::*;
+pub use crate::comparison_ufuncs::exports::*;
 pub use crate::fft::*;
 pub use crate::modules::ma::exports::*;
 pub use crate::modules::testing::exports::*;
@@ -74,6 +77,7 @@ pub use bitwise::*;
 pub use dtype::{Casting, Dtype, DtypeKind};
 pub use error::{NumPyError, Result};
 pub use linalg::norm;
+pub use rec::{array as rec_array, fromarrays, fromrecords, RecArray};
 pub use set_ops::exports::*;
 pub use statistics::{ptp, std, var};
 pub use type_promotion::promote_types;
@@ -92,6 +96,7 @@ pub type Int = i64;
 pub type Complex = num_complex::Complex<f64>;
 
 // Re-export common constants
+pub use array_creation::{copy, frombuffer, fromfunction, fromiter};
 pub use constants::*;
 /// Create array macro for convenient array creation
 #[macro_export]
