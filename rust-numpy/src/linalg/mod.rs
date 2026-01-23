@@ -134,6 +134,6 @@ impl LinalgScalar for Complex<f64> {
 // Re-export public API
 pub use decompositions::*;
 pub use eigen::*;
-pub use norms::*;
+pub use norms::{cond, norm, slogdet};
 pub use products::{dot, matmul, tensor_dot, trace};
 pub use solvers::{det, inv, lstsq, pinv, solve, tensor_inv, tensor_solve};
