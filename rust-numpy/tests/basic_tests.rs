@@ -3,6 +3,7 @@ use numpy::*;
 #[cfg(test)]
 mod tests {
     use super::*;
+    use numpy::array_manipulation::{apply_along_axis, apply_over_axes, Vectorize};
 
     #[test]
     fn test_array_creation() {

@@ -214,7 +214,7 @@ mod tests {
             let arr2 = Array::<f64>::zeros(vec![3, 2]);
             let transposed = arr1.transpose();
             // This should work (2x3 -> 3x2)
-            let res = transposed.add(&arr2);
+            let res = transposed.add(&arr2, None, numpy::dtype::Casting::Safe);
             assert!(res.is_ok(), "Addition failed: {:?}", res.err());
         }
     );
