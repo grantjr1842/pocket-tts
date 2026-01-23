@@ -39,6 +39,9 @@ pub mod array_extra;
 pub mod array_manipulation;
 pub mod bitwise;
 pub mod broadcasting;
+pub mod char;
+#[cfg(test)]
+mod char_tests;
 pub mod comparison_ufuncs;
 pub mod constants;
 pub mod datetime;
@@ -76,6 +79,7 @@ pub use crate::modules::ma::exports::*;
 pub use crate::modules::testing::exports::*;
 pub use array::Array;
 pub use bitwise::*;
+pub use char::exports::*;
 pub use dtype::{Casting, Dtype, DtypeKind};
 pub use error::{NumPyError, Result};
 pub use linalg::norm;
