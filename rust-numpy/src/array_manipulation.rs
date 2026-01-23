@@ -922,6 +922,70 @@ where
     })
 }
 
+/// Expand the shape of an array
+///
+/// Inserts a new axis at the specified position, increasing the number of dimensions.
+///
+/// # Arguments
+/// * `a` - Input array
+/// * `axis` - Position in the expanded axes where the new axis is placed.
+///            Can be negative (counts from the end).
+///
+/// # Returns
+/// Array with expanded dimensions
+///
+/// # Examples
+/// ```ignore
+/// let a = Array::from_vec(vec![1, 2, 3, 4]);
+/// let expanded = expand_dims(&a, 0)?;
+/// assert_eq!(expanded.shape(), &[1, 4]);
+///
+/// let expanded2 = expand_dims(&a, -1)?;
+/// assert_eq!(expanded2.shape(), &[4, 1]);
+/// ```
+pub fn expand_dims<T>(a: &Array<T>, axis: isize) -> Result<Array<T>>
+where
+    T: Clone + 'static,
+{
+    let ndim = a.ndim();
+
+    // Normalize axis (allow negative values)
+    let axis_norm = if axis < 0 {
+        let abs_axis = axis.abs() as usize;
+        if abs_axis > ndim {
+            return Err(NumPyError::invalid_operation(format!(
+                "axis {} is out of bounds for array of dimension {}",
+                axis, ndim
+            )));
+        }
+        ndim - abs_axis + 1
+    } else {
+        let axis_usize = axis as usize;
+        if axis_usize > ndim {
+            return Err(NumPyError::invalid_operation(format!(
+                "axis {} is out of bounds for array of dimension {}",
+                axis, ndim
+            )));
+        }
+        axis_usize
+    };
+
+    // Insert new dimension of size 1 at the specified position
+    let mut new_shape = a.shape().to_vec();
+    let mut new_strides = a.strides().to_vec();
+
+    new_shape.insert(axis_norm, 1);
+    new_strides.insert(axis_norm, 0); // Zero stride broadcasts the single element
+
+    Ok(Array {
+        data: a.data.clone(),
+        shape: new_shape,
+        strides: new_strides,
+        dtype: a.dtype().clone(),
+        offset: a.offset,
+    })
+}
+
 /// Ensure arrays have at least 1 dimension
 ///
 /// # Arguments
@@ -1336,14 +1400,540 @@ where
     Ok(result)
 }
 
+// ==================== ARRAY ELEMENT INSERTION/DELETION FUNCTIONS ====================
+
+/// Insert values along the given axis before the given indices
+///
+/// # Arguments
+/// * `arr` - Input array
+/// * `obj` - Index or indices before which to insert values (can be int, slice, or array)
+/// * `values` - Values to insert
+/// * `axis` - Axis along which to insert (None flattens first)
+///
+/// # Returns
+/// New array with values inserted
+pub fn insert<T>(
+    arr: &Array<T>,
+    obj: &Array<isize>,
+    values: &Array<T>,
+    axis: Option<isize>,
+) -> Result<Array<T>>
+where
+    T: Clone + Default + 'static,
+{
+    if axis.is_none() {
+        // Flatten both arrays and insert
+        let flat_arr = flatten(arr, "C")?;
+        let flat_values = flatten(values, "C")?;
+        return insert_1d(&flat_arr, obj, &flat_values);
+    }
+
+    let axis = normalize_axis(axis.unwrap(), arr.ndim())?;
+    insert_along_axis(arr, obj, values, axis)
+}
+
+/// Delete sub-arrays along the given axis
+///
+/// # Arguments
+/// * `arr` - Input array
+/// * `obj` - Indices or slice indicating what to delete
+/// * `axis` - Axis along which to delete (None flattens first)
+///
+/// # Returns
+/// New array with specified elements deleted
+pub fn delete<T>(arr: &Array<T>, obj: &Array<isize>, axis: Option<isize>) -> Result<Array<T>>
+where
+    T: Clone + Default + 'static,
+{
+    if axis.is_none() {
+        // Flatten and delete
+        let flat_arr = flatten(arr, "C")?;
+        return delete_1d(&flat_arr, obj);
+    }
+
+    let axis = normalize_axis(axis.unwrap(), arr.ndim())?;
+    delete_along_axis(arr, obj, axis)
+}
+
+/// Append values to the end of an array
+///
+/// # Arguments
+/// * `arr` - Input array
+/// * `values` - Values to append
+/// * `axis` - Axis along which to append (None flattens first)
+///
+/// # Returns
+/// New array with values appended
+pub fn append<T>(arr: &Array<T>, values: &Array<T>, axis: Option<isize>) -> Result<Array<T>>
+where
+    T: Clone + Default + 'static,
+{
+    if axis.is_none() {
+        // Flatten both and concatenate
+        let flat_arr = flatten(arr, "C")?;
+        let flat_values = flatten(values, "C")?;
+        return concatenate_1d(&flat_arr, &flat_values);
+    }
+
+    let axis = normalize_axis(axis.unwrap(), arr.ndim())?;
+    append_along_axis(arr, values, axis)
+}
+
+// ==================== HELPER FUNCTIONS FOR INSERT/DELETE/APPEND ====================
+
+fn insert_1d<T>(arr: &Array<T>, indices: &Array<isize>, values: &Array<T>) -> Result<Array<T>>
+where
+    T: Clone + Default + 'static,
+{
+    let arr_data = arr.to_vec();
+    let values_data = values.to_vec();
+    let indices_vec = indices.to_vec();
+
+    // Normalize indices (handle negative values)
+    let mut normalized_indices = Vec::new();
+    for &idx in &indices_vec {
+        let norm_idx = if idx < 0 {
+            (arr_data.len() as isize + idx).max(0) as usize
+        } else {
+            idx.min(arr_data.len() as isize) as usize
+        };
+        normalized_indices.push(norm_idx);
+    }
+
+    // Sort and deduplicate indices
+    normalized_indices.sort();
+    normalized_indices.dedup();
+
+    // Calculate new size
+    let new_size = arr_data.len() + values_data.len();
+    let mut result = Vec::with_capacity(new_size);
+
+    let mut arr_idx = 0;
+    let mut values_idx = 0;
+
+    for insert_idx in &normalized_indices {
+        // Copy elements from arr up to insert point
+        while arr_idx < *insert_idx && arr_idx < arr_data.len() {
+            result.push(arr_data[arr_idx].clone());
+            arr_idx += 1;
+        }
+
+        // Insert value if available
+        if values_idx < values_data.len() {
+            result.push(values_data[values_idx].clone());
+            values_idx += 1;
+        }
+    }
+
+    // Copy remaining elements from arr
+    while arr_idx < arr_data.len() {
+        result.push(arr_data[arr_idx].clone());
+        arr_idx += 1;
+    }
+
+    // Insert any remaining values
+    while values_idx < values_data.len() {
+        result.push(values_data[values_idx].clone());
+        values_idx += 1;
+    }
+
+    Ok(Array::from_shape_vec(vec![result.len()], result))
+}
+
+fn delete_1d<T>(arr: &Array<T>, indices: &Array<isize>) -> Result<Array<T>>
+where
+    T: Clone + Default + 'static,
+{
+    let arr_data = arr.to_vec();
+    let indices_vec = indices.to_vec();
+
+    if arr_data.is_empty() {
+        return Ok(Array::from_shape_vec(vec![0], vec![]));
+    }
+
+    // Normalize indices and build set of indices to delete
+    let mut to_delete = std::collections::HashSet::new();
+    for &idx in &indices_vec {
+        let norm_idx = if idx < 0 {
+            (arr_data.len() as isize + idx) as usize
+        } else {
+            idx as usize
+        };
+        if norm_idx < arr_data.len() {
+            to_delete.insert(norm_idx);
+        }
+    }
+
+    // Build result excluding deleted indices
+    let result: Vec<T> = arr_data
+        .iter()
+        .enumerate()
+        .filter(|(i, _)| !to_delete.contains(i))
+        .map(|(_, v)| v.clone())
+        .collect();
+
+    Ok(Array::from_shape_vec(vec![result.len()], result))
+}
+
+fn concatenate_1d<T>(arr1: &Array<T>, arr2: &Array<T>) -> Result<Array<T>>
+where
+    T: Clone + Default + 'static,
+{
+    let mut data1 = arr1.to_vec();
+    let data2 = arr2.to_vec();
+    data1.extend(data2);
+
+    Ok(Array::from_shape_vec(vec![data1.len()], data1))
+}
+
+fn insert_along_axis<T>(
+    arr: &Array<T>,
+    indices: &Array<isize>,
+    values: &Array<T>,
+    axis: usize,
+) -> Result<Array<T>>
+where
+    T: Clone + Default + 'static,
+{
+    let shape = arr.shape();
+    let axis_size = shape[axis];
+
+    // Calculate how many elements to insert along axis
+    let indices_vec = indices.to_vec();
+    let num_insertions = indices_vec.len();
+
+    // Validate values shape
+    if values.ndim() != arr.ndim() {
+        return Err(NumPyError::shape_mismatch(
+            vec![arr.ndim()],
+            vec![values.ndim()],
+        ));
+    }
+
+    // New shape along axis
+    let mut new_shape = shape.to_vec();
+    new_shape[axis] = axis_size + num_insertions;
+
+    // Build result array
+    let mut result_data = Vec::new();
+    let arr_data = arr.to_vec();
+    let values_data = values.to_vec();
+
+    // For each position along axis, copy or insert
+    let mut insert_positions = std::collections::HashSet::new();
+    for &idx in &indices_vec {
+        let norm_idx = if idx < 0 {
+            (axis_size as isize + idx).max(0) as usize
+        } else {
+            idx.min(axis_size as isize) as usize
+        };
+        insert_positions.insert(norm_idx);
+    }
+
+    let mut values_idx = 0;
+    for i in 0..=axis_size {
+        if insert_positions.contains(&i) && values_idx < values_data.len() {
+            // Insert values at this position
+            result_data.extend_from_slice(
+                &values_data[values_idx * arr.size() / axis_size
+                    ..(values_idx + 1) * arr.size() / axis_size],
+            );
+            values_idx += 1;
+        }
+        if i < axis_size {
+            // Copy elements from arr
+            result_data.extend_from_slice(
+                &arr_data[i * arr.size() / axis_size..(i + 1) * arr.size() / axis_size],
+            );
+        }
+    }
+
+    Ok(Array::from_shape_vec(new_shape, result_data))
+}
+
+fn delete_along_axis<T>(arr: &Array<T>, indices: &Array<isize>, axis: usize) -> Result<Array<T>>
+where
+    T: Clone + Default + 'static,
+{
+    let shape = arr.shape();
+    let axis_size = shape[axis];
+
+    // Normalize indices
+    let indices_vec = indices.to_vec();
+    let mut to_delete = std::collections::HashSet::new();
+    for &idx in &indices_vec {
+        let norm_idx = if idx < 0 {
+            (axis_size as isize + idx) as usize
+        } else {
+            idx as usize
+        };
+        if norm_idx < axis_size {
+            to_delete.insert(norm_idx);
+        }
+    }
+
+    // New shape along axis
+    let new_axis_size = axis_size - to_delete.len();
+    let mut new_shape = shape.to_vec();
+    new_shape[axis] = new_axis_size;
+
+    // Build result array excluding deleted indices
+    let arr_data = arr.to_vec();
+    let mut result_data = Vec::new();
+
+    for i in 0..axis_size {
+        if !to_delete.contains(&i) {
+            result_data.extend_from_slice(
+                &arr_data[i * arr.size() / axis_size..(i + 1) * arr.size() / axis_size],
+            );
+        }
+    }
+
+    Ok(Array::from_shape_vec(new_shape, result_data))
+}
+
+fn append_along_axis<T>(arr: &Array<T>, values: &Array<T>, axis: usize) -> Result<Array<T>>
+where
+    T: Clone + Default + 'static,
+{
+    let shape = arr.shape();
+    let values_shape = values.shape();
+
+    // Validate shapes match except on append axis
+    if arr.ndim() != values.ndim() {
+        return Err(NumPyError::shape_mismatch(
+            vec![arr.ndim()],
+            vec![values.ndim()],
+        ));
+    }
+
+    for (i, (&s1, &s2)) in shape.iter().zip(values_shape.iter()).enumerate() {
+        if i != axis && s1 != s2 {
+            return Err(NumPyError::shape_mismatch(
+                shape.to_vec(),
+                values_shape.to_vec(),
+            ));
+        }
+    }
+
+    // Calculate new shape
+    let mut new_shape = shape.to_vec();
+    new_shape[axis] = shape[axis] + values_shape[axis];
+
+    // Build result by iterating through all dimensions
+    let arr_data = arr.to_vec();
+    let values_data = values.to_vec();
+    let mut result_data = Vec::with_capacity(arr_data.len() + values_data.len());
+
+    // Calculate stride for the target axis
+    let mut stride_before_axis = 1;
+    for i in 0..axis {
+        stride_before_axis *= shape[i];
+    }
+    let stride_at_axis = shape[axis];
+    let mut stride_after_axis = 1;
+    for i in (axis + 1)..shape.len() {
+        stride_after_axis *= shape[i];
+    }
+
+    // For each slice along the axis
+    for before_idx in 0..stride_before_axis {
+        let base_arr = before_idx * stride_at_axis * stride_after_axis;
+        let base_values = before_idx * values_shape[axis] * stride_after_axis;
+
+        // Append arr elements for this slice
+        for axis_idx in 0..stride_at_axis {
+            let offset = (base_arr + axis_idx * stride_after_axis) as usize;
+            result_data.extend_from_slice(&arr_data[offset..offset + stride_after_axis]);
+        }
+
+        // Append values elements for this slice
+        for axis_idx in 0..values_shape[axis] {
+            let offset = (base_values + axis_idx * stride_after_axis) as usize;
+            result_data.extend_from_slice(&values_data[offset..offset + stride_after_axis]);
+        }
+    }
+
+    Ok(Array::from_shape_vec(new_shape, result_data))
+}
+
 // ==================== PUBLIC EXPORTS ====================
 
 /// Re-export all array manipulation functions for public use
 pub mod exports {
     pub use super::{
-        arange, atleast_1d, atleast_2d, atleast_3d, empty_like, eye, flatten, flip, full_like,
-        geomspace, identity, linspace, logspace, meshgrid, moveaxis, ones_like, ravel, repeat,
-        reshape, roll, rollaxis, rot90, squeeze, swapaxes, tile, zeros_like,
+        append, apply_along_axis, apply_over_axes, arange, atleast_1d, atleast_2d, atleast_3d,
+        delete, empty_like, expand_dims, eye, flatten, flip, full_like, geomspace, identity,
+        insert, linspace, logspace, meshgrid, moveaxis, ones_like, ravel, repeat, reshape, roll,
+        rollaxis, rot90, squeeze, swapaxes, tile, zeros_like, Vectorize,
     };
 }
 // normalize_axis replaced by internal version above
+
+// ==================== FUNCTION APPLICATION ====================
+
+/// Apply a function to 1-D slices along the given axis.
+///
+/// This function executes `func1d(a, *args)` where `a` is a 1-D slice along `axis`,
+/// for each 1-D slice along the specified axis.
+///
+/// # Arguments
+/// * `func1d` - Function that takes a 1-D array and returns a scalar or array
+/// * `axis` - Axis along which to apply the function
+/// * `arr` - Input array
+/// * `args` - Additional arguments to pass to the function
+///
+/// # Returns
+/// Array with the result of applying `func1d` to each 1-D slice
+///
+/// # Examples
+/// ```ignore
+/// let a = Array::from_data(vec![1.0, 2.0, 3.0, 4.0], vec![2, 2]);
+/// let result = apply_along_axis(&|slice: &Array<f64>| slice.iter().cloned().sum::<f64>(), 0, &a, &[]).unwrap();
+/// ```
+pub fn apply_along_axis<T, F, R>(
+    func1d: F,
+    axis: isize,
+    arr: &Array<T>,
+    _args: &[R],
+) -> Result<Array<T>>
+where
+    T: Clone + Default + 'static,
+    F: Fn(&Array<T>) -> T + Sync,
+{
+    let ndim = arr.ndim();
+    if ndim == 0 {
+        return Err(NumPyError::invalid_operation(
+            "apply_along_axis requires at least 1 dimension",
+        ));
+    }
+
+    let axis_idx = normalize_axis(axis, ndim)?;
+    let n = arr.shape()[axis_idx];
+
+    // Calculate output shape (all dimensions except axis remain the same)
+    let mut out_shape = arr.shape().to_vec();
+    out_shape.remove(axis_idx);
+
+    let out_size = out_shape.iter().product::<usize>();
+    let mut result_data = Vec::with_capacity(out_size);
+
+    // Calculate strides for iterating along the target axis
+    let arr_shape = arr.shape();
+    let mut strides_before = 1usize;
+    for &dim in &arr_shape[..axis_idx] {
+        strides_before *= dim;
+    }
+    let mut strides_after = 1usize;
+    for &dim in &arr_shape[axis_idx + 1..] {
+        strides_after *= dim;
+    }
+
+    // For each position along the non-target axes, extract a 1-D slice and apply the function
+    for i in 0..strides_before {
+        for j in 0..strides_after {
+            let mut slice_data = Vec::with_capacity(n);
+            for k in 0..n {
+                let linear_idx = i * n * strides_after + j + k * strides_after;
+                if let Some(val) = arr.get(linear_idx) {
+                    slice_data.push(val.clone());
+                }
+            }
+
+            let slice = Array::from_data(slice_data, vec![n]);
+            let output_val = func1d(&slice);
+            result_data.push(output_val);
+        }
+    }
+
+    Ok(Array::from_data(result_data, out_shape))
+}
+
+/// Apply a function repeatedly over multiple axes.
+///
+/// This function applies `func` to `a` along each of the specified axes,
+/// accumulating the results. The output shape has the specified axes removed.
+///
+/// # Arguments
+/// * `func` - Function that takes an array and optional axis argument
+/// * `a` - Input array
+/// * `axes` - Axes over which to apply the function
+///
+/// # Returns
+/// Array with the result of applying `func` over each axis
+///
+/// # Examples
+/// ```ignore
+/// let a = Array::from_data(vec![1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0], vec![2, 2, 2]);
+/// let result = apply_over_axes(&|arr: &Array<f64>, axis| { /* sum along axis */ }, &a, &[0, 1]).unwrap();
+/// ```
+pub fn apply_over_axes<T, F>(func: F, a: &Array<T>, axes: &[isize]) -> Result<Array<T>>
+where
+    T: Clone + Default + 'static,
+    F: Fn(&Array<T>, isize) -> Array<T> + Copy,
+{
+    let mut result = a.clone();
+    let mut sorted_axes: Vec<isize> = axes.to_vec();
+    sorted_axes.sort_by_key(|&ax| (ax as i64));
+
+    for &axis in &sorted_axes {
+        result = func(&result, axis);
+    }
+
+    Ok(result)
+}
+
+/// Vectorize function for generalized function application.
+///
+/// This struct provides a way to apply a scalar function to arrays element-wise,
+/// automatically broadcasting inputs as needed.
+///
+/// # Examples
+/// ```ignore
+/// let vfunc = Vectorize::new(|x: &f64, y: &f64| x + y);
+/// let a = Array::from_data(vec![1.0, 2.0, 3.0], vec![3]);
+/// let b = Array::from_data(vec![10.0, 20.0, 30.0], vec![3]);
+/// let result = vfunc.apply(&a, &b).unwrap();
+/// ```
+pub struct Vectorize<T, F>
+where
+    T: Clone + Default + 'static,
+    F: Fn(&T, &T) -> T + Send + Sync,
+{
+    func: F,
+    _phantom: std::marker::PhantomData<T>,
+}
+
+impl<T, F> Vectorize<T, F>
+where
+    T: Clone + Default + 'static,
+    F: Fn(&T, &T) -> T + Send + Sync,
+{
+    /// Create a new vectorized function
+    pub fn new(func: F) -> Self {
+        Self {
+            func,
+            _phantom: std::marker::PhantomData,
+        }
+    }
+
+    /// Apply the vectorized function to arrays with broadcasting
+    pub fn apply(&self, a: &Array<T>, b: &Array<T>) -> Result<Array<T>> {
+        use crate::broadcasting::broadcast_arrays;
+
+        let broadcasted = broadcast_arrays(&[a, b])?;
+        let arr_a = &broadcasted[0];
+        let arr_b = &broadcasted[1];
+        let shape = arr_a.shape().to_vec();
+        let size = shape.iter().product::<usize>();
+
+        let mut result_data = Vec::with_capacity(size);
+        for i in 0..size {
+            if let (Some(val_a), Some(val_b)) = (arr_a.get(i), arr_b.get(i)) {
+                result_data.push((self.func)(val_a, val_b));
+            }
+        }
+
+        Ok(Array::from_data(result_data, shape))
+    }
+}
