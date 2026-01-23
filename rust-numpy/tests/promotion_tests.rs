@@ -37,8 +37,6 @@ fn test_mixed_kind_promotion() {
 fn test_signed_unsigned_promotion() {
     let u8 = Dtype::UInt8 { byteorder: None };
     let i8 = Dtype::Int8 { byteorder: None };
-    let i16 = Dtype::Int16 { byteorder: None };
-
     // u8 + i8 -> i16 (to hold both ranges)
     let res = promote_types(&u8, &i8);
     assert!(matches!(res, Some(Dtype::Int16 { .. })));

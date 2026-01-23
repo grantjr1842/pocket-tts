@@ -753,6 +753,177 @@ where
     crate::advanced_broadcast::tile(a, reps)
 }
 
+/// Pad an array with various padding modes
+pub fn pad<T>(
+    array: &Array<T>,
+    pad_width: &[(usize, usize)],
+    mode: &str,
+    constant_values: Option<T>,
+) -> Result<Array<T>>
+where
+    T: Clone + Default + Num + num_traits::NumCast + num_traits::ToPrimitive + 'static,
+{
+    if array.ndim() != pad_width.len() {
+        return Err(NumPyError::invalid_operation(format!(
+            "pad_width must have {} entries, got {}",
+            array.ndim(),
+            pad_width.len()
+        )));
+    }
+
+    let valid_mode = matches!(
+        mode,
+        "constant" | "edge" | "linear_ramp" | "reflect" | "symmetric" | "wrap"
+    );
+    if !valid_mode {
+        return Err(NumPyError::invalid_operation(format!(
+            "Unsupported padding mode: '{}'. Supported modes are: 'constant', 'edge', 'linear_ramp', 'reflect', 'symmetric', 'wrap'",
+            mode
+        )));
+    }
+
+    let mut new_shape = array.shape().to_vec();
+    for (dim, (before, after)) in pad_width.iter().enumerate() {
+        new_shape[dim] = array.shape()[dim] + before + after;
+    }
+
+    let output_size = compute_size(&new_shape);
+    let output_data = vec![T::default(); output_size];
+    let output_memory_manager = MemoryManager::from_vec(output_data);
+    let mut output = Array {
+        data: std::sync::Arc::new(output_memory_manager),
+        shape: new_shape.clone(),
+        strides: compute_strides(&new_shape),
+        dtype: array.dtype().clone(),
+        offset: 0,
+    };
+
+    let fill_value = constant_values.unwrap_or_else(T::default);
+    for output_linear in 0..output.size() {
+        let output_indices = crate::strides::compute_multi_indices(output_linear, &new_shape);
+        let (input_indices, in_bounds, distances) =
+            compute_input_indices(array.shape(), pad_width, &output_indices, mode);
+
+        if mode == "constant" && !in_bounds {
+            output.set_linear(output_linear, fill_value.clone());
+            continue;
+        }
+
+        let input_linear = linear_from_indices(&input_indices, array.shape());
+        let input_value = array
+            .get_linear(input_linear)
+            .ok_or_else(|| NumPyError::index_error(input_linear, array.size()))?;
+
+        if mode == "linear_ramp" && !in_bounds {
+            let ramped = linear_ramp_value(input_value, &distances)?;
+            output.set_linear(output_linear, ramped);
+        } else {
+            output.set_linear(output_linear, input_value.clone());
+        }
+    }
+
+    Ok(output)
+}
+
+fn compute_input_indices(
+    shape: &[usize],
+    pad_width: &[(usize, usize)],
+    output_indices: &[usize],
+    mode: &str,
+) -> (Vec<usize>, bool, Vec<(usize, usize)>) {
+    let mut input_indices = Vec::with_capacity(shape.len());
+    let mut in_bounds = true;
+    let mut distances = Vec::with_capacity(shape.len());
+
+    for (axis, &out_idx) in output_indices.iter().enumerate() {
+        let (before, _after) = pad_width[axis];
+        let dim = shape[axis];
+        let pos = out_idx as isize - before as isize;
+        let (idx, distance, pad) = if out_idx < before {
+            let idx = match mode {
+                "edge" | "linear_ramp" | "constant" => 0,
+                "wrap" => wrap_index(pos, dim),
+                "reflect" => reflect_index(pos, dim, false),
+                "symmetric" => reflect_index(pos, dim, true),
+                _ => 0,
+            };
+            (idx, before - out_idx, before)
+        } else if out_idx >= before + dim {
+            let idx = match mode {
+                "edge" | "linear_ramp" | "constant" => dim.saturating_sub(1),
+                "wrap" => wrap_index(pos, dim),
+                "reflect" => reflect_index(pos, dim, false),
+                "symmetric" => reflect_index(pos, dim, true),
+                _ => dim.saturating_sub(1),
+            };
+            (idx, out_idx - (before + dim - 1), pad_width[axis].1)
+        } else {
+            (out_idx - before, 0, 0)
+        };
+
+        if out_idx < before || out_idx >= before + dim {
+            in_bounds = false;
+        }
+
+        input_indices.push(idx);
+        distances.push((distance, pad));
+    }
+
+    (input_indices, in_bounds, distances)
+}
+
+fn wrap_index(pos: isize, dim: usize) -> usize {
+    if dim == 0 {
+        return 0;
+    }
+    let dim_isize = dim as isize;
+    ((pos % dim_isize + dim_isize) % dim_isize) as usize
+}
+
+fn reflect_index(pos: isize, dim: usize, symmetric: bool) -> usize {
+    if dim <= 1 {
+        return 0;
+    }
+    let max = dim as isize - 1;
+    let mut idx = pos;
+
+    loop {
+        if idx < 0 {
+            idx = if symmetric { -idx - 1 } else { -idx };
+        } else if idx > max {
+            idx = if symmetric {
+                2 * max - idx + 1
+            } else {
+                2 * max - idx
+            };
+        } else {
+            return idx as usize;
+        }
+    }
+}
+
+fn linear_ramp_value<T>(edge_value: &T, distances: &[(usize, usize)]) -> Result<T>
+where
+    T: Clone + Num + num_traits::NumCast + num_traits::ToPrimitive,
+{
+    let mut ratio = 1.0;
+    for (distance, pad) in distances {
+        if *distance == 0 || *pad == 0 {
+            continue;
+        }
+        let axis_ratio = (*pad - *distance) as f64 / *pad as f64;
+        ratio = ratio.min(axis_ratio);
+    }
+
+    let edge_f = edge_value
+        .to_f64()
+        .ok_or_else(|| NumPyError::invalid_operation("linear_ramp requires numeric type"))?;
+    let value = edge_f * ratio;
+    num_traits::NumCast::from(value).ok_or_else(|| {
+        NumPyError::invalid_operation("linear_ramp conversion failed for numeric type")
+    })
+}
+
 /// Interchange two axes of an array
 pub fn swapaxes<T>(a: &Array<T>, axis1: isize, axis2: isize) -> Result<Array<T>>
 where
@@ -1764,8 +1935,8 @@ pub mod exports {
     pub use super::{
         append, apply_along_axis, apply_over_axes, arange, atleast_1d, atleast_2d, atleast_3d,
         delete, empty_like, expand_dims, eye, flatten, flip, full_like, geomspace, identity,
-        insert, linspace, logspace, meshgrid, moveaxis, ones_like, ravel, repeat, reshape, roll,
-        rollaxis, rot90, squeeze, swapaxes, tile, zeros_like, Vectorize,
+        insert, linspace, logspace, meshgrid, moveaxis, ones_like, pad, ravel, repeat, reshape,
+        roll, rollaxis, rot90, squeeze, swapaxes, tile, zeros_like, Vectorize,
     };
 }
 // normalize_axis replaced by internal version above
@@ -1874,7 +2045,7 @@ where
 {
     let mut result = a.clone();
     let mut sorted_axes: Vec<isize> = axes.to_vec();
-    sorted_axes.sort_by_key(|&ax| (ax as i64));
+    sorted_axes.sort_by_key(|&ax| ax as i64);
 
     for &axis in &sorted_axes {
         result = func(&result, axis);
