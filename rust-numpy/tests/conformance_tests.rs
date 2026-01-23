@@ -415,20 +415,20 @@ mod tests {
         "L1 norm should compute sum of absolute values",
         {
             let arr = Array::from_vec(vec![1.0f64, -2.0, 3.0, -4.0]);
-            let result = numpy::norm(&arr, Some("1"), None, false).unwrap();
+            let result = numpy::norm(&arr, Some("1"), None::<&[isize]>, false).unwrap();
             assert_eq!(result.to_vec(), vec![10.0]); // |1| + |-2| + |3| + |-4| = 10
         }
     );
 
     conformance_test!(test_norm_l2, "L2 norm should compute Euclidean norm", {
         let arr = Array::from_vec(vec![3.0f64, 4.0]);
-        let result = numpy::norm(&arr, Some("2"), None, false).unwrap();
+        let result = numpy::norm(&arr, Some("2"), None::<&[isize]>, false).unwrap();
         assert!((result.to_vec()[0] - 5.0).abs() < 1e-10); // sqrt(3^2 + 4^2) = 5
     });
 
     conformance_test!(test_norm_l3, "L3 norm should compute cubic norm", {
         let arr = Array::from_vec(vec![1.0f64, 2.0, 2.0]);
-        let result = numpy::norm(&arr, Some("3"), None, false).unwrap();
+        let result = numpy::norm(&arr, Some("3"), None::<&[isize]>, false).unwrap();
         // (|1|^3 + |2|^3 + |2|^3)^(1/3) = (1 + 8 + 8)^(1/3) = 17^(1/3) ≈ 2.571
         assert!((result.to_vec()[0] - 2.571).abs() < 1e-3);
     });
@@ -438,7 +438,7 @@ mod tests {
         "Frobenius norm should compute sqrt of sum of squares",
         {
             let arr = Array::from_vec(vec![1.0f64, 2.0, 3.0]);
-            let result = numpy::norm(&arr, Some("fro"), None, false).unwrap();
+            let result = numpy::norm(&arr, Some("fro"), None::<&[isize]>, false).unwrap();
             // sqrt(1^2 + 2^2 + 3^2) = sqrt(14) ≈ 3.742
             assert!((result.to_vec()[0] - 3.742).abs() < 1e-3);
         }
@@ -449,7 +449,7 @@ mod tests {
         "Nuclear norm should compute sum of singular values",
         {
             let arr = Array::from_vec(vec![1.0f64, 2.0, 3.0]);
-            let result = numpy::norm(&arr, Some("nuc"), None, false).unwrap();
+            let result = numpy::norm(&arr, Some("nuc"), None::<&[isize]>, false).unwrap();
             // Nuclear norm is approximated by Frobenius norm for now
             // sqrt(1^2 + 2^2 + 3^2) = sqrt(14) ≈ 3.742
             assert!((result.to_vec()[0] - 3.742).abs() < 1e-3);
@@ -461,7 +461,7 @@ mod tests {
         "Default norm should use Frobenius norm for vectors",
         {
             let arr = Array::from_vec(vec![3.0f64, 4.0]);
-            let result = numpy::norm(&arr, None, None, false).unwrap();
+            let result = numpy::norm(&arr, None, None::<&[isize]>, false).unwrap();
             // Default is Frobenius norm: sqrt(3^2 + 4^2) = 5
             assert!((result.to_vec()[0] - 5.0).abs() < 1e-10);
         }
