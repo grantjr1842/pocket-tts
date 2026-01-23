@@ -371,7 +371,7 @@ mod tests {
     conformance_test!(test_isin_basic, "Isin should test membership in array", {
         let arr = Array::from_vec(vec![1i32, 2i32, 3i32, 4i32, 5i32]);
         let test = Array::from_vec(vec![2i32, 4i32, 6i32]);
-        let result = numpy::set_ops::isin(&test, &arr).unwrap();
+        let result = numpy::set_ops::isin(&test, &arr, false, false).unwrap();
         assert_eq!(result.to_vec(), vec![true, true, false]);
     });
 
@@ -567,6 +567,7 @@ mod main {
     use super::*;
 
     #[test]
+    #[allow(dead_code)]
     fn test_run_conformance_suite() {
         let result = run_conformance_suite();
         let report = generate_conformance_report(&result);
