@@ -53,6 +53,7 @@ pub mod iterator;
 pub mod linalg;
 pub mod math_ufuncs;
 pub mod memory;
+pub mod modules;
 pub mod random;
 pub mod set_ops;
 pub mod slicing;
@@ -66,6 +67,7 @@ pub mod window;
 
 // Re-export key types for convenience
 pub use crate::fft::*;
+pub use crate::modules::testing::exports::*;
 pub use array::Array;
 pub use array_manipulation::exports::*;
 pub use bitwise::*;
