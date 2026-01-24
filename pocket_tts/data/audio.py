@@ -11,8 +11,7 @@ from contextlib import nullcontext
 from pathlib import Path
 from typing import Any
 
-# Import numpy_rs for NumPy replacement
-import numpy as np_rs
+import numpy as np
 import torch
 from beartype.typing import Iterator
 
@@ -22,49 +21,35 @@ FIRST_CHUNK_LENGTH_SECONDS = float(os.environ.get("FIRST_CHUNK_LENGTH_SECONDS", 
 
 
 def audio_read(filepath: str | Path) -> tuple[torch.Tensor, int]:
-    """Read audio using Python's wave module.
+    """Read audio file. WAV uses built-in wave module; other formats require soundfile."""
+    filepath = Path(filepath)
 
-    Args:
-        filepath: Path to the WAV audio file.
+    if filepath.suffix.lower() == ".wav":
+        # Use built-in wave module for WAV files
+        with wave.open(str(filepath), "rb") as wav_file:
+            sample_rate = wav_file.getframerate()
+            n_channels = wav_file.getnchannels()
+            raw_data = wav_file.readframes(-1)
+            samples = np.frombuffer(raw_data, dtype=np.int16).astype(np.float32) / 32768.0
+            if n_channels > 1:
+                samples = samples.reshape(-1, n_channels).mean(axis=1)
+            return torch.from_numpy(samples).unsqueeze(0), sample_rate
 
-    Returns:
-        Tuple of (audio_tensor, sample_rate) where audio_tensor is shape [1, num_samples]
-        with values in [-1, 1] range.
-    """
-    with wave.open(str(filepath), "rb") as wav_file:
-        sample_rate = wav_file.getframerate()
+    # For non-WAV formats, use soundfile (optional dependency)
+    try:
+        import soundfile as sf
+    except ImportError as e:
+        raise ImportError(
+            "soundfile is required to read non-WAV audio files. "
+            "Install with: `pip install soundfile` or `uvx --with soundfile`"
+        ) from e
 
-        # Read all audio data as 16-bit signed integers
-        raw_data = wav_file.readframes(-1)
-        samples = (
-            np_rs.frombuffer(raw_data, dtype=np_rs.int16).astype(np_rs.float32)
-            / 32768.0
-        )
-
-        # Return as mono tensor (channels, samples)
-        wav = torch.from_numpy(samples.reshape(1, -1))
-        return wav, sample_rate
-
-
-# Industry-standard alias for audio_read (matches Coqui TTS, VITS, etc.)
-def load_wav(filepath: str | Path) -> tuple[torch.Tensor, int]:
-    """Load audio file from path.
-
-    This is an alias for audio_read() to match common TTS library conventions.
-
-    Args:
-        filepath: Path to the WAV audio file.
-
-    Returns:
-        Tuple of (audio_tensor, sample_rate) where audio_tensor is shape [1, num_samples]
-        with values in [-1, 1] range.
-
-    Examples:
-        >>> from pocket_tts.data.audio import load_wav
-        >>> audio, sr = load_wav("voice_sample.wav")
-        >>> print(f"Loaded audio: {audio.shape}, sample rate: {sr}")
-    """
-    return audio_read(filepath)
+    data, sample_rate = sf.read(str(filepath), dtype="float32")
+    if data.ndim == 1:
+        wav = torch.from_numpy(data).unsqueeze(0)
+    else:
+        wav = torch.from_numpy(data.mean(axis=1)).unsqueeze(0)
+    return wav, sample_rate
 
 
 class StreamingWAVWriter:
@@ -80,7 +65,7 @@ class StreamingWAVWriter:
         """Initialize WAV writer with header."""
         # For stdout streaming, we need to handle the unseekable stream case
         # The wave module supports unseekable streams since Python 3.4
-        self.wave_writer = wave.open(self.output_stream, "wb")  # noqa: SIM115 - managed by finalize()
+        self.wave_writer = wave.open(self.output_stream, "wb")
         self.wave_writer.setnchannels(1)  # Mono
         self.wave_writer.setsampwidth(2)  # 16-bit
         self.wave_writer.setframerate(sample_rate)
@@ -133,28 +118,17 @@ def is_file_like(obj):
 
 
 def stream_audio_chunks(
-    path: str | Path | None | Any,
-    audio_chunks: Iterator[torch.Tensor],
-    sample_rate: int,
+    path: str | Path | None | Any, audio_chunks: Iterator[torch.Tensor], sample_rate: int
 ):
     """Stream audio chunks to a WAV file or stdout, optionally playing them."""
-    # Handle file path case separately to use context manager directly
-    if not is_file_like(path) and path not in ("-", None):
-        with open(path, "wb") as f:
-            writer = StreamingWAVWriter(f, sample_rate)
-            writer.write_header(sample_rate)
-            for chunk in audio_chunks:
-                writer.write_pcm_data(chunk)
-            writer.finalize()
-        return
-
-    # Handle stdout, null context, and file-like objects
     if path == "-":
         f = sys.stdout.buffer
     elif path is None:
         f = nullcontext()
-    else:
+    elif is_file_like(path):
         f = path
+    else:
+        f = open(path, "wb")
 
     with f:
         if path is not None:
