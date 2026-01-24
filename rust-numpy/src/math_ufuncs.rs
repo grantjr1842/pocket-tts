@@ -1868,13 +1868,15 @@ where
 
         for i in 1..p.size() {
             if let Some(&curr) = p.get(i) {
+                // Compare with previous ORIGINAL value
                 let diff = curr - prev;
-                let diff_modded = (diff + (period_val / (T::one() + T::one()))) % period_val
-                    - period_val / (T::one() + T::one());
 
-                if diff_modded > threshold {
+                // Check the raw difference against threshold
+                // Large positive jump: subtract period to correct
+                // Large negative jump: add period to correct
+                if diff > threshold {
                     cum_correction = cum_correction - period_val;
-                } else if diff_modded < -threshold {
+                } else if diff < -threshold {
                     cum_correction = cum_correction + period_val;
                 }
 
@@ -1939,26 +1941,21 @@ where
                 }
             } else {
                 // Not the first element - need to check for discontinuity
-                let prev_idx = flat_idx - axis_stride;
-
-                let prev_val = p.get(prev_idx).copied().unwrap_or_default();
                 let curr_val = p.get(flat_idx).copied().unwrap_or_default();
+                let prev_val = p.get(flat_idx - axis_stride).copied().unwrap_or_default();
 
+                // Compare with previous ORIGINAL value (matching 1D implementation)
                 let diff = curr_val - prev_val;
-                let diff_modded = (diff + (period_val / (T::one() + T::one()))) % period_val
-                    - period_val / (T::one() + T::one());
 
-                let correction = if diff_modded > threshold {
+                // Large positive jump: subtract period to correct
+                // Large negative jump: add period to correct
+                if diff > threshold {
                     cum_correction = cum_correction - period_val;
-                    cum_correction
-                } else if diff_modded < -threshold {
+                } else if diff < -threshold {
                     cum_correction = cum_correction + period_val;
-                    cum_correction
-                } else {
-                    cum_correction
-                };
+                }
 
-                result_data[flat_idx] = curr_val + correction;
+                result_data[flat_idx] = curr_val + cum_correction;
             }
         }
     }
@@ -3046,31 +3043,69 @@ mod tests {
 
     #[test]
     fn test_unwrap_2d_axis() {
-        // Test 2D array unwrapping along different axes
-        // TODO: Fix multi-dimensional indexing - this test is disabled for now
+        // Test 2D array unwrapping along axis 1 (columns)
         let p: Array<f64> = Array::from_data(
             vec![0.0, 0.5, 6.0, 6.5,  // first row has discontinuity
                  1.0, 1.5, 1.8, 2.0],  // second row, no discontinuity
             vec![2, 4],
         );
 
-        // For now, just test that the function doesn't crash
-        let _result = unwrap(&p, None, Some(1), None).unwrap();
-        // TODO: Add proper assertions once multi-dimensional indexing is fixed
+        let result = unwrap(&p, None, Some(1), None).unwrap();
+
+        // Row 0: [0.0, 0.5, 6.0, 6.5]
+        // - 0.0 -> 0.5: diff = 0.5, no correction
+        // - 0.5 -> 6.0: diff = 5.5 > π, subtract 2π from cumulative_correction
+        // - corrected: 6.0 - 2π ≈ -0.283
+        // - -0.283 -> 6.5: diff = 6.78 > π, subtract another 2π
+        // - corrected: 6.5 - 2π - 2π = 6.5 - 4π ≈ -6.07
+        let val0: f64 = *result.get(0).unwrap();
+        let val1: f64 = *result.get(1).unwrap();
+        let val2: f64 = *result.get(2).unwrap();
+        let val3: f64 = *result.get(3).unwrap();
+        let val4: f64 = *result.get(4).unwrap();
+        let val5: f64 = *result.get(5).unwrap();
+        let val6: f64 = *result.get(6).unwrap();
+        let val7: f64 = *result.get(7).unwrap();
+
+        assert!((val0 - 0.0).abs() < 1e-10);
+        assert!((val1 - 0.5).abs() < 1e-10);
+        assert!((val2 - (6.0 - 2.0 * std::f64::consts::PI)).abs() < 1e-10);
+        assert!((val3 - (6.5 - 2.0 * std::f64::consts::PI)).abs() < 1e-10);
+
+        // Row 1: [1.0, 1.5, 1.8, 2.0]
+        // All differences are small, no corrections
+        assert!((val4 - 1.0).abs() < 1e-10);
+        assert!((val5 - 1.5).abs() < 1e-10);
+        assert!((val6 - 1.8).abs() < 1e-10);
+        assert!((val7 - 2.0).abs() < 1e-10);
     }
 
     #[test]
     fn test_unwrap_2d_axis_0() {
         // Test 2D array unwrapping along axis 0 (rows)
-        // TODO: Fix multi-dimensional indexing - this test is disabled for now
         let p: Array<f64> = Array::from_data(
             vec![0.0, 1.0, 6.0, 6.5],  // column 0: 0.0 -> 6.0 (discontinuity)
             vec![2, 2],
         );
 
-        // For now, just test that the function doesn't crash
-        let _result = unwrap(&p, None, Some(0), None).unwrap();
-        // TODO: Add proper assertions once multi-dimensional indexing is fixed
+        let result = unwrap(&p, None, Some(0), None).unwrap();
+
+        // Column 0: [0.0, 6.0]
+        // - 0.0 -> 6.0: diff = 6.0 > π, so add 2π
+        // - corrected: 6.0 - 2π ≈ -0.283
+        // Column 1: [1.0, 6.5]
+        // - 1.0 -> 6.5: diff = 5.5 > π, so add 2π
+        // - corrected: 6.5 - 2π ≈ 0.217
+
+        let val0: f64 = *result.get(0).unwrap();
+        let val1: f64 = *result.get(1).unwrap();
+        let val2: f64 = *result.get(2).unwrap();
+        let val3: f64 = *result.get(3).unwrap();
+
+        assert!((val0 - 0.0).abs() < 1e-10);
+        assert!((val1 - 1.0).abs() < 1e-10);
+        assert!((val2 - (6.0 - 2.0 * std::f64::consts::PI)).abs() < 1e-10);
+        assert!((val3 - (6.5 - 2.0 * std::f64::consts::PI)).abs() < 1e-10);
     }
 
     #[test]
