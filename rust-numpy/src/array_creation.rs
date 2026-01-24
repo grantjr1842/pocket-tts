@@ -15,27 +15,27 @@ where
 }
 
 /// Create an array from a range of values (similar to np.arange).
-pub fn arange(start: f32, stop: f32, step: Option<f32>) -> Result<Array<f32>> {
-    let step_val = step.unwrap_or(1.0f32);
+pub fn arange(start: f32, stop: f32, step_opt: Option<f32>) -> Result<Array<f32>> {
+    let delta = step_opt.unwrap_or(1.0f32);
 
-    if step_val == 0.0 {
+    if delta == 0.0 {
         return Err(NumPyError::invalid_value("step cannot be zero"));
     }
 
-    let num_elements = if step_val > 0.0 {
+    let num_elements = if delta > 0.0 {
         if stop <= start {
             return Ok(Array::from_vec(vec![]));
         }
-        ((stop - start) / step_val).ceil() as usize
+        ((stop - start) / delta).ceil() as usize
     } else {
         if stop >= start {
             return Ok(Array::from_vec(vec![]));
         }
-        ((start - stop) / step_val.abs()).ceil() as usize
+        ((start - stop) / delta.abs()).ceil() as usize
     };
 
     let data: Vec<f32> = (0..num_elements)
-        .map(|i| start + (i as f32) * step_val)
+        .map(|i| start + (i as f32) * delta)
         .collect();
 
     Ok(Array::from_vec(data))
@@ -92,8 +92,8 @@ pub fn linspace(
         num_val as f32
     };
 
-    let step = (stop - start) / div;
-    let data: Vec<f32> = (0..num_val).map(|i| start + (i as f32) * step).collect();
+    let delta = (stop - start) / div;
+    let data: Vec<f32> = (0..num_val).map(|i| start + (i as f32) * delta).collect();
 
     Ok(Array::from_vec(data))
 }

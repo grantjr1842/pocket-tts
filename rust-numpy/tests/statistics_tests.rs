@@ -169,7 +169,7 @@ fn test_nancumsum_no_nan() {
 
 #[test]
 fn test_nancumsum_axis() {
-    use numpy::{array, array2};
+    use numpy::array2;
     let arr = array2![[1.0, f64::NAN, 3.0], [f64::NAN, 5.0, 6.0]];
     let result = arr.nancumsum(Some(1)).unwrap();
 
@@ -212,7 +212,7 @@ fn test_nancumprod_no_nan() {
 
 #[test]
 fn test_nancumprod_axis() {
-    use numpy::{array, array2};
+    use numpy::array2;
     let arr = array2![[2.0, f64::NAN, 3.0], [f64::NAN, 5.0, 2.0]];
     let result = arr.nancumprod(Some(1)).unwrap();
 

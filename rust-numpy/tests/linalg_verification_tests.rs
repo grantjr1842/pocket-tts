@@ -22,7 +22,7 @@ fn test_singular_matrix_inv() {
     let res = inv(&a);
     // Depending on implementation (LAPACK), this might return an error or NaNs/Infs
     // We expect it to fail or contain non-finite values if it succeeds (which it shouldn't for pure inverse)
-    if let Ok(inv_a) = res {
+    if let Ok(_inv_a) = res {
         // If it returns a matrix, it should probably contain NaNs or Infs for a truly singular matrix
         // However, inv() often throws an error.
         // Let's assert that IF it returns, at least one element is non-finite or extremely large?

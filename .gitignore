@@ -128,4 +128,8 @@ onnx_export_*/
 *:Zone.Identifier
 **/*:Zone.Identifier
 
+<<<<<<< HEAD
 numpy-resources/
+=======
+numpy-resources/
+>>>>>>> de514e0a0d73b94928981ff95e3dc034d9df93b5

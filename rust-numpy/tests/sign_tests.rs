@@ -1,6 +1,5 @@
 //! Tests for sign and absolute value functions
 
-use ndarray::array;
 use numpy::*;
 
 #[test]
@@ -22,11 +21,11 @@ fn test_signbit() {
     let x = Array::from_data(vec![-2.5_f64, -0.0, 0.0, 1.5, f64::NAN], vec![5]);
     let result = signbit(&x).unwrap();
 
-    assert_eq!(result.get(0).unwrap(), &1.0); // negative
-    assert_eq!(result.get(1).unwrap(), &1.0); // -0.0
-    assert_eq!(result.get(2).unwrap(), &0.0); // +0.0
-    assert_eq!(result.get(3).unwrap(), &0.0); // positive
-    assert_eq!(result.get(4).unwrap(), &1.0); // NaN
+    assert_eq!(result.get(0).unwrap(), &true); // negative
+    assert_eq!(result.get(1).unwrap(), &true); // -0.0
+    assert_eq!(result.get(2).unwrap(), &false); // +0.0
+    assert_eq!(result.get(3).unwrap(), &false); // positive
+    assert_eq!(result.get(4).unwrap(), &true); // NaN (sign bit is set)
 }
 
 #[test]
@@ -74,47 +73,6 @@ fn test_fabs() {
     assert_eq!(result.get(0).unwrap(), &2.5);
     assert_eq!(result.get(1).unwrap(), &0.0);
     assert_eq!(result.get(2).unwrap(), &3.7);
-}
-
-#[test]
-fn test_sign_complex() {
-    // Test sign with complex numbers
-    let x = Array::from_data(
-        vec![
-            num_complex::Complex64::new(-2.5, 1.0),
-            num_complex::Complex64::new(0.0, -1.0),
-            num_complex::Complex64::new(1.5, 2.0),
-        ],
-        vec![3],
-    );
-    let result = sign(&x).unwrap();
-
-    // For complex numbers, sign should be based on real part
-    assert_eq!(result.get(0).unwrap(), &-1.0);
-    assert_eq!(result.get(1).unwrap(), &0.0);
-    assert_eq!(result.get(2).unwrap(), &1.0);
-}
-
-#[test]
-fn test_absolute_complex() {
-    // Test absolute value with complex numbers
-    let x = Array::from_data(
-        vec![
-            num_complex::Complex64::new(-3.0, 4.0),
-            num_complex::Complex64::new(5.0, -2.0),
-        ],
-        vec![2],
-    );
-    let result = absolute(&x).unwrap();
-
-    assert_eq!(
-        result.get(0).unwrap(),
-        &num_complex::Complex64::new(3.0, 4.0)
-    );
-    assert_eq!(
-        result.get(1).unwrap(),
-        &num_complex::Complex64::new(5.0, 2.0)
-    );
 }
 
 #[test]

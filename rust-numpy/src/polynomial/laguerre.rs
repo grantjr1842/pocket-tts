@@ -2,8 +2,7 @@
 
 use super::{Polynomial, PolynomialBase};
 use crate::error::NumPyError;
-use ndarray::{Array1, Array2};
-use num_complex::Complex;
+use ndarray::Array1;
 use num_traits::{Float, Num};
 
 /// Generalized Laguerre polynomials
@@ -300,7 +299,7 @@ where
     Ok(deriv_coeffs)
 }
 
-fn laguerre_derivative_factor<T>(k: usize, j: usize, m: usize) -> T
+fn laguerre_derivative_factor<T>(k: usize, _j: usize, m: usize) -> T
 where
     T: Float
         + Num
