@@ -86,16 +86,16 @@ mod tests {
 
     #[test]
     fn test_char_lstrip() {
-        let a = create_string_array(vec!["  hello", "\tworld", "  test"]);
+        let a = create_string_array(vec!["  hello  ", "\tworld\t", "  test  "]);
         let result = lstrip(&a).unwrap();
-        assert_eq!(result.get(0).unwrap(), &"hello ".to_string());
-        assert_eq!(result.get(1).unwrap(), &"world".to_string());
-        assert_eq!(result.get(2).unwrap(), &"test".to_string());
+        assert_eq!(result.get(0).unwrap(), &"hello  ".to_string());
+        assert_eq!(result.get(1).unwrap(), &"world\t".to_string());
+        assert_eq!(result.get(2).unwrap(), &"test  ".to_string());
     }
 
     #[test]
     fn test_char_rstrip() {
-        let a = create_string_array(vec!["hello  ", "world\n", "test  "]);
+        let a = create_string_array(vec!["  hello  ", "\tworld\n", "  test  "]);
         let result = rstrip(&a).unwrap();
         assert_eq!(result.get(0).unwrap(), &"  hello".to_string());
         assert_eq!(result.get(1).unwrap(), &"\tworld".to_string());
@@ -109,6 +109,60 @@ mod tests {
         assert_eq!(result.get(0).unwrap(), &"hello".to_string());
         assert_eq!(result.get(1).unwrap(), &"world".to_string());
         assert_eq!(result.get(2).unwrap(), &"test".to_string());
+    }
+
+    #[test]
+    fn test_char_center() {
+        let a = create_string_array(vec!["a", "abc"]);
+        let result = center(&a, 5, None).unwrap();
+        assert_eq!(result.get(0).unwrap(), &"  a  ".to_string());
+        assert_eq!(result.get(1).unwrap(), &" abc ".to_string());
+
+        let result_char = center(&a, 5, Some('-')).unwrap();
+        assert_eq!(result_char.get(0).unwrap(), &"--a--".to_string());
+    }
+
+    #[test]
+    fn test_char_zfill() {
+        let a = create_string_array(vec!["1", "123"]);
+        let result = zfill(&a, 3).unwrap();
+        assert_eq!(result.get(0).unwrap(), &"001".to_string());
+        assert_eq!(result.get(1).unwrap(), &"123".to_string());
+    }
+
+    #[test]
+    fn test_char_expandtabs() {
+        let a = create_string_array(vec!["\t", "a\tb"]);
+        let result = expandtabs(&a, Some(4)).unwrap();
+        assert_eq!(result.get(0).unwrap(), &"    ".to_string());
+        assert_eq!(result.get(1).unwrap(), &"a   b".to_string());
+    }
+
+    #[test]
+    fn test_char_check_property() {
+        let a = create_string_array(vec!["abc", "123", " "]);
+        assert_eq!(isalpha(&a).unwrap().to_vec(), vec![true, false, false]);
+        assert_eq!(isdigit(&a).unwrap().to_vec(), vec![false, true, false]);
+        assert_eq!(isalnum(&a).unwrap().to_vec(), vec![true, true, false]);
+        assert_eq!(isspace(&a).unwrap().to_vec(), vec![false, false, true]);
+    }
+
+    #[test]
+    fn test_char_search() {
+        let a = create_string_array(vec!["banana"]);
+        assert_eq!(find(&a, "na", None, None).unwrap().to_vec(), vec![2]);
+        assert_eq!(rfind(&a, "na", None, None).unwrap().to_vec(), vec![4]);
+        assert_eq!(count(&a, "na", None, None).unwrap().to_vec(), vec![2]);
+        assert_eq!(count(&a, "a", None, None).unwrap().to_vec(), vec![3]);
+        assert_eq!(index(&a, "na", None, None).unwrap().to_vec(), vec![2]);
+        assert_eq!(rindex(&a, "na", None, None).unwrap().to_vec(), vec![4]);
+    }
+
+    #[test]
+    fn test_char_search_fail() {
+        let a = create_string_array(vec!["abc"]);
+        assert_eq!(find(&a, "z", None, None).unwrap().to_vec(), vec![-1]);
+        assert!(index(&a, "z", None, None).is_err());
     }
 
     #[test]

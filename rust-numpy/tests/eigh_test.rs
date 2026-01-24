@@ -5,8 +5,8 @@ fn test_eigh_simple() {
     let matrix = array2![[2.0, 1.0], [1.0, 2.0]];
 
     // Test eigh - should return real eigenvalues for symmetric matrix
-    if let Ok(eigvals) = linalg::eigh(&matrix, Some("L")) {
-        let mut vals = eigvals.to_vec();
+    if let Ok((vals_arr, _vecs_arr)) = linalg::eigh(&matrix, Some("L")) {
+        let mut vals = vals_arr.to_vec();
         vals.sort_by(|a, b| a.partial_cmp(b).unwrap());
 
         println!("eigh eigenvalues: {:?}", vals);
@@ -25,8 +25,8 @@ fn test_eigvalsh_simple() {
     let matrix = array2![[2.0, 1.0], [1.0, 2.0]];
 
     // Test eigvalsh - should return real eigenvalues for symmetric matrix
-    if let Ok(eigvals) = linalg::eigvalsh(&matrix, Some("L")) {
-        let mut vals = eigvals.to_vec();
+    if let Ok(vals_arr) = linalg::eigvalsh(&matrix, Some("L")) {
+        let mut vals = vals_arr.to_vec();
         vals.sort_by(|a, b| a.partial_cmp(b).unwrap());
 
         println!("eigvalsh eigenvalues: {:?}", vals);
