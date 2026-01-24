@@ -209,6 +209,9 @@
 | datetime | default | Implemented | |
 | datetime | is_busday | Implemented | |
 | datetime | new | Implemented | |
+| dist | cdist | Implemented | |
+| dist | pdist | Implemented | |
+| dist | squareform | Implemented | |
 | dtype | alignment | Implemented | |
 | dtype | as_str | Implemented | |
 | dtype | byteorder | Implemented | |
@@ -761,4 +764,3 @@
 | window | kaiser | Implemented | |
 | window | parzen | Implemented | |
 | window | triang | Implemented | |
-

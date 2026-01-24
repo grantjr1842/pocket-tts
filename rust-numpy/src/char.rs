@@ -826,12 +826,166 @@ fn adjust_indices(len: usize, start: Option<usize>, end: Option<usize>) -> (usiz
     }
 }
 
+/// Check if all characters in each string are decimal characters
+pub fn isdecimal(a: &crate::Array<String>) -> Result<crate::Array<bool>, NumPyError> {
+    let mut result = Vec::with_capacity(a.size());
+
+    for idx in 0..a.size() {
+        if let Some(s) = get_string(a, idx) {
+            result.push(!s.is_empty() && s.chars().all(|c| c.is_ascii_digit()));
+        } else {
+            return Err(NumPyError::dtype_error("Not a string array"));
+        }
+    }
+
+    Ok(crate::Array::from_vec(result))
+}
+
+/// Check if all characters in each string are lowercase
+pub fn islower(a: &crate::Array<String>) -> Result<crate::Array<bool>, NumPyError> {
+    let mut result = Vec::with_capacity(a.size());
+
+    for idx in 0..a.size() {
+        if let Some(s) = get_string(a, idx) {
+            if s.is_empty() {
+                result.push(false);
+            } else {
+                let has_lowercase = s.chars().any(|c| c.is_lowercase());
+                let has_uppercase = s.chars().any(|c| c.is_uppercase());
+                result.push(has_lowercase && !has_uppercase);
+            }
+        } else {
+            return Err(NumPyError::dtype_error("Not a string array"));
+        }
+    }
+
+    Ok(crate::Array::from_vec(result))
+}
+
+/// Check if string is titlecased (first character of each word is uppercase)
+pub fn istitle(a: &crate::Array<String>) -> Result<crate::Array<bool>, NumPyError> {
+    let mut result = Vec::with_capacity(a.size());
+
+    for idx in 0..a.size() {
+        if let Some(s) = get_string(a, idx) {
+            if s.is_empty() {
+                result.push(false);
+            } else {
+                let mut is_title = true;
+                let mut prev_was_cased = false;
+
+                for c in s.chars() {
+                    if c.is_uppercase() {
+                        if prev_was_cased {
+                            is_title = false;
+                            break;
+                        }
+                        prev_was_cased = true;
+                    } else if c.is_lowercase() {
+                        if !prev_was_cased {
+                            is_title = false;
+                            break;
+                        }
+                        prev_was_cased = true;
+                    } else {
+                        prev_was_cased = false;
+                    }
+                }
+
+                result.push(is_title);
+            }
+        } else {
+            return Err(NumPyError::dtype_error("Not a string array"));
+        }
+    }
+
+    Ok(crate::Array::from_vec(result))
+}
+
+/// Check if all characters in each string are uppercase
+pub fn isupper(a: &crate::Array<String>) -> Result<crate::Array<bool>, NumPyError> {
+    let mut result = Vec::with_capacity(a.size());
+
+    for idx in 0..a.size() {
+        if let Some(s) = get_string(a, idx) {
+            if s.is_empty() {
+                result.push(false);
+            } else {
+                let has_uppercase = s.chars().any(|c| c.is_uppercase());
+                let has_lowercase = s.chars().any(|c| c.is_lowercase());
+                result.push(has_uppercase && !has_lowercase);
+            }
+        } else {
+            return Err(NumPyError::dtype_error("Not a string array"));
+        }
+    }
+
+    Ok(crate::Array::from_vec(result))
+}
+
+/// Translate characters in each string using a translation table
+///
+/// The table should be a mapping of Unicode ordinals to replacement strings
+pub fn translate(
+    a: &crate::Array<String>,
+    table: &std::collections::HashMap<char, String>,
+) -> Result<crate::Array<String>, NumPyError> {
+    let mut result = Vec::with_capacity(a.size());
+
+    for idx in 0..a.size() {
+        if let Some(s) = get_string(a, idx) {
+            let mut translated = String::new();
+            for c in s.chars() {
+                if let Some(replacement) = table.get(&c) {
+                    translated.push_str(replacement);
+                } else {
+                    translated.push(c);
+                }
+            }
+            result.push(translated);
+        } else {
+            return Err(NumPyError::dtype_error("Not a string array"));
+        }
+    }
+
+    Ok(crate::Array::from_vec(result))
+}
+
+/// String modulo (printf-style formatting)
+///
+/// Formats each string in the array using the corresponding values
+pub fn mod_impl(
+    a: &crate::Array<String>,
+    values: &[&str],
+) -> Result<crate::Array<String>, NumPyError> {
+    if a.size() != values.len() {
+        return Err(NumPyError::shape_mismatch(
+            a.shape().to_vec(),
+            vec![values.len()],
+        ));
+    }
+
+    let mut result = Vec::with_capacity(a.size());
+
+    for idx in 0..a.size() {
+        if let Some(s) = get_string(a, idx) {
+            // Simple %s substitution for basic functionality
+            let formatted = s.replacen("%s", values[idx], 1);
+            result.push(formatted);
+        } else {
+            return Err(NumPyError::dtype_error("Not a string array"));
+        }
+    }
+
+    Ok(crate::Array::from_vec(result))
+}
+
 pub mod exports {
     pub use super::{
         add, capitalize, center, count, endswith, equal, expandtabs, find, greater, greater_equal,
-        index, isalnum, isalpha, isdigit, isnumeric, isspace, join, less, less_equal, ljust, lower,
-        lstrip, lstrip_chars, multiply, not_equal, partition, replace, rfind, rindex, rjust,
-        rpartition, rsplit, rstrip, rstrip_chars, split, splitlines, startswith, str_len, strip,
-        strip_chars, swapcase, title, upper, zfill,
+        index, isalnum, isalpha, isdecimal, isdigit, islower, isnumeric, isspace, istitle, isupper,
+        join, less, less_equal, ljust, lower, lstrip, lstrip_chars, mod_impl, multiply, not_equal,
+        partition, replace, rfind, rindex, rjust, rpartition, rsplit, rstrip, rstrip_chars, split,
+        splitlines, startswith, str_len, strip, strip_chars, swapcase, title, translate, upper, zfill,
     };
 }

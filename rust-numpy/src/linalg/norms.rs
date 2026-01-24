@@ -838,6 +838,48 @@ where
     Ok(singular_values)
 }
 
+/// Compute the singular values of a matrix.
+pub fn svdvals<T>(a: &Array<T>) -> Result<Array<T::Real>, NumPyError>
+where
+    T: LinalgScalar + num_traits::Float,
+    T::Real: Default,
+{
+    let sv = compute_singular_values(a)?;
+    Ok(Array::from_vec(sv))
+}
+
+/// Compute the matrix norm.
+pub fn matrix_norm<T>(
+    x: &Array<T>,
+    ord: Option<&str>,
+    axis: Option<&[isize]>,
+    keepdims: bool,
+) -> Result<Array<T>, NumPyError>
+where
+    T: LinalgScalar + num_traits::Float,
+{
+    if x.ndim() < 2 {
+        return Err(NumPyError::value_error(
+            "matrix_norm requires at least 2 dimensions",
+            "linalg",
+        ));
+    }
+    norm(x, ord, axis, keepdims)
+}
+
+/// Compute the vector norm.
+pub fn vector_norm<T>(
+    x: &Array<T>,
+    ord: Option<&str>,
+    axis: Option<&[isize]>,
+    keepdims: bool,
+) -> Result<Array<T>, NumPyError>
+where
+    T: LinalgScalar + num_traits::Float,
+{
+    norm(x, ord, axis, keepdims)
+}
+
 /// Compute eigenvalues of a symmetric positive semi-definite real matrix
 /// using QR iteration with shifts (simplified version for the nuclear norm use case)
 fn compute_eigenvalues_symmetric_real<R>(a: &[R], n: usize) -> Result<Vec<R>, NumPyError>
