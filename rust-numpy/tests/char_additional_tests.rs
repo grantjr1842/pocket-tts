@@ -139,3 +139,70 @@ fn test_just_longer_than_width() {
     let result = ljust(&arr, 5, None).unwrap();
     assert_eq!(result.get(0).unwrap(), "very long string");
 }
+
+// Tests for newly added functions (issue #384)
+
+#[test]
+fn test_isdecimal() {
+    use numpy::char::isdecimal;
+    
+    let a = Array::from_vec(vec!["123".to_string(), "abc".to_string(), "12.3".to_string()]);
+    let result = isdecimal(&a).unwrap();
+    
+    assert_eq!(result[0], true);  // "123" is all decimal
+    assert_eq!(result[1], false); // "abc" is not decimal
+    assert_eq!(result[2], false); // "12.3" has a dot
+}
+
+#[test]
+fn test_islower() {
+    use numpy::char::islower;
+    
+    let a = Array::from_vec(vec!["hello".to_string(), "Hello".to_string(), "".to_string()]);
+    let result = islower(&a).unwrap();
+    
+    assert_eq!(result[0], true);  // "hello" is all lowercase
+    assert_eq!(result[1], false); // "Hello" has uppercase
+    assert_eq!(result[2], false); // empty string
+}
+
+#[test]
+fn test_isupper() {
+    use numpy::char::isupper;
+    
+    let a = Array::from_vec(vec!["HELLO".to_string(), "Hello".to_string(), "".to_string()]);
+    let result = isupper(&a).unwrap();
+    
+    assert_eq!(result[0], true);  // "HELLO" is all uppercase
+    assert_eq!(result[1], false); // "Hello" has lowercase
+    assert_eq!(result[2], false); // empty string
+}
+
+#[test]
+fn test_istitle() {
+    use numpy::char::istitle;
+    
+    let a = Array::from_vec(vec!["Hello World".to_string(), "HELLO WORLD".to_string(), "hello world".to_string()]);
+    let result = istitle(&a).unwrap();
+    
+    assert_eq!(result[0], true);  // "Hello World" is titlecased
+    assert_eq!(result[1], false); // "HELLO WORLD" is all uppercase
+    assert_eq!(result[2], false); // "hello world" is all lowercase
+}
+
+#[test]
+fn test_translate() {
+    use numpy::char::translate;
+    
+    let a = Array::from_vec(vec!["hello".to_string(), "world".to_string()]);
+    let mut table = std::collections::HashMap::new();
+    table.insert('h', "H".to_string());
+    table.insert('e', "3".to_string());
+    table.insert('l', "1".to_string());
+    table.insert('o', "0".to_string());
+    
+    let result = translate(&a, &table).unwrap();
+    
+    assert_eq!(result[0], "H3110"); // "hello" -> "H3110"
+    assert_eq!(result[1], "w0r1d"); // "world" -> "w0r1d" (partial)
+}
