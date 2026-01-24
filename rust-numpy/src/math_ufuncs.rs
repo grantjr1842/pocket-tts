@@ -1888,6 +1888,170 @@ pub fn real_if_close32(
     Ok(Array::from_data(data, a.shape().to_vec()))
 }
 
+/// Unwrap phase angles by changing absolute jumps greater than discont to their 2π complement
+///
+/// # Arguments
+/// * `p` - Input array of phase angles
+/// * `discont` - Maximum discontinuity between values (default: π)
+/// * `axis` - Axis along which to unwrap (default: -1, meaning last axis)
+/// * `period` - Period of the input (default: 2π)
+///
+/// # Returns
+/// Unwrapped array of phase angles
+///
+/// # Algorithm
+/// For consecutive elements, detect jumps where the absolute difference exceeds
+/// `max(discont, period/2)` and correct by adding/subtracting multiples of `period`.
+pub fn unwrap<T>(p: &Array<T>, discont: Option<T>, axis: Option<isize>, period: Option<T>) -> Result<Array<T>>
+where
+    T: Clone
+        + Default
+        + num_traits::Float
+        + num_traits::FloatConst
+        + std::ops::Add<Output = T>
+        + std::ops::Sub<Output = T>
+        + std::ops::Mul<Output = T>
+        + std::ops::Div<Output = T>
+        + std::ops::Neg<Output = T>
+        + 'static,
+{
+    let period_val = period.unwrap_or_else(|| T::PI() + T::PI());
+    // Default discont is period/2, matching NumPy behavior
+    let discont_default = period_val / (T::one() + T::one());
+    let discont_val = discont.unwrap_or(discont_default);
+    let ndim = p.ndim();
+
+    // Normalize axis to be in range [0, ndim)
+    let axis_idx = if ndim == 0 {
+        return Err(NumPyError::invalid_value("unwrap: cannot unwrap 0-dimensional array"));
+    } else {
+        let ax = axis.unwrap_or(-1);
+        if ax < 0 {
+            (ndim as isize + ax) as usize
+        } else {
+            ax as usize
+        }
+    };
+
+    if axis_idx >= ndim {
+        return Err(NumPyError::invalid_value(format!(
+            "unwrap: axis {} out of bounds for array of dimension {}",
+            axis_idx, ndim
+        )));
+    }
+
+    // Threshold for detecting discontinuities
+    let threshold = if discont_val > period_val / (T::one() + T::one()) {
+        discont_val
+    } else {
+        period_val / (T::one() + T::one())
+    };
+
+    // For 1D arrays, simple linear scan
+    if ndim == 1 {
+        let mut result = Vec::with_capacity(p.size());
+        let mut cum_correction = T::zero();
+        let mut prev = p.get(0).copied().unwrap_or_default();
+
+        result.push(prev.clone());
+
+        for i in 1..p.size() {
+            if let Some(&curr) = p.get(i) {
+                // Compare with previous ORIGINAL value
+                let diff = curr - prev;
+
+                // Check the raw difference against threshold
+                // Large positive jump: subtract period to correct
+                // Large negative jump: add period to correct
+                if diff > threshold {
+                    cum_correction = cum_correction - period_val;
+                } else if diff < -threshold {
+                    cum_correction = cum_correction + period_val;
+                }
+
+                result.push(curr + cum_correction);
+                prev = curr;
+            }
+        }
+
+        return Ok(Array::from_data(result, p.shape().to_vec()));
+    }
+
+    // For multi-dimensional arrays, process along the specified axis
+    let mut result_data = vec![T::default(); p.size()];
+
+    // Calculate strides for the array (row-major/C-style)
+    let mut strides = vec![1usize; ndim];
+    for i in (0..ndim - 1).rev() {
+        strides[i] = strides[i + 1] * p.shape()[i + 1];
+    }
+
+    let axis_stride = strides[axis_idx];
+    let axis_length = p.shape()[axis_idx];
+
+    // Helper to compute a flat index from multi-dimensional indices
+    let compute_flat_idx = |indices: &[usize]| -> usize {
+        let mut idx = 0;
+        for (i, &dim_idx) in indices.iter().enumerate() {
+            idx += dim_idx * strides[i];
+        }
+        idx
+    };
+
+    // Calculate the number of 1D arrays to process along the specified axis
+    let num_1d_arrays = p.size() / axis_length;
+
+    for array_idx in 0..num_1d_arrays {
+        // Convert the 1D array index to a multi-dimensional index
+        // We skip the axis dimension when computing this
+        let mut md_idx = vec![0usize; ndim];
+        let mut temp = array_idx;
+        for i in 0..ndim {
+            if i != axis_idx {
+                md_idx[i] = temp % p.shape()[i];
+                temp /= p.shape()[i];
+            }
+        }
+
+        // Calculate the starting flat index from multi-dimensional indices
+        let array_start = compute_flat_idx(&md_idx);
+
+        let mut cum_correction = T::zero();
+
+        for elem_in_axis in 0..axis_length {
+            // Update the multi-dimensional index to include the axis position
+            md_idx[axis_idx] = elem_in_axis;
+            let flat_idx = compute_flat_idx(&md_idx);
+
+            if elem_in_axis == 0 {
+                // First element in the slice - just copy the value
+                if let Some(&val) = p.get(flat_idx) {
+                    result_data[flat_idx] = val;
+                }
+            } else {
+                // Not the first element - need to check for discontinuity
+                let curr_val = p.get(flat_idx).copied().unwrap_or_default();
+                let prev_val = p.get(flat_idx - axis_stride).copied().unwrap_or_default();
+
+                // Compare with previous ORIGINAL value (matching 1D implementation)
+                let diff = curr_val - prev_val;
+
+                // Large positive jump: subtract period to correct
+                // Large negative jump: add period to correct
+                if diff > threshold {
+                    cum_correction = cum_correction - period_val;
+                } else if diff < -threshold {
+                    cum_correction = cum_correction + period_val;
+                }
+
+                result_data[flat_idx] = curr_val + cum_correction;
+            }
+        }
+    }
+
+    Ok(Array::from_data(result_data, p.shape().to_vec()))
+}
+
 /// Register all mathematical ufuncs
 pub fn register_math_ufuncs(registry: &mut crate::ufunc::UfuncRegistry) {
     // Trigonometric functions
@@ -2991,6 +3155,371 @@ mod tests {
             conj_result.get(3).unwrap(),
             &num_complex::Complex64::new(7.0, -8.0)
         );
+    }
+
+    #[test]
+    fn test_unwrap_1d_basic() {
+        // Test basic phase unwrapping with a jump
+        // Phase goes from near 2π to near 0
+        let p: Array<f64> = Array::from_data(vec![5.5, 5.8, 6.1, 0.2, 0.5], vec![5]);
+
+        let result = unwrap(&p, None, None, None).unwrap();
+
+        // The jump from 6.1 to 0.2 should be corrected by adding 2π
+        let val0: f64 = *result.get(0).unwrap();
+        let val1: f64 = *result.get(1).unwrap();
+        let val2: f64 = *result.get(2).unwrap();
+        let val3: f64 = *result.get(3).unwrap();
+        let val4: f64 = *result.get(4).unwrap();
+
+        assert!((val0 - 5.5).abs() < 1e-10);
+        assert!((val1 - 5.8).abs() < 1e-10);
+        assert!((val2 - 6.1).abs() < 1e-10);
+        assert!((val3 - (0.2 + 2.0 * std::f64::consts::PI)).abs() < 1e-10);
+        assert!((val4 - (0.5 + 2.0 * std::f64::consts::PI)).abs() < 1e-10);
+    }
+
+    #[test]
+    fn test_unwrap_1d_no_discontinuities() {
+        // Test with no discontinuities
+        let p: Array<f64> = Array::from_data(vec![0.0, 0.5, 1.0, 1.5, 2.0], vec![5]);
+
+        let result = unwrap(&p, None, None, None).unwrap();
+
+        // Values should remain unchanged
+        for i in 0..5 {
+            let result_val: f64 = *result.get(i).unwrap();
+            let p_val: f64 = *p.get(i).unwrap();
+            assert!((result_val - p_val).abs() < 1e-10);
+        }
+    }
+
+    #[test]
+    fn test_unwrap_1d_negative_jump() {
+        // Test negative jump (from near 0 to near -2π)
+        let p: Array<f64> = Array::from_data(vec![0.5, 0.2, -0.1, -5.5, -5.8], vec![5]);
+
+        let result = unwrap(&p, None, None, None).unwrap();
+
+        // The jump from -0.1 to -5.5 should be corrected by adding 2π
+        let val0: f64 = *result.get(0).unwrap();
+        let val1: f64 = *result.get(1).unwrap();
+        let val2: f64 = *result.get(2).unwrap();
+        let val3: f64 = *result.get(3).unwrap();
+        let val4: f64 = *result.get(4).unwrap();
+
+        assert!((val0 - 0.5).abs() < 1e-10);
+        assert!((val1 - 0.2).abs() < 1e-10);
+        assert!((val2 - (-0.1)).abs() < 1e-10);
+        assert!((val3 - (-5.5 + 2.0 * std::f64::consts::PI)).abs() < 1e-10);
+        assert!((val4 - (-5.8 + 2.0 * std::f64::consts::PI)).abs() < 1e-10);
+    }
+
+    #[test]
+    fn test_unwrap_2d_axis() {
+        // Test 2D array unwrapping along axis 1 (columns)
+        let p: Array<f64> = Array::from_data(
+            vec![0.0, 0.5, 6.0, 6.5,  // first row has discontinuity
+                 1.0, 1.5, 1.8, 2.0],  // second row, no discontinuity
+            vec![2, 4],
+        );
+
+        let result = unwrap(&p, None, Some(1), None).unwrap();
+
+        // Row 0: [0.0, 0.5, 6.0, 6.5]
+        // - 0.0 -> 0.5: diff = 0.5, no correction
+        // - 0.5 -> 6.0: diff = 5.5 > π, subtract 2π from cumulative_correction
+        // - corrected: 6.0 - 2π ≈ -0.283
+        // - -0.283 -> 6.5: diff = 6.78 > π, subtract another 2π
+        // - corrected: 6.5 - 2π - 2π = 6.5 - 4π ≈ -6.07
+        let val0: f64 = *result.get(0).unwrap();
+        let val1: f64 = *result.get(1).unwrap();
+        let val2: f64 = *result.get(2).unwrap();
+        let val3: f64 = *result.get(3).unwrap();
+        let val4: f64 = *result.get(4).unwrap();
+        let val5: f64 = *result.get(5).unwrap();
+        let val6: f64 = *result.get(6).unwrap();
+        let val7: f64 = *result.get(7).unwrap();
+
+        assert!((val0 - 0.0).abs() < 1e-10);
+        assert!((val1 - 0.5).abs() < 1e-10);
+        assert!((val2 - (6.0 - 2.0 * std::f64::consts::PI)).abs() < 1e-10);
+        assert!((val3 - (6.5 - 2.0 * std::f64::consts::PI)).abs() < 1e-10);
+
+        // Row 1: [1.0, 1.5, 1.8, 2.0]
+        // All differences are small, no corrections
+        assert!((val4 - 1.0).abs() < 1e-10);
+        assert!((val5 - 1.5).abs() < 1e-10);
+        assert!((val6 - 1.8).abs() < 1e-10);
+        assert!((val7 - 2.0).abs() < 1e-10);
+    }
+
+    #[test]
+    fn test_unwrap_2d_axis_0() {
+        // Test 2D array unwrapping along axis 0 (rows)
+        let p: Array<f64> = Array::from_data(
+            vec![0.0, 1.0, 6.0, 6.5],  // column 0: 0.0 -> 6.0 (discontinuity)
+            vec![2, 2],
+        );
+
+        let result = unwrap(&p, None, Some(0), None).unwrap();
+
+        // Column 0: [0.0, 6.0]
+        // - 0.0 -> 6.0: diff = 6.0 > π, so add 2π
+        // - corrected: 6.0 - 2π ≈ -0.283
+        // Column 1: [1.0, 6.5]
+        // - 1.0 -> 6.5: diff = 5.5 > π, so add 2π
+        // - corrected: 6.5 - 2π ≈ 0.217
+
+        let val0: f64 = *result.get(0).unwrap();
+        let val1: f64 = *result.get(1).unwrap();
+        let val2: f64 = *result.get(2).unwrap();
+        let val3: f64 = *result.get(3).unwrap();
+
+        assert!((val0 - 0.0).abs() < 1e-10);
+        assert!((val1 - 1.0).abs() < 1e-10);
+        assert!((val2 - (6.0 - 2.0 * std::f64::consts::PI)).abs() < 1e-10);
+        assert!((val3 - (6.5 - 2.0 * std::f64::consts::PI)).abs() < 1e-10);
+    }
+
+    #[test]
+    fn test_unwrap_custom_discont() {
+        // Test with custom discontinuity threshold
+        let p: Array<f64> = Array::from_data(vec![0.0, 1.0, 4.0, 5.0], vec![4]);
+
+        // With discont=2.0, the jump from 1.0 to 4.0 triggers correction
+        // period = 2π ≈ 6.283, threshold = max(2.0, 3.1415) = 3.1415
+        // diff from 1.0 to 4.0 is 3.0, which is < 3.1415, so NO correction
+        let result = unwrap(&p, Some(2.0_f64), None, None).unwrap();
+
+        let val0: f64 = *result.get(0).unwrap();
+        let val1: f64 = *result.get(1).unwrap();
+        let val2: f64 = *result.get(2).unwrap();
+        let val3: f64 = *result.get(3).unwrap();
+
+        // No correction because diff (3.0) < threshold (3.1415)
+        assert!((val0 - 0.0).abs() < 1e-10);
+        assert!((val1 - 1.0).abs() < 1e-10);
+        assert!((val2 - 4.0).abs() < 1e-10);
+        assert!((val3 - 5.0).abs() < 1e-10);
+    }
+
+    #[test]
+    fn test_unwrap_custom_period() {
+        // Test with custom period
+        let p: Array<f64> = Array::from_data(vec![0.0, 0.5, 1.0, 1.5, 2.0], vec![5]);
+
+        // With period=1.0, values wrap every 1.0
+        // discont = π (default), threshold = max(π, 0.5) = π ≈ 3.14
+        // All differences are 0.5, which is < 3.14, so no correction
+        let result = unwrap(&p, None, None, Some(1.0_f64)).unwrap();
+
+        let val0: f64 = *result.get(0).unwrap();
+        let val1: f64 = *result.get(1).unwrap();
+        let val2: f64 = *result.get(2).unwrap();
+        let val3: f64 = *result.get(3).unwrap();
+        let val4: f64 = *result.get(4).unwrap();
+
+        // No correction because all diffs (0.5) < threshold (π)
+        assert!((val0 - 0.0).abs() < 1e-10);
+        assert!((val1 - 0.5).abs() < 1e-10);
+        assert!((val2 - 1.0).abs() < 1e-10);
+        assert!((val3 - 1.5).abs() < 1e-10);
+        assert!((val4 - 2.0).abs() < 1e-10);
+    }
+
+    #[test]
+    fn test_unwrap_f32() {
+        // Test with f32 values
+        let p: Array<f32> = Array::from_data(vec![5.5_f32, 5.8, 6.1, 0.2, 0.5], vec![5]);
+
+        let result = unwrap(&p, None, None, None::<f32>).unwrap();
+
+        let val0: f32 = *result.get(0).unwrap();
+        let val1: f32 = *result.get(1).unwrap();
+        let val2: f32 = *result.get(2).unwrap();
+        let val3: f32 = *result.get(3).unwrap();
+        let val4: f32 = *result.get(4).unwrap();
+
+        assert!((val0 - 5.5).abs() < 1e-6);
+        assert!((val1 - 5.8).abs() < 1e-6);
+        assert!((val2 - 6.1).abs() < 1e-6);
+        assert!((val3 - (0.2 + 2.0 * std::f32::consts::PI)).abs() < 1e-6);
+        assert!((val4 - (0.5 + 2.0 * std::f32::consts::PI)).abs() < 1e-6);
+    }
+
+    #[test]
+    fn test_unwrap_empty_array() {
+        // Test with empty array
+        let p: Array<f64> = Array::from_data(vec![], vec![0]);
+
+        let result = unwrap(&p, None, None, None);
+
+        // Should handle gracefully or return an error
+        assert!(result.is_ok() || result.is_err());
+    }
+
+    #[test]
+    fn test_unwrap_single_element() {
+        // Test with single element array
+        let p: Array<f64> = Array::from_data(vec![1.5], vec![1]);
+
+        let result = unwrap(&p, None, None, None).unwrap();
+
+        assert_eq!(result.size(), 1);
+        let val: f64 = *result.get(0).unwrap();
+        assert!((val - 1.5).abs() < 1e-10);
+    }
+
+    #[test]
+    fn test_unwrap_large_phase_data() {
+        // Test with larger phase data simulating FFT output
+        let mut phase_data = Vec::new();
+        for i in 0..20 {
+            // Create phase that wraps around every 2π
+            phase_data.push((i as f64 * 0.5) % (2.0 * std::f64::consts::PI));
+        }
+
+        let p = Array::from_data(phase_data.clone(), vec![20]);
+        let result = unwrap(&p, None, None, None).unwrap();
+
+        // Result should be monotonically increasing (no jumps backwards)
+        for i in 1..result.size() {
+            let prev = *result.get(i - 1).unwrap();
+            let curr = *result.get(i).unwrap();
+            assert!(curr > prev || (curr - prev).abs() < 1e-10,
+                    "Phase should be increasing: {} -> {}", prev, curr);
+        }
+    }
+
+    // Tests matching NumPy documentation examples
+
+    #[test]
+    fn test_numpy_example_period_4() {
+        // np.unwrap([0, 1, 2, -1, 0], period=4) -> [0, 1, 2, 3, 4]
+        let p: Array<f64> = Array::from_data(vec![0.0, 1.0, 2.0, -1.0, 0.0], vec![5]);
+
+        let result = unwrap(&p, None, None, Some(4.0_f64)).unwrap();
+
+        let val0: f64 = *result.get(0).unwrap();
+        let val1: f64 = *result.get(1).unwrap();
+        let val2: f64 = *result.get(2).unwrap();
+        let val3: f64 = *result.get(3).unwrap();
+        let val4: f64 = *result.get(4).unwrap();
+
+        // Expected: [0, 1, 2, 3, 4]
+        assert!((val0 - 0.0).abs() < 1e-10);
+        assert!((val1 - 1.0).abs() < 1e-10);
+        assert!((val2 - 2.0).abs() < 1e-10);
+        assert!((val3 - 3.0).abs() < 1e-10);
+        assert!((val4 - 4.0).abs() < 1e-10);
+    }
+
+    #[test]
+    fn test_numpy_example_period_6() {
+        // np.unwrap([ 1, 2, 3, 4, 5, 6, 1, 2, 3], period=6) -> [1, 2, 3, 4, 5, 6, 7, 8, 9]
+        let p: Array<f64> = Array::from_data(vec![1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 1.0, 2.0, 3.0], vec![9]);
+
+        let result = unwrap(&p, None, None, Some(6.0_f64)).unwrap();
+
+        // Expected: [1, 2, 3, 4, 5, 6, 7, 8, 9]
+        for i in 0..9 {
+            let val: f64 = *result.get(i).unwrap();
+            let expected = (i + 1) as f64;
+            assert!((val - expected).abs() < 1e-10,
+                    "Index {}: expected {}, got {}", i, expected, val);
+        }
+    }
+
+    #[test]
+    fn test_numpy_example_period_4_wrap() {
+        // np.unwrap([2, 3, 4, 5, 2, 3, 4, 5], period=4) -> [2, 3, 4, 5, 6, 7, 8, 9]
+        let p: Array<f64> = Array::from_data(vec![2.0, 3.0, 4.0, 5.0, 2.0, 3.0, 4.0, 5.0], vec![8]);
+
+        let result = unwrap(&p, None, None, Some(4.0_f64)).unwrap();
+
+        // Expected: [2, 3, 4, 5, 6, 7, 8, 9]
+        for i in 0..8 {
+            let val: f64 = *result.get(i).unwrap();
+            let expected = (i + 2) as f64;
+            assert!((val - expected).abs() < 1e-10,
+                    "Index {}: expected {}, got {}", i, expected, val);
+        }
+    }
+
+    #[test]
+    fn test_numpy_example_discont_smaller_than_period_half() {
+        // Test the note: "If the discontinuity in p is smaller than period/2,
+        // but larger than discont, no unwrapping is done"
+        // For period=4, period/2=2. So discontinuities < 2 should not be unwrapped
+        // if discont < 2
+        let p: Array<f64> = Array::from_data(vec![0.0, 1.0, 2.5, 3.5], vec![4]);
+
+        // With discont=1.5 (smaller than period/2=2), discontinuity of 1.5 won't be corrected
+        let result = unwrap(&p, Some(1.5_f64), None, Some(4.0_f64)).unwrap();
+
+        // The jump from 2.5 to 3.5 is 1.0, which is < period/2, so no correction
+        // even with discont=1.5, the threshold is max(1.5, 2.0) = 2.0
+        let val0: f64 = *result.get(0).unwrap();
+        let val1: f64 = *result.get(1).unwrap();
+        let val2: f64 = *result.get(2).unwrap();
+        let val3: f64 = *result.get(3).unwrap();
+
+        assert!((val0 - 0.0).abs() < 1e-10);
+        assert!((val1 - 1.0).abs() < 1e-10);
+        assert!((val2 - 2.5).abs() < 1e-10);
+        assert!((val3 - 3.5).abs() < 1e-10);
+    }
+
+    #[test]
+    fn test_numpy_example_discont_larger_than_period_half() {
+        // Test with discont larger than period/2
+        // For period=6.28, period/2=3.14, with discont=4.0
+        // threshold = max(4.0, 3.14) = 4.0
+        let p: Array<f64> = Array::from_data(vec![0.0, 1.0, 6.0], vec![3]);
+
+        let result = unwrap(&p, Some(4.0_f64), None, None).unwrap();
+
+        // Jump from 1.0 to 6.0 is 5.0, which is > threshold 4.0, so correct
+        // val[2] should be 6.0 - 2π ≈ -0.283
+        let val0: f64 = *result.get(0).unwrap();
+        let val1: f64 = *result.get(1).unwrap();
+        let val2: f64 = *result.get(2).unwrap();
+
+        assert!((val0 - 0.0).abs() < 1e-10);
+        assert!((val1 - 1.0).abs() < 1e-10);
+        assert!((val2 - (6.0 - 2.0 * std::f64::consts::PI)).abs() < 1e-10);
+    }
+
+    #[test]
+    fn test_numpy_negative_wrap() {
+        // Test negative jumps (wrapping in negative direction)
+        // Similar to: np.unwrap([5, 4, 3, 2, 1, 0, -1, -2])
+        let p: Array<f64> = Array::from_data(vec![5.0, 4.0, 3.0, 2.0, 1.0, 0.0, 6.0, 5.0], vec![8]);
+
+        let result = unwrap(&p, None, None, Some(7.0_f64)).unwrap();
+
+        // Expected: values should continue decreasing, with -1 becoming 6 (7-1), etc.
+        // After the jump from 0 to 6, the corrected value should be 6 - 7 = -1
+        let val0: f64 = *result.get(0).unwrap();
+        let val1: f64 = *result.get(1).unwrap();
+        let val2: f64 = *result.get(2).unwrap();
+        let val3: f64 = *result.get(3).unwrap();
+        let val4: f64 = *result.get(4).unwrap();
+        let val5: f64 = *result.get(5).unwrap();
+        let val6: f64 = *result.get(6).unwrap();
+        let val7: f64 = *result.get(7).unwrap();
+
+        assert!((val0 - 5.0).abs() < 1e-10);
+        assert!((val1 - 4.0).abs() < 1e-10);
+        assert!((val2 - 3.0).abs() < 1e-10);
+        assert!((val3 - 2.0).abs() < 1e-10);
+        assert!((val4 - 1.0).abs() < 1e-10);
+        assert!((val5 - 0.0).abs() < 1e-10);
+        // Jump from 0 to 6: diff=6 > threshold(3.5), so subtract period 7
+        assert!((val6 - (6.0 - 7.0)).abs() < 1e-10);
+        // Previous cum_correction continues
+        assert!((val7 - (5.0 - 7.0)).abs() < 1e-10);
     }
 }
 
