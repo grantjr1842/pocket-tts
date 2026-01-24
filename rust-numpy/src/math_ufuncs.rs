@@ -1473,6 +1473,93 @@ where
     }
 }
 
+/// Compute the absolute value element-wise
+pub fn absolute<T>(x: &Array<T>) -> Result<Array<T>>
+where
+    T: Clone + Default + num_traits::Signed + 'static,
+{
+    let mut output = Array::from_data(vec![T::default(); x.size()], x.shape().to_vec());
+    for i in 0..x.size() {
+        if let Some(val) = x.get(i) {
+            output.set(i, val.abs())?;
+        }
+    }
+    Ok(output)
+}
+
+/// Alias for absolute (NumPy compatibility)
+pub fn fabs<T>(x: &Array<T>) -> Result<Array<T>>
+where
+    T: Clone + Default + num_traits::Float + 'static,
+{
+    let mut output = Array::from_data(vec![T::default(); x.size()], x.shape().to_vec());
+    for i in 0..x.size() {
+        if let Some(val) = x.get(i) {
+            output.set(i, val.abs())?;
+        }
+    }
+    Ok(output)
+}
+
+/// Returns an element-wise indication of the sign of a number
+pub fn sign<T>(x: &Array<T>) -> Result<Array<T>>
+where
+    T: Clone + Default + num_traits::Signed + PartialOrd + 'static,
+{
+    let mut output = Array::from_data(vec![T::default(); x.size()], x.shape().to_vec());
+    for i in 0..x.size() {
+        if let Some(val) = x.get(i) {
+            let s = if *val > T::zero() {
+                T::one()
+            } else if *val < T::zero() {
+                T::zero() - T::one()
+            } else {
+                T::zero()
+            };
+            output.set(i, s)?;
+        }
+    }
+    Ok(output)
+}
+
+/// Returns element-wise true where signbit is set (less than zero)
+pub fn signbit<T>(x: &Array<T>) -> Result<Array<bool>>
+where
+    T: Clone + Default + num_traits::Float + 'static,
+{
+    let mut output = Array::from_data(vec![false; x.size()], x.shape().to_vec());
+    for i in 0..x.size() {
+        if let Some(val) = x.get(i) {
+            // Using signum() and checking for negative is more robust for some float implementations
+            // or just use is_sign_negative() if it's reliable.
+            // Let's use a combination or check bit directly if possible.
+            // NumPy's signbit is true if the sign bit is set.
+            output.set(i, val.is_sign_negative())?;
+        }
+    }
+    Ok(output)
+}
+
+/// Change the sign of x1 to that of x2, element-wise
+pub fn copysign<T>(x1: &Array<T>, x2: &Array<T>) -> Result<Array<T>>
+where
+    T: Clone + Default + num_traits::Float + 'static,
+{
+    let broadcast_shape = compute_broadcast_shape(x1.shape(), x2.shape());
+    let mut output = Array::from_data(
+        vec![T::default(); broadcast_shape.iter().product()],
+        broadcast_shape.clone(),
+    );
+
+    for i in 0..output.size() {
+        let multi_idx = crate::strides::compute_multi_indices(i, &broadcast_shape);
+        if let (Ok(v1), Ok(v2)) = (x1.get_by_indices(&multi_idx), x2.get_by_indices(&multi_idx)) {
+            output.set(i, v1.copysign(*v2))?;
+        }
+    }
+    Ok(output)
+}
+
 // Floating-point checking functions
 
 /// Floating-point checking ufunc that returns boolean array
