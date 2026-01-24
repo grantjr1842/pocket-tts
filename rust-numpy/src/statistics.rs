@@ -299,6 +299,43 @@ where
     }
 }
 
+pub fn correlate<T>(
+    a: &Array<T>,
+    v: &Array<T>,
+    _mode: &str,
+) -> Result<Array<T>, NumPyError>
+where
+    T: Clone + Default + AsF64 + FromF64 + 'static,
+{
+    if a.is_empty() || v.is_empty() {
+        return Err(NumPyError::invalid_value(
+            "Cannot correlate empty arrays",
+        ));
+    }
+
+    let a_data = a.to_vec();
+    let v_data = v.to_vec();
+
+    // Cross-correlation: (a * v)[k] = sum_n a[n] * v[n+k]
+    let out_len = a_data.len() + v_data.len() - 1;
+    let mut result = vec![0.0f64; out_len];
+
+    for k in 0..out_len {
+        let mut sum = 0.0;
+        for n in 0..a_data.len() {
+            let v_idx = k as isize + n as isize - (a_data.len() - 1) as isize;
+            if v_idx >= 0 && (v_idx as usize) < v_data.len() {
+                let a_val = a_data[n].as_f64().unwrap_or(0.0);
+                let v_val = v_data[v_idx as usize].as_f64().unwrap_or(0.0);
+                sum += a_val * v_val;
+            }
+        }
+        result[k] = sum;
+    }
+
+    Ok(Array::from_vec(result.into_iter().map(T::from_f64).collect()))
+}
+
 pub fn cov<T>(
     m: &Array<T>,
     y: Option<&Array<T>>,
@@ -810,9 +847,9 @@ where
 
 pub mod exports {
     pub use super::{
-        average, bincount, corrcoef, cov, digitize, histogram, histogram2d, histogramdd, median,
-        nanmax, nanmean, nanmedian, nanmin, nanpercentile, nanprod, nanquantile, nanstd, nansum,
-        nanvar, percentile, ptp, quantile, std, var,
+        average, bincount, correlate, corrcoef, cov, digitize, histogram, histogram2d, histogramdd,
+        median, nanmax, nanmean, nanmedian, nanmin, nanpercentile, nanprod, nanquantile, nanstd,
+        nansum, nanvar, percentile, ptp, quantile, std, var,
     };
 }
 

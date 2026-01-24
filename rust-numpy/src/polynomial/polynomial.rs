@@ -11,7 +11,7 @@ use super::PolynomialBase;
 use crate::error::NumPyError;
 use ndarray::{Array1, Array2, Axis};
 use num_complex::Complex;
-use num_traits::{Float, Num};
+use num_traits::{Float, Num, NumCast};
 
 /// Standard polynomial in power basis
 #[derive(Debug, Clone)]
@@ -164,18 +164,18 @@ where
     }
 
     fn eval(&self, x: &Array1<T>) -> Result<Array1<T>, NumPyError> {
-        let mut result = Array1::zeros(x.len());
+        let n = self.coeffs.len();
+        if n == 0 {
+            return Ok(Array1::zeros(x.len()));
+        }
 
-        for (i, &xi) in x.iter().enumerate() {
-            let mut value = T::zero();
-            let mut xi_power = T::one();
-
-            for coeff in self.coeffs.iter() {
-                value = value + *coeff * xi_power;
-                xi_power = xi_power * xi;
+        let mut result = Array1::from_elem(x.len(), self.coeffs[n - 1]);
+        for i in (0..(n - 1)).rev() {
+            for (j, &xi) in x.iter().enumerate() {
+                let current_val = result[j];
+                let coeff = self.coeffs[i];
+                result[j] = current_val * xi + coeff;
             }
-
-            result[i] = value;
         }
 
         Ok(result)
@@ -404,16 +404,127 @@ pub fn roots<T>(p: &Polynomial<T>) -> Result<Array1<Complex<T>>, NumPyError>
 where
     T: Float + Num + std::fmt::Debug + 'static,
 {
-    let comp_matrix = companion(p)?;
-
-    let n = comp_matrix.shape()[0];
-    if n == 0 {
+    let coeffs = p.coeffs();
+    let n = coeffs.len();
+    if n <= 1 {
         return Ok(Array1::zeros(0));
     }
 
-    let roots = find_eigenvalues(&comp_matrix)?;
+    // Normalize coefficients
+    let leading = coeffs[n - 1];
+    if leading.is_zero() {
+        return Err(NumPyError::invalid_value("Leading coefficient is zero"));
+    }
 
-    Ok(roots)
+    // Check if degree is 2, use closed form
+    if n == 3 {
+        // Degree 2: coeffs [c0, c1, c2]
+        let a = coeffs[2];
+        let b = coeffs[1];
+        let c = coeffs[0];
+
+        // x = (-b +/- sqrt(b^2 - 4ac)) / 2a
+        let a_c = Complex::new(a, T::zero());
+        let b_c = Complex::new(b, T::zero());
+        let c_c = Complex::new(c, T::zero());
+
+        // Discriminant
+        let delta = b_c * b_c - Complex::new(T::from(4.0).unwrap(), T::zero()) * a_c * c_c;
+        let sqrt_delta = delta.sqrt();
+
+        let denom = Complex::new(T::from(2.0).unwrap(), T::zero()) * a_c;
+        let r1 = (-b_c - sqrt_delta) / denom;
+        let r2 = (-b_c + sqrt_delta) / denom;
+
+        return Ok(Array1::from_vec(vec![r1, r2]));
+    }
+
+    // Durand-Kerner method
+    durand_kerner_roots(coeffs)
+}
+
+fn durand_kerner_roots<T>(coeffs: &Array1<T>) -> Result<Array1<Complex<T>>, NumPyError>
+where
+    T: Float + Num + std::fmt::Debug + 'static,
+{
+    let n = coeffs.len() - 1; // Degree
+
+    // Normalize coefficients
+    let normalize_coeffs: Vec<T> = coeffs.iter().map(|&c| c / coeffs[n]).collect();
+
+    // Cauchy bound for initial radius: 1 + max(|a_i|)
+    let mut max_coeff = T::zero();
+    // coeffs[n] is 1 after normalization
+    for i in 0..n {
+        let abs_c = normalize_coeffs[i].abs();
+        if abs_c > max_coeff {
+            max_coeff = abs_c;
+        }
+    }
+    let radius = T::one() + max_coeff;
+
+    let mut current_roots = Vec::with_capacity(n);
+
+    // Aberth initialization or simple circle
+    let pi = T::from(std::f64::consts::PI).unwrap();
+    let two_pi = T::from(2.0).unwrap() * pi;
+
+    // Use an offset to avoid symmetry issues for real coeffs
+    let offset = T::from(0.123).unwrap();
+
+    for k in 0..n {
+        let angle = two_pi * T::from(k).unwrap() / T::from(n).unwrap() + offset;
+        let re = radius * angle.cos();
+        let im = radius * angle.sin();
+        current_roots.push(Complex::new(re, im));
+    }
+
+    let max_iter = 1000;
+    let tol = T::from(1e-12).unwrap();
+
+    for _iter in 0..max_iter {
+        let mut max_diff = T::zero();
+
+        let prev_roots = current_roots.clone();
+
+        for i in 0..n {
+            let z = prev_roots[i];
+
+            // Evaluate polynomial at z
+            // Use Horner's with normalized coeffs
+            // p(z) = c0 + c1*z + ... + cn*z^n
+            // normalized: cn=1.
+            let mut p_val = Complex::new(T::one(), T::zero()); // Start with x^n coeff
+            for k in (0..n).rev() {
+                p_val = p_val * z + Complex::new(normalize_coeffs[k], T::zero());
+            }
+
+            // Compute product (z - z_j)
+            let mut prod = Complex::new(T::one(), T::zero());
+            for j in 0..n {
+                if i != j {
+                    prod = prod * (z - prev_roots[j]);
+                }
+            }
+
+            if prod.norm() < T::from(1e-15).unwrap() {
+                continue; // Avoid division by zero
+            }
+
+            let correction = p_val / prod;
+            current_roots[i] = current_roots[i] - correction;
+
+            if correction.norm() > max_diff {
+                max_diff = correction.norm();
+            }
+        }
+
+        if max_diff < tol {
+            break;
+        }
+    }
+
+    Ok(Array1::from_vec(current_roots))
 }
 
 pub fn companion<T>(p: &Polynomial<T>) -> Result<Array2<T>, NumPyError>
@@ -445,31 +556,6 @@ where
     }
 
     Ok(comp)
-}
-
-fn find_eigenvalues<T>(matrix: &Array2<T>) -> Result<Array1<Complex<T>>, NumPyError>
-where
-    T: Float + Num + std::fmt::Debug + 'static,
-{
-    use num_complex::Complex;
-
-    let n = matrix.shape()[0];
-    let mut eigenvalues = Vec::with_capacity(n);
-
-    match n {
-        0 => Ok(Array1::from_vec(eigenvalues)),
-        1 => {
-            eigenvalues.push(Complex::new(matrix[[0, 0]], T::zero()));
-            Ok(Array1::from_vec(eigenvalues))
-        }
-        2 => solve_quadratic_eigenvalues(matrix),
-        _ => {
-            for i in 0..n {
-                eigenvalues.push(Complex::new(T::from(i).unwrap(), T::zero()));
-            }
-            Ok(Array1::from_vec(eigenvalues))
-        }
-    }
 }
 
 fn solve_quadratic_eigenvalues<T>(matrix: &Array2<T>) -> Result<Array1<Complex<T>>, NumPyError>
