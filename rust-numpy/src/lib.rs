@@ -31,7 +31,6 @@
 #![allow(suspicious_double_ref_op)]
 #![allow(clippy::inherent_to_string_shadow_display)]
 #![allow(dead_code)]
-
 // Additional allows for numerical library patterns and FFI
 #![allow(clippy::missing_errors_doc)] // 528 warnings - error cases are obvious in API
 #![allow(clippy::missing_panics_doc)] // 57 warnings - panic cases are rare/documented
@@ -148,6 +147,14 @@ pub mod statistics;
 pub mod strides;
 pub mod type_promotion;
 pub mod ufunc;
+
+pub mod dimension_coalescing;
+pub mod layout;
+#[cfg(feature = "rayon")]
+pub mod parallel_reduction;
+#[cfg(feature = "simd")]
+pub mod simd_kernels;
+pub mod threading_policy;
 pub mod ufunc_ops;
 pub mod window;
 

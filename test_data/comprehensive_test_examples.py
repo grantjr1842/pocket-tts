@@ -421,13 +421,14 @@ class NumPyTestExamples:
                 "input": (arr1, arr2),
                 "output": np.isin(arr1, arr2),
                 "result": [False, False, True, True, True],
-            }
+            },
         }
         return examples
 
     # Sorting Tests
     def test_sorting(self):
-    """Test sorting operations"""
+        """Test sorting operations"""
+
     arr = np.array([3, 1, 4, 1, 5, 9, 2, 6])
 
     examples = {
@@ -458,6 +459,7 @@ class NumPyTestExamples:
         },
     }
     return examples
+
 
 # Random Module Tests
 def test_random_functions(self):
@@ -503,6 +505,7 @@ def test_random_functions(self):
     }
     return examples
 
+
 # FFT Tests
 def test_fft_functions(self):
     """Test FFT functions"""
@@ -537,6 +540,7 @@ def test_fft_functions(self):
     }
     return examples
 
+
 # Edge Cases and Special Values Tests
 def test_edge_cases(self):
     """Test edge cases and special values"""
@@ -564,6 +568,7 @@ def test_edge_cases(self):
         },
     }
     return examples
+
 
 def run_all_tests(self):
     """Run all test examples and return results"""
@@ -594,6 +599,7 @@ def run_all_tests(self):
             all_tests[test_name] = {"error": str(e)}
 
     return all_tests
+
 
 def generate_test_data_files(self):
     """Generate test data files for cross-language testing"""
@@ -656,6 +662,7 @@ def main():
         try:
             import pyarrow as pa
             import pyarrow.parquet as pq
+
             table = pa.table({"data": arr.flatten()})
             pq.write_table(table, os.path.join(test_dir, f"{name}.parquet"))
         except ImportError:
