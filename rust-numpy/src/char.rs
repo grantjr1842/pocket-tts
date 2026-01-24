@@ -826,12 +826,258 @@ fn adjust_indices(len: usize, start: Option<usize>, end: Option<usize>) -> (usiz
     }
 }
 
+/// Check if strings contain only decimal characters
+pub fn isdecimal(a: &crate::Array<String>) -> Result<crate::Array<bool>, NumPyError> {
+    let mut result = vec![false; a.size()];
+
+    for idx in 0..a.size() {
+        if let Some(s) = get_string(a, idx) {
+            result[idx] = if s.is_empty() {
+                false
+            } else {
+                s.chars().all(|c| c.is_ascii_digit())
+            };
+        } else {
+            return Err(NumPyError::dtype_error("Not a string array"));
+        }
+    }
+
+    Ok(crate::Array::from_vec(result))
+}
+
+/// Check if strings contain only lowercase characters
+pub fn islower(a: &crate::Array<String>) -> Result<crate::Array<bool>, NumPyError> {
+    let mut result = vec![false; a.size()];
+
+    for idx in 0..a.size() {
+        if let Some(s) = get_string(a, idx) {
+            result[idx] = if s.is_empty() {
+                false
+            } else {
+                let has_cased = s.chars().any(|c| c.is_ascii_alphabetic());
+                let all_lower = s.chars().all(|c| !c.is_ascii_uppercase());
+                has_cased && all_lower
+            };
+        } else {
+            return Err(NumPyError::dtype_error("Not a string array"));
+        }
+    }
+
+    Ok(crate::Array::from_vec(result))
+}
+
+/// Check if strings contain only uppercase characters
+pub fn isupper(a: &crate::Array<String>) -> Result<crate::Array<bool>, NumPyError> {
+    let mut result = vec![false; a.size()];
+
+    for idx in 0..a.size() {
+        if let Some(s) = get_string(a, idx) {
+            result[idx] = if s.is_empty() {
+                false
+            } else {
+                let has_cased = s.chars().any(|c| c.is_ascii_alphabetic());
+                let all_upper = s.chars().all(|c| !c.is_ascii_lowercase());
+                has_cased && all_upper
+            };
+        } else {
+            return Err(NumPyError::dtype_error("Not a string array"));
+        }
+    }
+
+    Ok(crate::Array::from_vec(result))
+}
+
+/// Check if strings are titlecased
+pub fn istitle(a: &crate::Array<String>) -> Result<crate::Array<bool>, NumPyError> {
+    let mut result = vec![false; a.size()];
+
+    for idx in 0..a.size() {
+        if let Some(s) = get_string(a, idx) {
+            result[idx] = if s.is_empty() {
+                false
+            } else {
+                let words: Vec<&str> = s.split_whitespace().collect();
+                if words.is_empty() {
+                    false
+                } else {
+                    words.iter().all(|word| {
+                        let chars: Vec<char> = word.chars().collect();
+                        if chars.is_empty() {
+                            false
+                        } else {
+                            let first_upper = chars[0].is_uppercase() || !chars[0].is_alphabetic();
+                            let rest_lower = chars.iter().skip(1).all(|c| !c.is_uppercase());
+                            first_upper && rest_lower
+                        }
+                    })
+                }
+            };
+        } else {
+            return Err(NumPyError::dtype_error("Not a string array"));
+        }
+    }
+
+    Ok(crate::Array::from_vec(result))
+}
+
+/// Translate strings using a translation table
+pub fn translate(
+    a: &crate::Array<String>,
+    table: &str,
+    delete_chars: Option<&str>,
+) -> Result<crate::Array<String>, NumPyError> {
+    let delete = delete_chars.unwrap_or("");
+
+    let mut result = Vec::with_capacity(a.size());
+
+    for idx in 0..a.size() {
+        if let Some(s) = get_string(a, idx) {
+            let translated: String = s
+                .chars()
+                .filter(|c| !delete.contains(*c))
+                .map(|c| {
+                    let pos = table.chars().position(|x| x == c);
+                    if let Some(p) = pos {
+                        let table_chars: Vec<char> = table.chars().collect();
+                        if p + 1 < table_chars.len() {
+                            table_chars[p + 1]
+                        } else {
+                            c
+                        }
+                    } else {
+                        c
+                    }
+                })
+                .collect();
+            result.push(translated);
+        } else {
+            return Err(NumPyError::dtype_error("Not a string array"));
+        }
+    }
+
+    Ok(crate::Array::from_vec(result))
+}
+
+/// String formatting (modulo operator)
+pub fn mod_(
+    a: &crate::Array<String>,
+    values: &crate::Array<String>,
+) -> Result<crate::Array<String>, NumPyError> {
+    let mut result = Vec::with_capacity(a.size());
+
+    for idx in 0..a.size() {
+        if let Some(format_str) = get_string(a, idx) {
+            if let Some(value) = get_string(values, idx % values.size()) {
+                // Simple %s substitution
+                let formatted = format_str.replace("%s", &value);
+                result.push(formatted);
+            } else {
+                return Err(NumPyError::dtype_error("Not a string array"));
+            }
+        } else {
+            return Err(NumPyError::dtype_error("Not a string array"));
+        }
+    }
+
+    Ok(crate::Array::from_vec(result))
+}
+
+/// Create a char array from an object (alias for identity function on String arrays)
+pub fn array(obj: &crate::Array<String>) -> Result<crate::Array<String>, NumPyError> {
+    // Simply return a clone of the input array
+    Ok(obj.clone())
+}
+
+/// Create a char array from an object (alias for array)
+pub fn asarray(obj: &crate::Array<String>) -> Result<crate::Array<String>, NumPyError> {
+    array(obj)
+}
+
+/// Create a chararray (for compatibility, same as array in this implementation)
+pub fn chararray(obj: &crate::Array<String>) -> Result<crate::Array<String>, NumPyError> {
+    array(obj)
+}
+
+/// Compare two string arrays using a comparison operator
+pub fn compare_chararrays(
+    a: &crate::Array<String>,
+    b: &crate::Array<String>,
+    cmp_op: &str,
+    rstrip: Option<bool>,
+) -> Result<crate::Array<bool>, NumPyError> {
+    if a.shape() != b.shape() {
+        return Err(NumPyError::shape_mismatch(
+            a.shape().to_vec(),
+            b.shape().to_vec(),
+        ));
+    }
+
+    let do_rstrip = rstrip.unwrap_or(false);
+    let mut result = vec![false; a.size()];
+
+    for idx in 0..a.size() {
+        if let (Some(s1), Some(s2)) = (get_string(a, idx), get_string(b, idx)) {
+            let str1 = if do_rstrip { s1.trim_end() } else { &s1 };
+            let str2 = if do_rstrip { s2.trim_end() } else { &s2 };
+
+            result[idx] = match cmp_op {
+                "<" => str1 < str2,
+                "<=" => str1 <= str2,
+                "==" => str1 == str2,
+                "!=" => str1 != str2,
+                ">=" => str1 >= str2,
+                ">" => str1 > str2,
+                _ => {
+                    return Err(NumPyError::invalid_value(format!(
+                        "Unknown comparison operator: {}",
+                        cmp_op
+                    )))
+                }
+            };
+        } else {
+            return Err(NumPyError::dtype_error("Not a string array"));
+        }
+    }
+
+    Ok(crate::Array::from_vec(result))
+}
+
+/// Decode strings (for compatibility, strings are already decoded)
+pub fn decode(
+    a: &crate::Array<String>,
+    _encoding: Option<&str>,
+) -> Result<crate::Array<String>, NumPyError> {
+    // In Rust, strings are already Unicode/decoded, so we just return the array as-is
+    Ok(a.clone())
+}
+
+/// Encode strings to bytes (returned as hex string for compatibility)
+pub fn encode(
+    a: &crate::Array<String>,
+    _encoding: Option<&str>,
+) -> Result<crate::Array<String>, NumPyError> {
+    let mut result = Vec::with_capacity(a.size());
+
+    for idx in 0..a.size() {
+        if let Some(s) = get_string(a, idx) {
+            // Encode as hex string representation of UTF-8 bytes
+            let hex_string: String = s.bytes().map(|b| format!("{:02x}", b)).collect();
+            result.push(hex_string);
+        } else {
+            return Err(NumPyError::dtype_error("Not a string array"));
+        }
+    }
+
+    Ok(crate::Array::from_vec(result))
+}
+
 pub mod exports {
     pub use super::{
-        add, capitalize, center, count, endswith, equal, expandtabs, find, greater, greater_equal,
-        index, isalnum, isalpha, isdigit, isnumeric, isspace, join, less, less_equal, ljust, lower,
-        lstrip, lstrip_chars, multiply, not_equal, partition, replace, rfind, rindex, rjust,
-        rpartition, rsplit, rstrip, rstrip_chars, split, splitlines, startswith, str_len, strip,
-        strip_chars, swapcase, title, upper, zfill,
+        add, array, asarray, capitalize, center, chararray, compare_chararrays, count, decode,
+        encode, endswith, equal, expandtabs, find, greater, greater_equal, index, isalnum, isalpha,
+        isdecimal, isdigit, islower, isnumeric, isspace, istitle, isupper, join, less, less_equal,
+        ljust, lower, lstrip, lstrip_chars, mod_, multiply, not_equal, partition, replace, rfind,
+        rindex, rjust, rpartition, rsplit, rstrip, rstrip_chars, split, splitlines, startswith,
+        str_len, strip, strip_chars, swapcase, title, translate, upper, zfill,
     };
 }
