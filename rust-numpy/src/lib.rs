@@ -31,7 +31,6 @@
 #![allow(suspicious_double_ref_op)]
 #![allow(clippy::inherent_to_string_shadow_display)]
 #![allow(dead_code)]
-
 // Additional allows for numerical library patterns and FFI
 #![allow(clippy::missing_errors_doc)] // 528 warnings - error cases are obvious in API
 #![allow(clippy::missing_panics_doc)] // 57 warnings - panic cases are rare/documented
@@ -125,6 +124,7 @@ mod char_tests;
 pub mod comparison_ufuncs;
 pub mod constants;
 pub mod datetime;
+pub mod dist;
 pub mod dtype;
 #[cfg(test)]
 mod dtype_tests;
@@ -167,6 +167,7 @@ pub use char::exports::{
     lstrip_chars, multiply as char_multiply, replace, rfind, rindex, rstrip, rstrip_chars,
     split as char_split, startswith, strip, strip_chars, upper, zfill,
 };
+pub use dist::{cdist, pdist, squareform};
 pub use dtype::{Casting, Dtype, DtypeKind};
 pub use error::{NumPyError, Result};
 pub use linalg::norm;
