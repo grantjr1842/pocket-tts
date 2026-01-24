@@ -117,3 +117,28 @@ mod tests {
         assert!((std_res.get(0).unwrap() - 2.5f64.sqrt()).abs() < 1e-10);
     }
 }
+
+#[test]
+fn test_correlate_basic() {
+    use numpy::statistics::correlate;
+    let a = array![1.0, 2.0, 3.0];
+    let v = array![0.0, 1.0, 0.5];
+    let result = correlate(&a, &v, "valid").unwrap();
+    // Cross-correlation should have length len(a) + len(v) - 1 = 5
+    assert_eq!(result.size(), 5);
+}
+
+#[test]
+fn test_correlate_identical() {
+    use numpy::statistics::correlate;
+    let a = array![1.0, 2.0, 3.0];
+    let v = array![1.0, 2.0, 3.0];
+    let result = correlate(&a, &v, "valid").unwrap();
+    // Peak correlation at the center
+    let values: Vec<_> = result.iter().collect();
+    let max_idx = values.iter().enumerate()
+        .max_by(|a, b| a.1.partial_cmp(b.1).unwrap_or(std::cmp::Ordering::Equal))
+        .map(|(i, _)| i)
+        .unwrap();
+    assert_eq!(max_idx, 2); // Center position
+}
