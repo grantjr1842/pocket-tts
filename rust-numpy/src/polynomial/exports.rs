@@ -7,3 +7,4 @@ pub use super::hermite_e::*;
 pub use super::laguerre::*;
 pub use super::legendre::*;
 pub use super::polynomial::*;
+pub use super::{set_default_printstyle};

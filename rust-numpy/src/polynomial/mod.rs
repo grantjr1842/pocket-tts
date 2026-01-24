@@ -55,6 +55,58 @@ pub trait PolynomialBase<T> {
 }
 
 use crate::error::NumPyError;
+use std::sync::atomic::{AtomicBool, Ordering};
+
+/// Global print style preference for polynomials
+/// true = unicode, false = ascii
+static POLY_PRINT_UNICODE: AtomicBool = AtomicBool::new(cfg!(unix));
+
+/// Set the default format for the string representation of polynomials.
+///
+/// Values for `style` must be valid inputs to `__format__`, i.e. 'ascii'
+/// or 'unicode'.
+///
+/// # Arguments
+///
+/// * `style` - Format string for default printing style. Must be either 'ascii' or 'unicode'.
+///
+/// # Errors
+///
+/// Returns an error if the style is not 'ascii' or 'unicode'.
+///
+/// # Examples
+///
+/// ```ignore
+/// use numpy::polynomial::set_default_printstyle;
+///
+/// // Use unicode superscripts (default on Unix)
+/// set_default_printstyle("unicode").unwrap();
+///
+/// // Use ascii format (e.g., x**2 instead of x²)
+/// set_default_printstyle("ascii").unwrap();
+/// ```
+pub fn set_default_printstyle(style: &str) -> Result<(), NumPyError> {
+    match style {
+        "unicode" => {
+            POLY_PRINT_UNICODE.store(true, Ordering::SeqCst);
+            Ok(())
+        }
+        "ascii" => {
+            POLY_PRINT_UNICODE.store(false, Ordering::SeqCst);
+            Ok(())
+        }
+        _ => Err(NumPyError::invalid_value(&format!(
+            "Unsupported format string '{}'. Valid options are 'ascii' and 'unicode'",
+            style
+        ))),
+    }
+}
+
+/// Get the current print style preference
+/// true = unicode, false = ascii
+pub(crate) fn get_print_style() -> bool {
+    POLY_PRINT_UNICODE.load(Ordering::SeqCst)
+}
 
 /// Polynomial fitting function
 pub fn fit<T>(

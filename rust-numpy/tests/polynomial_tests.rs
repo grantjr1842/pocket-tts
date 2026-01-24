@@ -1,6 +1,6 @@
 use ndarray::array;
 
-use numpy::polynomial::{fit, roots, Polynomial, PolynomialBase};
+use numpy::polynomial::{fit, roots, set_default_printstyle, Polynomial, PolynomialBase};
 
 #[test]
 fn test_poly_eval() {
@@ -201,4 +201,19 @@ fn test_fit_higher_degree() {
     assert!((coeffs[0] - 1.0_f64).abs() < 1e-6);
     assert!((coeffs[1] - 2.0_f64).abs() < 1e-6);
     assert!((coeffs[2] - 1.0_f64).abs() < 1e-6);
+}
+
+#[test]
+fn test_set_default_printstyle() {
+    // Test setting unicode style
+    assert!(set_default_printstyle("unicode").is_ok());
+
+    // Test setting ascii style
+    assert!(set_default_printstyle("ascii").is_ok());
+
+    // Test invalid style
+    assert!(set_default_printstyle("invalid").is_err());
+
+    // Verify we can switch back to unicode
+    assert!(set_default_printstyle("unicode").is_ok());
 }
