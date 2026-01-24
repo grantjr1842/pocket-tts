@@ -52,8 +52,8 @@ ndarray = "0.15"
 rustfft = "6.1"
 
 # SIMD and parallelization
-
 rayon = { version = "1.8", optional = true }
+num_cpus = { version = "1.16", optional = true }
 
 
 
@@ -100,7 +100,7 @@ csv = "1.3"
 encoding_rs = "0.8"
 
 [features]
-default = ["std", "rayon", "datetime", "pure-linalg", "serde"]
+default = ["std", "rayon", "num_cpus", "simd", "datetime", "pure-linalg", "serde"]
 std = []
 serde = ["dep:serde", "dep:serde_json"]
 
@@ -110,6 +110,7 @@ wasm = []
 # blas feature removed as we are 100% pure rust
 pure-linalg = ["faer", "dyn-stack", "reborrow"]
 datetime = ["chrono"]
+simd = []
 
 [dev-dependencies]
 criterion = { version = "0.5", features = ["html_reports"] }

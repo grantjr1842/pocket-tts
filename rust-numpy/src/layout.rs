@@ -1,4 +1,4 @@
-use crate::dtype::DType;
+use crate::dtype::Dtype;
 use crate::error::NumPyError;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -107,7 +107,7 @@ pub fn is_contiguous(shape: &[usize], strides: &[isize], order: MemoryOrder) -> 
         return false;
     }
 
-    let expected_strides = calculate_strides(shape, &crate::dtype::DType::Float32, order);
+    let expected_strides = calculate_strides(shape, &crate::dtype::Dtype::Float32, order);
 
     strides
         .iter()

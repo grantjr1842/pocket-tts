@@ -1,4 +1,3 @@
-use crate::error::NumPyError;
 #[cfg(feature = "rayon")]
 use rayon::prelude::*;
 
@@ -54,7 +53,7 @@ where
 #[cfg(feature = "rayon")]
 pub fn parallel_min<T>(data: &[T], config: &ParallelReductionConfig) -> T
 where
-    T: Send + Sync + Clone + PartialOrd,
+    T: Send + Sync + Clone + PartialOrd + std::cmp::Ord,
 {
     if data.len() < config.min_size_for_parallel {
         data.iter().min().unwrap().clone()
@@ -71,7 +70,7 @@ where
 #[cfg(feature = "rayon")]
 pub fn parallel_max<T>(data: &[T], config: &ParallelReductionConfig) -> T
 where
-    T: Send + Sync + Clone + PartialOrd,
+    T: Send + Sync + Clone + PartialOrd + std::cmp::Ord,
 {
     if data.len() < config.min_size_for_parallel {
         data.iter().max().unwrap().clone()

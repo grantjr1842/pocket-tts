@@ -1,4 +1,4 @@
-use crate::dtype::DType;
+use crate::dtype::Dtype;
 use crate::error::NumPyError;
 
 pub struct CoalescingInfo {
@@ -10,7 +10,7 @@ pub struct CoalescingInfo {
 pub fn coalesce_dimensions(
     shape: &[usize],
     strides: &[isize],
-    dtype: &DType,
+    dtype: &Dtype,
 ) -> Result<CoalescingInfo, NumPyError> {
     if shape.len() != strides.len() {
         return Err(NumPyError::invalid_value(

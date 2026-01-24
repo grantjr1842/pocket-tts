@@ -1,6 +1,4 @@
 use crate::error::NumPyError;
-#[cfg(feature = "simd")]
-use core_simd::prelude::*;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum CpuFeature {
@@ -24,22 +22,6 @@ impl CpuFeature {
             } else {
                 CpuFeature::Scalar
             }
-        }
-        
-        #[cfg(target_arch = "aarch64")]
-        {
-            if is_aarch64_feature_detected!("asimd") {
-                CpuFeature::Neon
-            } else {
-                CpuFeature::Scalar
-            }
-        }
-        
-        #[cfg(not(any(target_arch = "x86_64", target_arch = "aarch64")))]
-        {
-            CpuFeature::Scalar
-        }
-    }
         }
 
         #[cfg(target_arch = "aarch64")]
