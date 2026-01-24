@@ -58,6 +58,7 @@ pub mod math_ufuncs;
 pub mod matrix;
 pub mod memory;
 pub mod modules;
+pub mod polynomial;
 pub mod random;
 pub mod rec;
 pub mod set_ops;
