@@ -896,10 +896,123 @@ where
     Ok(Array::from_shape_vec(vec![m, n_val], data))
 }
 
+/// Construct an array from an index array and a list of choices
+pub fn choose<T>(indices: &Array<isize>, choices: &[&Array<T>], mode: &str) -> Result<Array<T>>
+where
+    T: Clone + Default + 'static,
+{
+    if choices.is_empty() {
+        return Err(NumPyError::invalid_operation(
+            "choose: choices list cannot be empty",
+        ));
+    }
+
+    let n_choices = choices.len() as isize;
+    let mut result_data = Vec::with_capacity(indices.size());
+
+    for i in 0..indices.size() {
+        let mut idx = indices.get_linear(i).cloned().unwrap_or(0);
+
+        match mode {
+            "raise" => {
+                if idx < 0 || idx >= n_choices {
+                    return Err(NumPyError::index_error(idx as usize, n_choices as usize));
+                }
+            }
+            "wrap" => {
+                idx = idx.rem_euclid(n_choices);
+            }
+            "clip" => {
+                idx = idx.clamp(0, n_choices - 1);
+            }
+            _ => {
+                return Err(NumPyError::invalid_value(
+                    "mode must be 'raise', 'wrap', or 'clip'",
+                ));
+            }
+        }
+
+        let choice_array = choices[idx as usize];
+        // NumPy's choose broadcasts or matches element-wise.
+        // For simplicity, we assume they match or we pick from the same linear index.
+        if let Some(val) = choice_array.get_linear(i % choice_array.size()) {
+            result_data.push(val.clone());
+        } else {
+            result_data.push(T::default());
+        }
+    }
+
+    Ok(Array::from_data(result_data, indices.shape().to_vec()))
+}
+
+/// Return selected slices of an array along given axis
+pub fn compress<T>(condition: &Array<bool>, a: &Array<T>, axis: Option<isize>) -> Result<Array<T>>
+where
+    T: Clone + Default + 'static,
+{
+    let _ndim = a.ndim();
+    let flat_a;
+    let target_a = if axis.is_none() {
+        flat_a = a.reshape(&[a.size()])?;
+        &flat_a
+    } else {
+        a
+    };
+
+    let ax = axis.unwrap_or(0);
+    let ax_norm = if ax < 0 {
+        (ax + target_a.ndim() as isize) as usize
+    } else {
+        ax as usize
+    };
+
+    if ax_norm >= target_a.ndim() {
+        return Err(NumPyError::index_error(ax_norm, target_a.ndim()));
+    }
+
+    if condition.size() > target_a.shape()[ax_norm] {
+        return Err(NumPyError::invalid_operation(format!(
+            "condition size ({}) does not match array dimension ({})",
+            condition.size(),
+            target_a.shape()[ax_norm]
+        )));
+    }
+
+    let n_elements = condition.size();
+    let mut selected_indices = Vec::new();
+    for i in 0..n_elements {
+        if *condition.get_linear(i).unwrap_or(&false) {
+            selected_indices.push(i);
+        }
+    }
+
+    let mut new_shape = target_a.shape().to_vec();
+    new_shape[ax_norm] = selected_indices.len();
+
+    let mut result_data = Vec::with_capacity(new_shape.iter().product());
+
+    // Iterate over all indices of the new shape
+    let total_size = new_shape.iter().product::<usize>();
+    for i in 0..total_size {
+        let mut multi_idx = crate::strides::compute_multi_indices(i, &new_shape);
+        // Map the selected index back
+        let original_ax_idx = selected_indices[multi_idx[ax_norm]];
+        multi_idx[ax_norm] = original_ax_idx;
+
+        if let Ok(val) = target_a.get_by_indices(&multi_idx) {
+            result_data.push(val.clone());
+        }
+    }
+
+    Ok(Array::from_data(result_data, new_shape))
+}
+
+pub use crate::math_ufuncs::around as round;
+
 pub mod exports {
     pub use super::{
-        array_split, block, column_stack, concatenate, diag, diagonal, diff, dsplit, dstack,
-        ediff1d, gradient, hsplit, hstack, place, put, put_along_axis, putmask, row_stack, split,
-        stack, tril, triu, vander, vsplit, vstack,
+        array_split, block, choose, column_stack, compress, concatenate, diag, diagonal, diff,
+        dsplit, dstack, ediff1d, gradient, hsplit, hstack, place, put, put_along_axis, putmask,
+        round, row_stack, split, stack, tril, triu, vander, vsplit, vstack,
     };
 }

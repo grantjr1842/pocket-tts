@@ -78,19 +78,29 @@ pub use crate::matrix::exports::*;
 pub use crate::modules::ma::exports::*;
 pub use crate::modules::testing::exports::*;
 pub use array::Array;
+pub use array_manipulation::{apply_along_axis, apply_over_axes, expand_dims, Vectorize};
 pub use bitwise::*;
-pub use char::exports::*;
+pub use char::exports::{
+    add as char_add, capitalize, center, count as char_count, endswith, expandtabs, find,
+    index as char_index, isalnum, isalpha, isdigit, isnumeric, isspace, join, lower, lstrip,
+    lstrip_chars, multiply as char_multiply, replace, rfind, rindex, rstrip, rstrip_chars,
+    split as char_split, startswith, strip, strip_chars, upper, zfill,
+};
 pub use dtype::{Casting, Dtype, DtypeKind};
 pub use error::{NumPyError, Result};
 pub use linalg::norm;
 pub use rec::{array as rec_array, fromarrays, fromrecords, RecArray};
 pub use set_ops::exports::*;
-pub use statistics::{ptp, std, var};
+pub use statistics::{
+    average, bincount, corrcoef, cov, digitize, histogram, histogram2d, histogramdd, median,
+    nanmax, nanmean, nanmedian, nanmin, nanpercentile, nanprod, nanquantile, nanstd, nansum,
+    nanvar, percentile, ptp, quantile, std, var,
+};
 pub use type_promotion::promote_types;
 // Complex utility functions
 pub use math_ufuncs::{
-    angle, angle32, conj, conj32, conjugate, conjugate32, imag, imag32, real, real32,
-    real_if_close, real_if_close32,
+    absolute, angle, angle32, conj, conj32, conjugate, conjugate32, copysign, fabs, imag, imag32,
+    real, real32, real_if_close, real_if_close32, sign, signbit,
 };
 pub use ufunc_ops::UfuncEngine;
 

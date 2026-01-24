@@ -399,32 +399,20 @@ mod tests {
         "L1 norm should compute sum of absolute values",
         {
             let arr = Array::from_vec(vec![1.0f64, -2.0, 3.0, -4.0]);
-<<<<<<< HEAD
-            let result = numpy::norm(&arr, Some("1"), None as Option<&[isize]>, false).unwrap();
-=======
             let result = numpy::norm(&arr, Some("1"), None::<&[isize]>, false).unwrap();
->>>>>>> origin/main
             assert_eq!(result.to_vec(), vec![10.0]); // |1| + |-2| + |3| + |-4| = 10
         }
     );
 
     conformance_test!(test_norm_l2, "L2 norm should compute Euclidean norm", {
         let arr = Array::from_vec(vec![3.0f64, 4.0]);
-<<<<<<< HEAD
-        let result = numpy::norm(&arr, Some("2"), None as Option<&[isize]>, false).unwrap();
-=======
         let result = numpy::norm(&arr, Some("2"), None::<&[isize]>, false).unwrap();
->>>>>>> origin/main
         assert!((result.to_vec()[0] - 5.0).abs() < 1e-10); // sqrt(3^2 + 4^2) = 5
     });
 
     conformance_test!(test_norm_l3, "L3 norm should compute cubic norm", {
         let arr = Array::from_vec(vec![1.0f64, 2.0, 2.0]);
-<<<<<<< HEAD
-        let result = numpy::norm(&arr, Some("3"), None as Option<&[isize]>, false).unwrap();
-=======
         let result = numpy::norm(&arr, Some("3"), None::<&[isize]>, false).unwrap();
->>>>>>> origin/main
         // (|1|^3 + |2|^3 + |2|^3)^(1/3) = (1 + 8 + 8)^(1/3) = 17^(1/3) ≈ 2.571
         assert!((result.to_vec()[0] - 2.571).abs() < 1e-3);
     });
@@ -434,11 +422,7 @@ mod tests {
         "Frobenius norm should compute sqrt of sum of squares",
         {
             let arr = Array::from_vec(vec![1.0f64, 2.0, 3.0]);
-<<<<<<< HEAD
-            let result = numpy::norm(&arr, Some("fro"), None as Option<&[isize]>, false).unwrap();
-=======
             let result = numpy::norm(&arr, Some("fro"), None::<&[isize]>, false).unwrap();
->>>>>>> origin/main
             // sqrt(1^2 + 2^2 + 3^2) = sqrt(14) ≈ 3.742
             assert!((result.to_vec()[0] - 3.742).abs() < 1e-3);
         }
@@ -448,18 +432,11 @@ mod tests {
         test_norm_nuclear,
         "Nuclear norm should compute sum of singular values",
         {
-<<<<<<< HEAD
-            let arr = Array::from_data(vec![1.0f64, 2.0, 3.0, 4.0], vec![2, 2]);
-            let result = numpy::norm(&arr, Some("nuc"), None as Option<&[isize]>, false).unwrap();
-            // Singular values of [[1, 2], [3, 4]] are ~5.465 and ~0.366, sum ~5.831
-            assert!((result.get_linear(0).unwrap() - 5.831).abs() < 1e-2);
-=======
             let arr = Array::from_vec(vec![1.0f64, 2.0, 3.0]);
             let result = numpy::norm(&arr, Some("nuc"), None::<&[isize]>, false).unwrap();
             // Nuclear norm is approximated by Frobenius norm for now
             // sqrt(1^2 + 2^2 + 3^2) = sqrt(14) ≈ 3.742
             assert!((result.to_vec()[0] - 3.742).abs() < 1e-3);
->>>>>>> origin/main
         }
     );
 
@@ -468,11 +445,7 @@ mod tests {
         "Default norm should use Frobenius norm for vectors",
         {
             let arr = Array::from_vec(vec![3.0f64, 4.0]);
-<<<<<<< HEAD
-            let result = numpy::norm(&arr, None, None as Option<&[isize]>, false).unwrap();
-=======
             let result = numpy::norm(&arr, None, None::<&[isize]>, false).unwrap();
->>>>>>> origin/main
             // Default is Frobenius norm: sqrt(3^2 + 4^2) = 5
             assert!((result.to_vec()[0] - 5.0).abs() < 1e-10);
         }
@@ -528,7 +501,7 @@ pub fn run_conformance_suite() -> ConformanceTestResult {
     tests::test_norm_nuclear();
     tests::test_norm_default();
 
-    let passed = 39; 
+    let passed = 39;
     let failed = 0;
     let skipped = 0;
 

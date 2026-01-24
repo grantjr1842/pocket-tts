@@ -81,9 +81,6 @@ mod tests {
 
     #[test]
     fn test_nan_aware_stats() {
-        use crate::array::Array;
-        use crate::statistics::{nanmax, nanmean, nanmin, nanprod, nanstd, nansum, nanvar};
-
         let data = vec![1.0, 2.0, f64::NAN, 4.0, 5.0];
         let a = Array::from_vec(data);
 
