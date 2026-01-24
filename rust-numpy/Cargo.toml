@@ -33,6 +33,10 @@ path = "tests/nd_fft_tests.rs"
 name = "random_tests"
 path = "tests/random_tests.rs"
 
+[[test]]
+name = "char_additional_tests"
+path = "tests/char_additional_tests.rs"
+
 [lib]
 name = "numpy"
 crate-type = ["cdylib", "rlib"]

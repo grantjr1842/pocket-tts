@@ -594,7 +594,6 @@ impl RandomState {
             let y: f64 = Normal::new(0.0, 1.0)
                 .map_err(|e| NumPyError::invalid_value(e.to_string()))?
                 .sample(&mut self.rng);
-            let y2 = y * y;
 
             let mu_y = mean_f64 * y;
             let x = mean_f64 + (mu_y * mu_y) / (2.0 * scale_f64) - (mu_y / (2.0 * scale_f64)) * ((4.0 * scale_f64) + mu_y).sqrt();
