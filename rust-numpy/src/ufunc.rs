@@ -227,8 +227,8 @@ where
             ));
         }
 
-        let input0 = unsafe { &*(inputs[0] as *const _ as *const Array<T>) };
-        let input1 = unsafe { &*(inputs[1] as *const _ as *const Array<T>) };
+        let in0 = unsafe { &*(inputs[0] as *const _ as *const Array<T>) };
+        let in1 = unsafe { &*(inputs[1] as *const _ as *const Array<T>) };
         let output = unsafe { &mut *(outputs[0] as *mut _ as *mut Array<T>) };
 
         // Handle where_mask
@@ -239,17 +239,17 @@ where
         };
 
         // Fast path for C-contiguous arrays of same shape
-        if input0.is_c_contiguous()
-            && input1.is_c_contiguous()
+        if in0.is_c_contiguous()
+            && in1.is_c_contiguous()
             && output.is_c_contiguous()
-            && input0.shape() == input1.shape()
-            && input0.shape() == output.shape()
+            && in0.shape() == in1.shape()
+            && in0.shape() == output.shape()
             && mask
                 .as_ref()
                 .map_or(true, |m| m.is_c_contiguous() && m.shape() == output.shape())
         {
-            let d0 = input0.data.as_slice();
-            let d1 = input1.data.as_slice();
+            let d0 = in0.data.as_slice();
+            let d1 = in1.data.as_slice();
             let out_slice = unsafe {
                 std::slice::from_raw_parts_mut(output.as_mut_ptr() as *mut T, output.size())
             };
@@ -260,8 +260,8 @@ where
                     .map_or(true, |m| *m.get_linear(i).unwrap_or(&false))
                 {
                     out_slice[i] = (self.operation)(
-                        d0[input0.offset + i].clone(),
-                        d1[input1.offset + i].clone(),
+                        d0[in0.offset + i].clone(),
+                        d1[in1.offset + i].clone(),
                     );
                 }
             }
@@ -269,7 +269,7 @@ where
         }
 
         // Generic path using iterators
-        let broadcasted = crate::broadcasting::broadcast_arrays(&[input0, input1])?;
+        let broadcasted = crate::broadcasting::broadcast_arrays(&[in0, in1])?;
         let arr0 = &broadcasted[0];
         let arr1 = &broadcasted[1];
 

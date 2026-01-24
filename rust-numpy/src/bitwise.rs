@@ -196,8 +196,8 @@ where
             ));
         }
 
-        let input0 = unsafe { &*(inputs[0] as *const _ as *const Array<T>) };
-        let input1 = unsafe { &*(inputs[1] as *const _ as *const Array<T>) };
+        let in0 = unsafe { &*(inputs[0] as *const _ as *const Array<T>) };
+        let in1 = unsafe { &*(inputs[1] as *const _ as *const Array<T>) };
         let output = unsafe { &mut *(outputs[0] as *mut _ as *mut Array<T>) };
 
         // Handle where_mask
@@ -207,7 +207,7 @@ where
             None
         };
 
-        let broadcasted = broadcast_arrays(&[input0, input1])?;
+        let broadcasted = broadcast_arrays(&[in0, in1])?;
         let arr0 = &broadcasted[0];
         let arr1 = &broadcasted[1];
 
@@ -484,8 +484,8 @@ where
             ));
         }
 
-        let input0 = unsafe { &*(inputs[0] as *const _ as *const Array<T>) };
-        let input1 = unsafe { &*(inputs[1] as *const _ as *const Array<T>) };
+        let in0 = unsafe { &*(inputs[0] as *const _ as *const Array<T>) };
+        let in1 = unsafe { &*(inputs[1] as *const _ as *const Array<T>) };
         let output = unsafe { &mut *(outputs[0] as *mut _ as *mut Array<T>) };
 
         // Handle where_mask
@@ -495,7 +495,7 @@ where
             None
         };
 
-        let broadcasted = broadcast_arrays(&[input0, input1])?;
+        let broadcasted = broadcast_arrays(&[in0, in1])?;
         let arr0 = &broadcasted[0];
         let arr1 = &broadcasted[1];
 
@@ -606,8 +606,8 @@ where
             ));
         }
 
-        let input0 = unsafe { &*(inputs[0] as *const _ as *const Array<T>) };
-        let input1 = unsafe { &*(inputs[1] as *const _ as *const Array<T>) };
+        let in0 = unsafe { &*(inputs[0] as *const _ as *const Array<T>) };
+        let in1 = unsafe { &*(inputs[1] as *const _ as *const Array<T>) };
         let output = unsafe { &mut *(outputs[0] as *mut _ as *mut Array<bool>) };
 
         // Handle where_mask
@@ -617,7 +617,7 @@ where
             None
         };
 
-        let broadcasted = broadcast_arrays(&[input0, input1])?;
+        let broadcasted = broadcast_arrays(&[in0, in1])?;
         let arr0 = &broadcasted[0];
         let arr1 = &broadcasted[1];
 

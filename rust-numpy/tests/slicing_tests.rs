@@ -1,4 +1,4 @@
-use numpy::{array2, slicing::Index, slicing::Index::*, slicing::Slice, Array};
+use numpy::{array2, slicing::Index, slicing::Slice, Array};
 
 #[test]
 fn test_extract_multidim_simple_slices() {

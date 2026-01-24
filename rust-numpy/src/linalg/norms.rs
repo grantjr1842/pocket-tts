@@ -248,14 +248,14 @@ where
     };
 
     // Handle axis parameter
-    let axes = match axis {
+    let selected_axes = match axis {
         None => None,
         Some(axes_slice) => Some(normalize_axes(axes_slice, x.ndim())?),
     };
 
     match norm_type {
         NormType::Nuclear => {
-            if axes.is_some() {
+            if selected_axes.is_some() {
                 return Err(NumPyError::value_error(
                     "nuclear norm does not support axis parameter",
                     "linalg",
@@ -263,13 +263,13 @@ where
             }
             compute_nuclear_norm(x)
         }
-        NormType::Frobenius => compute_norm_with_axis(x, 2, axes.as_deref(), keepdims),
-        NormType::L1 => compute_norm_with_axis(x, 1, axes.as_deref(), keepdims),
-        NormType::L2 => compute_norm_with_axis(x, 2, axes.as_deref(), keepdims),
-        NormType::Linf => compute_norm_inf_with_axis(x, true, axes.as_deref(), keepdims),
-        NormType::LNegInf => compute_norm_inf_with_axis(x, false, axes.as_deref(), keepdims),
-        NormType::Lp(p) => compute_norm_with_axis(x, p, axes.as_deref(), keepdims),
-        NormType::LNegP(p) => compute_norm_neg_p_with_axis(x, p, axes.as_deref(), keepdims),
+        NormType::Frobenius => compute_norm_with_axis(x, 2, selected_axes.as_deref(), keepdims),
+        NormType::L1 => compute_norm_with_axis(x, 1, selected_axes.as_deref(), keepdims),
+        NormType::L2 => compute_norm_with_axis(x, 2, selected_axes.as_deref(), keepdims),
+        NormType::Linf => compute_norm_inf_with_axis(x, true, selected_axes.as_deref(), keepdims),
+        NormType::LNegInf => compute_norm_inf_with_axis(x, false, selected_axes.as_deref(), keepdims),
+        NormType::Lp(p) => compute_norm_with_axis(x, p, selected_axes.as_deref(), keepdims),
+        NormType::LNegP(p) => compute_norm_neg_p_with_axis(x, p, selected_axes.as_deref(), keepdims),
     }
 }
 
@@ -788,10 +788,10 @@ where
         for j in 0..n {
             let mut sum = T::Real::zero();
             for k in 0..m {
-                let a_ki = a.get(idx(k, i, strides)).ok_or_else(|| {
+                let elem_ki = a.get(idx(k, i, strides)).ok_or_else(|| {
                     NumPyError::invalid_operation("singular values index out of bounds")
                 })?;
-                let a_kj = a.get(idx(k, j, strides)).ok_or_else(|| {
+                let elem_kj = a.get(idx(k, j, strides)).ok_or_else(|| {
                     NumPyError::invalid_operation("singular values index out of bounds")
                 })?;
                 // For real matrices: (A^T * A)_{ij} = sum_k a_ki * a_kj
@@ -799,14 +799,14 @@ where
                 // For floating types, abs() × abs() equals value × value only for positive values
                 // We actually need the real product. For Float types (which LinalgScalar requires),
                 // we need to extract the real part properly.
-                let val_ki = LinalgScalar::abs(*a_ki);
-                let val_kj = LinalgScalar::abs(*a_kj);
+                let abs_ki = LinalgScalar::abs(*elem_ki);
+                let abs_kj = LinalgScalar::abs(*elem_kj);
                 // Check signs: if both have same sign, product is positive
                 // This simplified approach uses |a_ki| * |a_kj| * sign
                 // Actually for SVD of real matrices, A^T*A is always positive semi-definite
                 // so we should just compute the proper dot product.
                 // Since T implements Float, we can convert directly:
-                sum = sum + val_ki * val_kj;
+                sum = sum + abs_ki * abs_kj;
             }
             ata[i * n + j] = sum;
         }

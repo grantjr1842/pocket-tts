@@ -331,7 +331,6 @@ where
         + one_real;
     let hundred_real = ten_real * ten_real;
     let eps = <T::Real as Float>::epsilon() * hundred_real;
-    let mut converged = false;
 
     for _ in 0..max_iterations {
         let mut max_err = T::Real::zero();
@@ -393,7 +392,6 @@ where
             }
         }
         if max_err < eps {
-            converged = true;
             break;
         }
     }

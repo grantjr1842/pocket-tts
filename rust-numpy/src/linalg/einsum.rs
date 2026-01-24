@@ -451,7 +451,7 @@ mod tests {
 
         let result = einsum("ii->", &[&a]).unwrap();
 
-        assert_eq!(result.shape(), &[]);
+        assert_eq!(result.shape(), &[0usize; 0]);
         let result_data = result.to_vec();
         assert!((result_data[0] - 5.0).abs() < 1e-10); // 1 + 4
     }

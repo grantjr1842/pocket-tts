@@ -1,5 +1,5 @@
-use rust_numpy::array::Array;
-use rust_numpy::math_ufuncs::unwrap;
+use numpy::array::Array;
+use numpy::math_ufuncs::unwrap;
 
 fn main() {
     // Test basic unwrap
