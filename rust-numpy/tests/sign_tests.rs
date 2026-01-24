@@ -1,7 +1,19 @@
 //! Tests for sign and absolute value functions
 
-use ndarray::array;
 use numpy::*;
+
+fn assert_complex_close(
+    actual: &num_complex::Complex64,
+    expected: &num_complex::Complex64,
+    tol: f64,
+) {
+    assert!(
+        (actual.re - expected.re).abs() < tol && (actual.im - expected.im).abs() < tol,
+        "expected {:?}, got {:?}",
+        expected,
+        actual
+    );
+}
 
 #[test]
 fn test_sign() {
@@ -22,11 +34,11 @@ fn test_signbit() {
     let x = Array::from_data(vec![-2.5_f64, -0.0, 0.0, 1.5, f64::NAN], vec![5]);
     let result = signbit(&x).unwrap();
 
-    assert_eq!(result.get(0).unwrap(), &1.0); // negative
-    assert_eq!(result.get(1).unwrap(), &1.0); // -0.0
-    assert_eq!(result.get(2).unwrap(), &0.0); // +0.0
-    assert_eq!(result.get(3).unwrap(), &0.0); // positive
-    assert_eq!(result.get(4).unwrap(), &1.0); // NaN
+    assert_eq!(result.get(0).unwrap(), &true); // negative
+    assert_eq!(result.get(1).unwrap(), &true); // -0.0
+    assert_eq!(result.get(2).unwrap(), &false); // +0.0
+    assert_eq!(result.get(3).unwrap(), &false); // positive
+    assert_eq!(result.get(4).unwrap(), &false); // NaN (default sign bit is positive)
 }
 
 #[test]
@@ -89,10 +101,18 @@ fn test_sign_complex() {
     );
     let result = sign(&x).unwrap();
 
-    // For complex numbers, sign should be based on real part
-    assert_eq!(result.get(0).unwrap(), &-1.0);
-    assert_eq!(result.get(1).unwrap(), &0.0);
-    assert_eq!(result.get(2).unwrap(), &1.0);
+    // For complex numbers, sign is x / abs(x)
+    let x0 = x.get(0).unwrap();
+    let x1 = x.get(1).unwrap();
+    let x2 = x.get(2).unwrap();
+
+    let expected0 = *x0 / x0.norm();
+    let expected1 = *x1 / x1.norm();
+    let expected2 = *x2 / x2.norm();
+
+    assert_complex_close(result.get(0).unwrap(), &expected0, 1e-12);
+    assert_complex_close(result.get(1).unwrap(), &expected1, 1e-12);
+    assert_complex_close(result.get(2).unwrap(), &expected2, 1e-12);
 }
 
 #[test]
@@ -107,14 +127,11 @@ fn test_absolute_complex() {
     );
     let result = absolute(&x).unwrap();
 
-    assert_eq!(
-        result.get(0).unwrap(),
-        &num_complex::Complex64::new(3.0, 4.0)
-    );
-    assert_eq!(
-        result.get(1).unwrap(),
-        &num_complex::Complex64::new(5.0, 2.0)
-    );
+    let expected0 = num_complex::Complex64::new(x.get(0).unwrap().norm(), 0.0);
+    let expected1 = num_complex::Complex64::new(x.get(1).unwrap().norm(), 0.0);
+
+    assert_complex_close(result.get(0).unwrap(), &expected0, 1e-12);
+    assert_complex_close(result.get(1).unwrap(), &expected1, 1e-12);
 }
 
 #[test]

@@ -79,7 +79,7 @@ pub use crate::matrix::exports::*;
 pub use crate::modules::ma::exports::*;
 pub use crate::modules::testing::exports::*;
 pub use array::Array;
-pub use array_manipulation::{apply_along_axis, apply_over_axes, expand_dims, Vectorize};
+pub use array_manipulation::exports::*;
 pub use bitwise::*;
 pub use char::exports::{
     add as char_add, capitalize, center, count as char_count, endswith, expandtabs, find,
@@ -89,13 +89,18 @@ pub use char::exports::{
 };
 pub use dtype::{Casting, Dtype, DtypeKind};
 pub use error::{NumPyError, Result};
-pub use linalg::norm;
+pub use linalg::{cross, dot, einsum, einsum_path, inner, kron, matmul, norm, outer, trace, vdot};
 pub use rec::{array as rec_array, fromarrays, fromrecords, RecArray};
 pub use set_ops::exports::*;
+pub use sorting::{
+    argmax, argmin, argpartition, argwhere, argsort, count_nonzero, extract, flatnonzero, lexsort,
+    nonzero, partition, searchsorted, sort,
+};
+pub use sorting::where_ as r#where;
 pub use statistics::{
-    average, bincount, corrcoef, cov, digitize, histogram, histogram2d, histogramdd, median,
-    nanmax, nanmean, nanmedian, nanmin, nanpercentile, nanprod, nanquantile, nanstd, nansum,
-    nanvar, percentile, ptp, quantile, std, var,
+    average, bincount, corrcoef, correlate, cov, digitize, histogram, histogram2d, histogramdd,
+    median, nanmax, nanmean, nanmedian, nanmin, nanpercentile, nanprod, nanquantile, nanstd,
+    nansum, nanvar, percentile, ptp, quantile, std, var,
 };
 pub use type_promotion::promote_types;
 // Complex utility functions
@@ -135,7 +140,7 @@ pub type Int = i64;
 pub type Complex = num_complex::Complex<f64>;
 
 // Re-export common constants
-pub use array_creation::{copy, frombuffer, fromfunction, fromiter, vander};
+pub use array_creation::{array, clip, copy, frombuffer, fromfunction, fromiter, full, min, vander};
 pub use constants::*;
 /// Create array macro for convenient array creation
 #[macro_export]

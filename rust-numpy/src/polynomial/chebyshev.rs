@@ -2,8 +2,7 @@
 
 use super::{Polynomial, PolynomialBase};
 use crate::error::NumPyError;
-use ndarray::{Array1, Array2};
-use num_complex::Complex;
+use ndarray::Array1;
 use num_traits::{Float, Num};
 
 /// Chebyshev polynomials of the first kind
