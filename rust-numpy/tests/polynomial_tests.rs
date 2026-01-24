@@ -1,4 +1,4 @@
-use ndarray::{array, Array1};
+use ndarray::array;
 
 use numpy::polynomial::{fit, roots, Polynomial, PolynomialBase};
 
@@ -109,8 +109,6 @@ fn test_polynomial_mul() {
 
 #[test]
 fn test_polynomial_add_operator() {
-    use std::ops::Add;
-
     let p1 = Polynomial::new(&array![1.0, 2.0, 1.0]).unwrap();
     let p2 = Polynomial::new(&array![5.0, 4.0, 3.0]).unwrap();
 
@@ -124,8 +122,6 @@ fn test_polynomial_add_operator() {
 
 #[test]
 fn test_polynomial_sub_operator() {
-    use std::ops::Sub;
-
     let p1 = Polynomial::new(&array![7.0, 6.0, 5.0]).unwrap();
     let p2 = Polynomial::new(&array![4.0, 3.0, 2.0]).unwrap();
 
@@ -139,8 +135,6 @@ fn test_polynomial_sub_operator() {
 
 #[test]
 fn test_polynomial_mul_operator() {
-    use std::ops::Mul;
-
     let p1 = Polynomial::new(&array![1.0, 1.0]).unwrap();
     let p2 = Polynomial::new(&array![2.0, 1.0]).unwrap();
 
@@ -208,4 +202,3 @@ fn test_fit_higher_degree() {
     assert!((coeffs[1] - 2.0_f64).abs() < 1e-6);
     assert!((coeffs[2] - 1.0_f64).abs() < 1e-6);
 }
-

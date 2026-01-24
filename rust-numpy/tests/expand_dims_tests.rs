@@ -1,5 +1,3 @@
-use numpy::*;
-
 #[cfg(test)]
 mod tests {
     use numpy::*;

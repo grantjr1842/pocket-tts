@@ -66,6 +66,7 @@ impl<T> MemoryManager<T> {
     }
 
     /// Get element at index (mutable)
+    #[allow(clippy::mut_from_ref)]
     pub fn get_mut(&self, index: usize) -> Option<&mut T> {
         unsafe { (&mut *self.data.get()).get_mut(index) }
     }

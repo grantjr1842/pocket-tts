@@ -11,7 +11,7 @@ use super::PolynomialBase;
 use crate::error::NumPyError;
 use ndarray::{Array1, Array2, Axis};
 use num_complex::Complex;
-use num_traits::{Float, Num, NumCast};
+use num_traits::{Float, Num};
 
 /// Standard polynomial in power basis
 #[derive(Debug, Clone)]

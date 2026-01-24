@@ -17,7 +17,7 @@ use crate::array::Array;
 use crate::broadcasting::{broadcast_arrays, compute_broadcast_shape};
 use crate::dtype::DtypeKind;
 use crate::error::{NumPyError, Result};
-use crate::ufunc::{get_ufunc, get_ufunc_typed, Ufunc};
+use crate::ufunc::{get_ufunc_typed, Ufunc};
 use num_traits::{FloatConst, Zero};
 use std::f64::consts;
 use std::marker::PhantomData;
@@ -254,8 +254,8 @@ where
             ));
         }
 
-        let input0 = unsafe { &*(inputs[0] as *const _ as *const Array<T>) };
-        let input1 = unsafe { &*(inputs[1] as *const _ as *const Array<T>) };
+        let in0 = unsafe { &*(inputs[0] as *const _ as *const Array<T>) };
+        let in1 = unsafe { &*(inputs[1] as *const _ as *const Array<T>) };
         let output = unsafe { &mut *(outputs[0] as *mut _ as *mut Array<T>) };
 
         // Handle where_mask
@@ -265,7 +265,7 @@ where
             None
         };
 
-        let broadcasted = broadcast_arrays(&[input0, input1])?;
+        let broadcasted = broadcast_arrays(&[in0, in1])?;
         let arr0 = &broadcasted[0];
         let arr1 = &broadcasted[1];
 
@@ -772,7 +772,7 @@ where
 {
     use crate::simd_ops;
 
-    if let Some(ufunc) = get_ufunc("sin") {
+    if let Some(ufunc) = get_ufunc_typed::<T>("sin") {
         let mut output = Array::from_data(vec![T::default(); x.size()], x.shape().to_vec());
         ufunc.execute(&[x], &mut [&mut output], None)?;
         Ok(output)
@@ -789,7 +789,7 @@ fn sin_scalar<T>(x: &Array<T>) -> Result<Array<T>>
 where
     T: Clone + TrigOps<T> + Default + 'static,
 {
-    if let Some(ufunc) = get_ufunc("sin") {
+    if let Some(ufunc) = get_ufunc_typed::<T>("sin") {
         let mut output = Array::from_data(vec![T::default(); x.size()], x.shape().to_vec());
         ufunc.execute(&[x], &mut [&mut output], None)?;
         Ok(output)
@@ -833,7 +833,7 @@ fn cos_simd<T>(x: &Array<T>) -> Result<Array<T>>
 where
     T: Clone + TrigOps<T> + Default + 'static,
 {
-    if let Some(ufunc) = get_ufunc("cos") {
+    if let Some(ufunc) = get_ufunc_typed::<T>("cos") {
         let mut output = Array::from_data(vec![T::default(); x.size()], x.shape().to_vec());
         ufunc.execute(&[x], &mut [&mut output], None)?;
         Ok(output)
@@ -850,7 +850,7 @@ fn cos_scalar<T>(x: &Array<T>) -> Result<Array<T>>
 where
     T: Clone + TrigOps<T> + Default + 'static,
 {
-    if let Some(ufunc) = get_ufunc("cos") {
+    if let Some(ufunc) = get_ufunc_typed::<T>("cos") {
         let mut output = Array::from_data(vec![T::default(); x.size()], x.shape().to_vec());
         ufunc.execute(&[x], &mut [&mut output], None)?;
         Ok(output)
@@ -867,7 +867,7 @@ pub fn tan<T>(x: &Array<T>) -> Result<Array<T>>
 where
     T: Clone + TrigOps<T> + Default + 'static,
 {
-    if let Some(ufunc) = get_ufunc("tan") {
+    if let Some(ufunc) = get_ufunc_typed::<T>("tan") {
         let mut output = Array::from_data(vec![T::default(); x.size()], x.shape().to_vec());
         ufunc.execute(&[x], &mut [&mut output], None)?;
         Ok(output)
@@ -884,7 +884,7 @@ pub fn arcsin<T>(x: &Array<T>) -> Result<Array<T>>
 where
     T: Clone + TrigOps<T> + Default + 'static,
 {
-    if let Some(ufunc) = get_ufunc("arcsin") {
+    if let Some(ufunc) = get_ufunc_typed::<T>("arcsin") {
         let mut output = Array::from_data(vec![T::default(); x.size()], x.shape().to_vec());
         ufunc.execute(&[x], &mut [&mut output], None)?;
         Ok(output)
@@ -901,7 +901,7 @@ pub fn arccos<T>(x: &Array<T>) -> Result<Array<T>>
 where
     T: Clone + TrigOps<T> + Default + 'static,
 {
-    if let Some(ufunc) = get_ufunc("arccos") {
+    if let Some(ufunc) = get_ufunc_typed::<T>("arccos") {
         let mut output = Array::from_data(vec![T::default(); x.size()], x.shape().to_vec());
         ufunc.execute(&[x], &mut [&mut output], None)?;
         Ok(output)
@@ -918,7 +918,7 @@ pub fn arctan<T>(x: &Array<T>) -> Result<Array<T>>
 where
     T: Clone + TrigOps<T> + Default + 'static,
 {
-    if let Some(ufunc) = get_ufunc("arctan") {
+    if let Some(ufunc) = get_ufunc_typed::<T>("arctan") {
         let mut output = Array::from_data(vec![T::default(); x.size()], x.shape().to_vec());
         ufunc.execute(&[x], &mut [&mut output], None)?;
         Ok(output)
@@ -935,7 +935,7 @@ pub fn arctan2<T>(x1: &Array<T>, x2: &Array<T>) -> Result<Array<T>>
 where
     T: Clone + TrigOps<T> + Default + 'static,
 {
-    if let Some(ufunc) = get_ufunc("arctan2") {
+    if let Some(ufunc) = get_ufunc_typed::<T>("arctan2") {
         let broadcast_shape = compute_broadcast_shape(x1.shape(), x2.shape());
         let mut output = Array::from_data(
             vec![T::default(); broadcast_shape.iter().product::<usize>()],
@@ -956,7 +956,7 @@ pub fn hypot<T>(x1: &Array<T>, x2: &Array<T>) -> Result<Array<T>>
 where
     T: Clone + TrigOps<T> + Default + 'static,
 {
-    if let Some(ufunc) = get_ufunc("hypot") {
+    if let Some(ufunc) = get_ufunc_typed::<T>("hypot") {
         let broadcast_shape = compute_broadcast_shape(x1.shape(), x2.shape());
         let mut output = Array::from_data(
             vec![T::default(); broadcast_shape.iter().product::<usize>()],
@@ -977,7 +977,7 @@ pub fn degrees<T>(x: &Array<T>) -> Result<Array<T>>
 where
     T: Clone + TrigOps<T> + Default + 'static,
 {
-    if let Some(ufunc) = get_ufunc("degrees") {
+    if let Some(ufunc) = get_ufunc_typed::<T>("degrees") {
         let mut output = Array::from_data(vec![T::default(); x.size()], x.shape().to_vec());
         ufunc.execute(&[x], &mut [&mut output], None)?;
         Ok(output)
@@ -994,7 +994,7 @@ pub fn radians<T>(x: &Array<T>) -> Result<Array<T>>
 where
     T: Clone + TrigOps<T> + Default + 'static,
 {
-    if let Some(ufunc) = get_ufunc("radians") {
+    if let Some(ufunc) = get_ufunc_typed::<T>("radians") {
         let mut output = Array::from_data(vec![T::default(); x.size()], x.shape().to_vec());
         ufunc.execute(&[x], &mut [&mut output], None)?;
         Ok(output)
@@ -1013,7 +1013,7 @@ pub fn sinh<T>(x: &Array<T>) -> Result<Array<T>>
 where
     T: Clone + HyperbolicOps<T> + Default + 'static,
 {
-    if let Some(ufunc) = get_ufunc("sinh") {
+    if let Some(ufunc) = get_ufunc_typed::<T>("sinh") {
         let mut output = Array::from_data(vec![T::default(); x.size()], x.shape().to_vec());
         ufunc.execute(&[x], &mut [&mut output], None)?;
         Ok(output)
@@ -1030,7 +1030,7 @@ pub fn cosh<T>(x: &Array<T>) -> Result<Array<T>>
 where
     T: Clone + HyperbolicOps<T> + Default + 'static,
 {
-    if let Some(ufunc) = get_ufunc("cosh") {
+    if let Some(ufunc) = get_ufunc_typed::<T>("cosh") {
         let mut output = Array::from_data(vec![T::default(); x.size()], x.shape().to_vec());
         ufunc.execute(&[x], &mut [&mut output], None)?;
         Ok(output)
@@ -1047,7 +1047,7 @@ pub fn tanh<T>(x: &Array<T>) -> Result<Array<T>>
 where
     T: Clone + HyperbolicOps<T> + Default + 'static,
 {
-    if let Some(ufunc) = get_ufunc("tanh") {
+    if let Some(ufunc) = get_ufunc_typed::<T>("tanh") {
         let mut output = Array::from_data(vec![T::default(); x.size()], x.shape().to_vec());
         ufunc.execute(&[x], &mut [&mut output], None)?;
         Ok(output)
@@ -1064,7 +1064,7 @@ pub fn arcsinh<T>(x: &Array<T>) -> Result<Array<T>>
 where
     T: Clone + HyperbolicOps<T> + Default + 'static,
 {
-    if let Some(ufunc) = get_ufunc("arcsinh") {
+    if let Some(ufunc) = get_ufunc_typed::<T>("arcsinh") {
         let mut output = Array::from_data(vec![T::default(); x.size()], x.shape().to_vec());
         ufunc.execute(&[x], &mut [&mut output], None)?;
         Ok(output)
@@ -1081,7 +1081,7 @@ pub fn arccosh<T>(x: &Array<T>) -> Result<Array<T>>
 where
     T: Clone + HyperbolicOps<T> + Default + 'static,
 {
-    if let Some(ufunc) = get_ufunc("arccosh") {
+    if let Some(ufunc) = get_ufunc_typed::<T>("arccosh") {
         let mut output = Array::from_data(vec![T::default(); x.size()], x.shape().to_vec());
         ufunc.execute(&[x], &mut [&mut output], None)?;
         Ok(output)
@@ -1098,7 +1098,7 @@ pub fn arctanh<T>(x: &Array<T>) -> Result<Array<T>>
 where
     T: Clone + HyperbolicOps<T> + Default + 'static,
 {
-    if let Some(ufunc) = get_ufunc("arctanh") {
+    if let Some(ufunc) = get_ufunc_typed::<T>("arctanh") {
         let mut output = Array::from_data(vec![T::default(); x.size()], x.shape().to_vec());
         ufunc.execute(&[x], &mut [&mut output], None)?;
         Ok(output)
@@ -1144,7 +1144,7 @@ fn exp_simd<T>(x: &Array<T>) -> Result<Array<T>>
 where
     T: Clone + ExpLogOps<T> + Default + 'static,
 {
-    if let Some(ufunc) = get_ufunc("exp") {
+    if let Some(ufunc) = get_ufunc_typed::<T>("exp") {
         let mut output = Array::from_data(vec![T::default(); x.size()], x.shape().to_vec());
         ufunc.execute(&[x], &mut [&mut output], None)?;
         Ok(output)
@@ -1161,7 +1161,7 @@ fn exp_scalar<T>(x: &Array<T>) -> Result<Array<T>>
 where
     T: Clone + ExpLogOps<T> + Default + 'static,
 {
-    if let Some(ufunc) = get_ufunc("exp") {
+    if let Some(ufunc) = get_ufunc_typed::<T>("exp") {
         let mut output = Array::from_data(vec![T::default(); x.size()], x.shape().to_vec());
         ufunc.execute(&[x], &mut [&mut output], None)?;
         Ok(output)
@@ -1178,7 +1178,7 @@ pub fn exp2<T>(x: &Array<T>) -> Result<Array<T>>
 where
     T: Clone + ExpLogOps<T> + Default + 'static,
 {
-    if let Some(ufunc) = get_ufunc("exp2") {
+    if let Some(ufunc) = get_ufunc_typed::<T>("exp2") {
         let mut output = Array::from_data(vec![T::default(); x.size()], x.shape().to_vec());
         ufunc.execute(&[x], &mut [&mut output], None)?;
         Ok(output)
@@ -1195,7 +1195,7 @@ pub fn expm1<T>(x: &Array<T>) -> Result<Array<T>>
 where
     T: Clone + ExpLogOps<T> + Default + 'static,
 {
-    if let Some(ufunc) = get_ufunc("expm1") {
+    if let Some(ufunc) = get_ufunc_typed::<T>("expm1") {
         let mut output = Array::from_data(vec![T::default(); x.size()], x.shape().to_vec());
         ufunc.execute(&[x], &mut [&mut output], None)?;
         Ok(output)
@@ -1239,7 +1239,7 @@ fn log_simd<T>(x: &Array<T>) -> Result<Array<T>>
 where
     T: Clone + ExpLogOps<T> + Default + 'static,
 {
-    if let Some(ufunc) = get_ufunc("log") {
+    if let Some(ufunc) = get_ufunc_typed::<T>("log") {
         let mut output = Array::from_data(vec![T::default(); x.size()], x.shape().to_vec());
         ufunc.execute(&[x], &mut [&mut output], None)?;
         Ok(output)
@@ -1256,7 +1256,7 @@ fn log_scalar<T>(x: &Array<T>) -> Result<Array<T>>
 where
     T: Clone + ExpLogOps<T> + Default + 'static,
 {
-    if let Some(ufunc) = get_ufunc("log") {
+    if let Some(ufunc) = get_ufunc_typed::<T>("log") {
         let mut output = Array::from_data(vec![T::default(); x.size()], x.shape().to_vec());
         ufunc.execute(&[x], &mut [&mut output], None)?;
         Ok(output)
@@ -1273,7 +1273,7 @@ pub fn log2<T>(x: &Array<T>) -> Result<Array<T>>
 where
     T: Clone + ExpLogOps<T> + Default + 'static,
 {
-    if let Some(ufunc) = get_ufunc("log2") {
+    if let Some(ufunc) = get_ufunc_typed::<T>("log2") {
         let mut output = Array::from_data(vec![T::default(); x.size()], x.shape().to_vec());
         ufunc.execute(&[x], &mut [&mut output], None)?;
         Ok(output)
@@ -1290,7 +1290,7 @@ pub fn log10<T>(x: &Array<T>) -> Result<Array<T>>
 where
     T: Clone + ExpLogOps<T> + Default + 'static,
 {
-    if let Some(ufunc) = get_ufunc("log10") {
+    if let Some(ufunc) = get_ufunc_typed::<T>("log10") {
         let mut output = Array::from_data(vec![T::default(); x.size()], x.shape().to_vec());
         ufunc.execute(&[x], &mut [&mut output], None)?;
         Ok(output)
@@ -1307,7 +1307,7 @@ pub fn log1p<T>(x: &Array<T>) -> Result<Array<T>>
 where
     T: Clone + ExpLogOps<T> + Default + 'static,
 {
-    if let Some(ufunc) = get_ufunc("log1p") {
+    if let Some(ufunc) = get_ufunc_typed::<T>("log1p") {
         let mut output = Array::from_data(vec![T::default(); x.size()], x.shape().to_vec());
         ufunc.execute(&[x], &mut [&mut output], None)?;
         Ok(output)
@@ -1324,7 +1324,7 @@ pub fn logaddexp<T>(x1: &Array<T>, x2: &Array<T>) -> Result<Array<T>>
 where
     T: Clone + ExpLogOps<T> + Default + 'static,
 {
-    if let Some(ufunc) = get_ufunc("logaddexp") {
+    if let Some(ufunc) = get_ufunc_typed::<T>("logaddexp") {
         let broadcast_shape = compute_broadcast_shape(x1.shape(), x2.shape());
         let mut output = Array::from_data(
             vec![T::default(); broadcast_shape.iter().product::<usize>()],
@@ -1345,7 +1345,7 @@ pub fn logaddexp2<T>(x1: &Array<T>, x2: &Array<T>) -> Result<Array<T>>
 where
     T: Clone + ExpLogOps<T> + Default + 'static,
 {
-    if let Some(ufunc) = get_ufunc("logaddexp2") {
+    if let Some(ufunc) = get_ufunc_typed::<T>("logaddexp2") {
         let broadcast_shape = compute_broadcast_shape(x1.shape(), x2.shape());
         let mut output = Array::from_data(
             vec![T::default(); broadcast_shape.iter().product::<usize>()],
@@ -1393,7 +1393,7 @@ pub fn rint<T>(x: &Array<T>) -> Result<Array<T>>
 where
     T: Clone + RoundingOps<T> + Default + 'static,
 {
-    if let Some(ufunc) = get_ufunc("rint") {
+    if let Some(ufunc) = get_ufunc_typed::<T>("rint") {
         let mut output = Array::from_data(vec![T::default(); x.size()], x.shape().to_vec());
         ufunc.execute(&[x], &mut [&mut output], None)?;
         Ok(output)
@@ -1410,7 +1410,7 @@ pub fn floor<T>(x: &Array<T>) -> Result<Array<T>>
 where
     T: Clone + RoundingOps<T> + Default + 'static,
 {
-    if let Some(ufunc) = get_ufunc("floor") {
+    if let Some(ufunc) = get_ufunc_typed::<T>("floor") {
         let mut output = Array::from_data(vec![T::default(); x.size()], x.shape().to_vec());
         ufunc.execute(&[x], &mut [&mut output], None)?;
         Ok(output)
@@ -1427,7 +1427,7 @@ pub fn ceil<T>(x: &Array<T>) -> Result<Array<T>>
 where
     T: Clone + RoundingOps<T> + Default + 'static,
 {
-    if let Some(ufunc) = get_ufunc("ceil") {
+    if let Some(ufunc) = get_ufunc_typed::<T>("ceil") {
         let mut output = Array::from_data(vec![T::default(); x.size()], x.shape().to_vec());
         ufunc.execute(&[x], &mut [&mut output], None)?;
         Ok(output)
@@ -1444,7 +1444,7 @@ pub fn trunc<T>(x: &Array<T>) -> Result<Array<T>>
 where
     T: Clone + RoundingOps<T> + Default + 'static,
 {
-    if let Some(ufunc) = get_ufunc("trunc") {
+    if let Some(ufunc) = get_ufunc_typed::<T>("trunc") {
         let mut output = Array::from_data(vec![T::default(); x.size()], x.shape().to_vec());
         ufunc.execute(&[x], &mut [&mut output], None)?;
         Ok(output)
@@ -1461,7 +1461,7 @@ pub fn fix<T>(x: &Array<T>) -> Result<Array<T>>
 where
     T: Clone + RoundingOps<T> + Default + 'static,
 {
-    if let Some(ufunc) = get_ufunc("fix") {
+    if let Some(ufunc) = get_ufunc_typed::<T>("fix") {
         let mut output = Array::from_data(vec![T::default(); x.size()], x.shape().to_vec());
         ufunc.execute(&[x], &mut [&mut output], None)?;
         Ok(output)
@@ -2014,7 +2014,7 @@ where
         }
 
         // Calculate the starting flat index from multi-dimensional indices
-        let array_start = compute_flat_idx(&md_idx);
+        let _array_start = compute_flat_idx(&md_idx);
 
         let mut cum_correction = T::zero();
 
@@ -3523,266 +3523,10 @@ mod tests {
     }
 }
 
-// Sign and absolute value functions
-
-/// Compute sign of each element (-1, 0, or 1)
-pub fn sign<T>(x: &Array<T>) -> Result<Array<T>>
-where
-    T: Clone + Default + 'static,
-{
-    if let Some(ufunc) = get_ufunc("sign") {
-        let mut output = Array::from_data(vec![T::default(); x.size()], x.shape().to_vec());
-        ufunc.execute(&[x], &mut [&mut output], None)?;
-        Ok(output)
-    } else {
-        Err(NumPyError::ufunc_error(
-            "sign",
-            "Ufunc not found".to_string(),
-        ))
-    }
-}
-
-/// Test if sign bit is set in each element (true for negative numbers, -0.0, and NaN)
-pub fn signbit<T>(x: &Array<T>) -> Result<Array<T>>
-where
-    T: Clone + Default + 'static,
-{
-    if let Some(ufunc) = get_ufunc("signbit") {
-        let mut output = Array::from_data(vec![T::default(); x.size()], x.shape().to_vec());
-        ufunc.execute(&[x], &mut [&mut output], None)?;
-        Ok(output)
-    } else {
-        Err(NumPyError::ufunc_error(
-            "signbit",
-            "Ufunc not found".to_string(),
-        ))
-    }
-}
-
-/// Copy sign of x2 to x1
-pub fn copysign<T>(x1: &Array<T>, x2: &Array<T>) -> Result<Array<T>>
-where
-    T: Clone + Default + 'static,
-{
-    if let Some(ufunc) = get_ufunc("copysign") {
-        let mut output = Array::from_data(vec![T::default(); x1.size()], x1.shape().to_vec());
-        ufunc.execute(&[x1, x2], &mut [&mut output], None)?;
-        Ok(output)
-    } else {
-        Err(NumPyError::ufunc_error(
-            "copysign",
-            "Ufunc not found".to_string(),
-        ))
-    }
-}
-
-/// Compute absolute value element-wise
-pub fn absolute<T>(x: &Array<T>) -> Result<Array<T>>
-where
-    T: Clone + Default + 'static,
-{
-    if let Some(ufunc) = get_ufunc("absolute") {
-        let mut output = Array::from_data(vec![T::default(); x.size()], x.shape().to_vec());
-        ufunc.execute(&[x], &mut [&mut output], None)?;
-        Ok(output)
-    } else {
-        Err(NumPyError::ufunc_error(
-            "absolute",
-            "Ufunc not found".to_string(),
-        ))
-    }
-}
-
 /// Compute absolute value element-wise (alias for absolute)
 pub fn abs<T>(x: &Array<T>) -> Result<Array<T>>
 where
-    T: Clone + Default + 'static,
+    T: Clone + Default + num_traits::Signed + 'static,
 {
     absolute(x)
-}
-
-/// Compute absolute value for float types
-pub fn fabs<T>(x: &Array<T>) -> Result<Array<T>>
-where
-    T: Clone + Default + 'static,
-{
-    if let Some(ufunc) = get_ufunc("fabs") {
-        let mut output = Array::from_data(vec![T::default(); x.size()], x.shape().to_vec());
-        ufunc.execute(&[x], &mut [&mut output], None)?;
-        Ok(output)
-    } else {
-        Err(NumPyError::ufunc_error(
-            "fabs",
-            "Ufunc not found".to_string(),
-        ))
-    }
-}
-
-/// Unwrap phase angles by changing absolute jumps greater than discont to their 2π complement
-///
-/// This transforms phase angles to eliminate large jumps, which is critical for
-/// signal processing applications, particularly when working with phase data from FFTs.
-///
-/// # Arguments
-/// * `p` - Input array of phase angles
-/// * `discont` - Maximum discontinuity between values (default: π)
-/// * `axis` - Axis along which to unwrap (default: -1, last axis)
-/// * `period` - Period of the input (default: 2π)
-///
-/// # Returns
-/// Unwrapped phase angles
-///
-/// # Example
-/// ```ignore
-/// use numpy::{array, unwrap};
-/// let phases = array![0.0, 6.0, 0.0, 6.0];
-/// let unwrapped = unwrap(&phases.view(), None, None, -1).unwrap();
-/// // Results in: [0.0, 6.0, 6.283..., 12.283...]
-/// ```
-///
-/// # Notes
-/// This is a non-generic implementation for f64 to avoid circular dependencies
-/// with Float and FromPrimitive traits. For other types, use the generic version
-/// when the trait dependency issue is resolved.
-pub fn unwrap(
-    p: &ArrayView<f64>,
-    discont: Option<f64>,
-    axis: Option<isize>,
-    period: Option<f64>,
-) -> Result<Array<f64>> {
-    use std::f64::consts::PI;
-
-    let discont_val = discont.unwrap_or(PI);
-    let period_val = period.unwrap_or(2.0 * PI);
-    let axis_val = axis.unwrap_or(-1);
-
-    // Handle axis parameter (normalize negative indices)
-    let ndim = p.ndim();
-    let normalized_axis = if axis_val < 0 {
-        ndim as isize + axis_val
-    } else {
-        axis_val
-    };
-
-    if ndim == 0 || normalized_axis < 0 || normalized_axis >= ndim as isize {
-        return Err(NumPyError::value_error(
-            &format!("axis {} is out of bounds for array of dimension {}", axis_val, ndim),
-            "unwrap",
-        ));
-    }
-
-    let axis_usize = normalized_axis as usize;
-
-    // Get the data and shape
-    let input_data = p.data();
-    let input_shape = p.shape();
-
-    // For 1D arrays, simple case
-    if ndim == 1 {
-        let mut result = Vec::with_capacity(input_data.len());
-        if input_data.is_empty() {
-            return Ok(Array::from_vec(result));
-        }
-
-        result.push(input_data[0]);
-
-        for i in 1..input_data.len() {
-            let prev = result[i - 1];
-            let curr = input_data[i];
-            let diff = curr - prev;
-
-            // Check for discontinuity and correct
-            let diff_corrected = (diff + period_val / 2.0).rem_euclid(period_val) - period_val / 2.0;
-            
-            // Determine how many periods to correct
-            let mut cum_correction = 0.0;
-            if diff > discont_val {
-                cum_correction = -period_val * ((diff - discont_val) / period_val).ceil();
-            } else if diff < -discont_val {
-                cum_correction = period_val * ((-diff - discont_val) / period_val).ceil();
-            }
-
-            result.push(curr + cum_correction);
-        }
-
-        return Ok(Array::from_vec(result));
-    }
-
-    // For multi-dimensional arrays, process along the specified axis
-    let mut result = input_data.to_vec();
-
-    // Calculate stride and dimensions
-    let axis_length = input_shape[axis_usize];
-    
-    // Calculate total elements and number of slices along the axis
-    let total_elements: usize = input_shape.iter().product();
-    let num_slices = total_elements / axis_length;
-
-    // Calculate stride in the input data for moving along axis
-    let mut stride = 1usize;
-    for i in (axis_usize + 1)..ndim {
-        stride *= input_shape[i];
-    }
-
-    // Process each 1D slice along the axis
-    for slice_idx in 0..num_slices {
-        let base_offset = (slice_idx / stride) * stride * axis_length + (slice_idx % stride);
-
-        for i in 1..axis_length {
-            let curr_idx = base_offset + i * stride;
-            let prev_idx = base_offset + (i - 1) * stride;
-
-            let prev = result[prev_idx];
-            let curr = input_data[curr_idx];
-            let diff = curr - prev;
-
-            // Check for discontinuity
-            if diff > discont_val {
-                let correction = period_val * ((diff - discont_val) / period_val).ceil();
-                result[curr_idx] = curr - correction;
-            } else if diff < -discont_val {
-                let correction = period_val * ((-diff - discont_val) / period_val).ceil();
-                result[curr_idx] = curr + correction;
-            } else {
-                result[curr_idx] = curr;
-            }
-        }
-    }
-
-    Ok(Array::from_data(result, input_shape.to_vec()))
-}
-
-/// Unwrap phase angles (f32 version)
-///
-/// See the f64 version documentation for details. This is provided for
-/// consistency with NumPy's API which supports multiple float types.
-pub fn unwrap_f32(
-    p: &ArrayView<f32>,
-    discont: Option<f32>,
-    axis: Option<isize>,
-    period: Option<f32>,
-) -> Result<Array<f32>> {
-    use std::f32::consts::PI;
-
-    let discont_val = discont.unwrap_or(PI);
-    let period_val = period.unwrap_or(2.0 * PI);
-    
-    // Convert to f64, process, then convert back
-    let p_f64: Vec<f64> = p.data().iter().map(|&x| x as f64).collect();
-    let shape_f64 = p.shape().to_vec();
-    let strides = p.strides().to_vec();
-    
-    // Create ArrayView for f64
-    let array_view_f64 = ArrayView::from_data(&p_f64, &shape_f64, &strides);
-    
-    let result_f64 = unwrap(
-        &array_view_f64, 
-        Some(discont_val as f64), 
-        axis.map(|a| a as isize), 
-        Some(period_val as f64)
-    )?;
-
-    // Convert back to f32
-    let result_f32: Vec<f32> = result_f64.data().iter().map(|&x| x as f32).collect();
-    Ok(Array::from_vec(result_f32))
 }

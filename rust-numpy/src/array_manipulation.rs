@@ -77,12 +77,12 @@ fn normalize_axis(axis: isize, ndim: usize) -> Result<usize> {
 fn normalize_axes(axes: &[isize], ndim: usize) -> Result<Vec<usize>> {
     let mut seen = std::collections::HashSet::new();
     let mut result = Vec::with_capacity(axes.len());
-    for &axis in axes {
-        let axis = normalize_axis(axis, ndim)?;
-        if !seen.insert(axis) {
+    for &ax in axes {
+        let normalized = normalize_axis(ax, ndim)?;
+        if !seen.insert(normalized) {
             return Err(NumPyError::invalid_operation("duplicate axis"));
         }
-        result.push(axis);
+        result.push(normalized);
     }
     Ok(result)
 }
@@ -283,16 +283,16 @@ where
 pub fn arange<T>(
     start: T,
     stop: Option<T>,
-    step: Option<T>,
+    step_opt: Option<T>,
     dtype: Option<Dtype>,
 ) -> Result<Array<T>>
 where
     T: Clone + Default + Num + PartialOrd + 'static,
 {
-    let stop = stop.unwrap_or_else(|| start.clone() + T::one());
-    let step = step.unwrap_or_else(|| T::one());
+    let stop_val = stop.unwrap_or_else(|| start.clone() + T::one());
+    let delta = step_opt.unwrap_or_else(|| T::one());
 
-    if step == T::zero() {
+    if delta == T::zero() {
         return Err(NumPyError::invalid_operation(
             "arange() step cannot be zero",
         ));
@@ -301,30 +301,30 @@ where
     let mut count = 0;
     let mut current = start.clone();
 
-    if step > T::zero() {
-        while current < stop {
+    if delta > T::zero() {
+        while current < stop_val {
             count += 1;
-            current = current + step.clone();
+            current = current + delta.clone();
         }
     } else {
-        while current > stop {
+        while current > stop_val {
             count += 1;
-            current = current + step.clone();
+            current = current + delta.clone();
         }
     }
 
     let mut data = Vec::with_capacity(count);
     current = start;
 
-    if step > T::zero() {
-        while current < stop {
+    if delta > T::zero() {
+        while current < stop_val {
             data.push(current.clone());
-            current = current + step.clone();
+            current = current + delta.clone();
         }
     } else {
-        while current > stop {
+        while current > stop_val {
             data.push(current.clone());
-            current = current + step.clone();
+            current = current + delta.clone();
         }
     }
 
@@ -384,11 +384,11 @@ where
     }
 
     let div = if endpoint { num - 1 } else { num };
-    let step = (stop - start) / T::from(div).unwrap();
+    let delta = (stop - start) / T::from(div).unwrap();
 
     let mut data = Vec::with_capacity(num);
     for i in 0..num {
-        let value = start + step * T::from(i).unwrap();
+        let value = start + delta * T::from(i).unwrap();
         data.push(value);
     }
 
@@ -1056,10 +1056,10 @@ where
     let mut new_strides = a.strides().to_vec();
 
     match axis {
-        Some(axes) => {
-            let mut axes = normalize_axes(axes, ndim)?;
-            axes.sort_unstable_by(|a, b| b.cmp(a));
-            for ax in axes {
+        Some(axes_param) => {
+            let mut normalized = normalize_axes(axes_param, ndim)?;
+            normalized.sort_unstable_by(|a, b| b.cmp(a));
+            for ax in normalized {
                 if a.shape()[ax] != 1 {
                     return Err(NumPyError::invalid_operation(format!(
                         "squeeze() cannot select axis {} with size {}",
@@ -1327,8 +1327,8 @@ where
 
     // If axis is None, flip all axes
     let axes_to_flip: Vec<usize> = match axis {
-        Some(axes) => {
-            let normalized = normalize_axes(axes, ndim)?;
+        Some(axes_param) => {
+            let normalized = normalize_axes(axes_param, ndim)?;
             if normalized.is_empty() {
                 (0..ndim).collect()
             } else {
