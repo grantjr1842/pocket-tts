@@ -16,7 +16,7 @@ except ImportError:
     )
     sys.exit(1)
 
-# Datasets definition (from GAP_ANALYSIS.md)
+# Datasets definition (from PARITY_NUMPY_2_4.md)
 DATASETS = {
     "DS-ARRAY-1": np.array([0, 1, -2, 3, 4, -5, 6], dtype=np.float32),
     "DS-ARRAY-2": np.array([[1, 2, 3], [4, 5, 6]], dtype=np.float32),

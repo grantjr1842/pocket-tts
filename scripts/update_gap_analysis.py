@@ -5,7 +5,7 @@ from pathlib import Path
 def update_gap_analysis():
     repo_root = Path(__file__).parent.parent
     results_path = repo_root / "results" / "validation_results.json"
-    gap_analysis_path = repo_root / "rust-numpy" / "GAP_ANALYSIS.md"
+    gap_analysis_path = repo_root / "rust-numpy" / "PARITY_NUMPY_2_4.md"
 
     if not results_path.exists():
         print("Error: validation_results.json not found.")
@@ -25,7 +25,7 @@ def update_gap_analysis():
             break
 
     if table_start == -1:
-        print("Error: Parity Table section not found in GAP_ANALYSIS.md")
+        print("Error: Parity Table section not found in PARITY_NUMPY_2_4.md")
         return
 
     # Keep headers and separators

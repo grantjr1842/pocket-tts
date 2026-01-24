@@ -68,7 +68,7 @@ The framework consists of:
 - HTML/PDF report generation
 - Parallel test execution
 - Regression detection
-- Automatic GAP_ANALYSIS.md updates
+- Automatic PARITY_NUMPY_2_4.md updates
 
 ## Integration with CI/CD
 
@@ -86,10 +86,9 @@ The framework consists of:
 2. Add comprehensive function coverage
 3. Implement detailed performance benchmarking
 4. Generate visual HTML/PDF reports
-5. Integrate with GAP_ANALYSIS.md updates
+5. Integrate with PARITY_NUMPY_2_4.md updates
 
 ## Related Documentation
 
-- [GAP_ANALYSIS.md](../rust-numpy/GAP_ANALYSIS.md)
-- [PARITY.md](../rust-numpy/PARITY.md)
+- [PARITY_NUMPY_2_4.md](../rust-numpy/PARITY_NUMPY_2_4.md)
 - [INVENTORY.md](../rust-numpy/INVENTORY.md)
