@@ -1828,8 +1828,10 @@ where
         + std::ops::Neg<Output = T>
         + 'static,
 {
-    let discont_val = discont.unwrap_or_else(|| T::PI());
     let period_val = period.unwrap_or_else(|| T::PI() + T::PI());
+    // Default discont is period/2, matching NumPy behavior
+    let discont_default = period_val / (T::one() + T::one());
+    let discont_val = discont.unwrap_or(discont_default);
     let ndim = p.ndim();
 
     // Normalize axis to be in range [0, ndim)
@@ -3216,5 +3218,135 @@ mod tests {
             assert!(curr > prev || (curr - prev).abs() < 1e-10,
                     "Phase should be increasing: {} -> {}", prev, curr);
         }
+    }
+
+    // Tests matching NumPy documentation examples
+
+    #[test]
+    fn test_numpy_example_period_4() {
+        // np.unwrap([0, 1, 2, -1, 0], period=4) -> [0, 1, 2, 3, 4]
+        let p: Array<f64> = Array::from_data(vec![0.0, 1.0, 2.0, -1.0, 0.0], vec![5]);
+
+        let result = unwrap(&p, None, None, Some(4.0_f64)).unwrap();
+
+        let val0: f64 = *result.get(0).unwrap();
+        let val1: f64 = *result.get(1).unwrap();
+        let val2: f64 = *result.get(2).unwrap();
+        let val3: f64 = *result.get(3).unwrap();
+        let val4: f64 = *result.get(4).unwrap();
+
+        // Expected: [0, 1, 2, 3, 4]
+        assert!((val0 - 0.0).abs() < 1e-10);
+        assert!((val1 - 1.0).abs() < 1e-10);
+        assert!((val2 - 2.0).abs() < 1e-10);
+        assert!((val3 - 3.0).abs() < 1e-10);
+        assert!((val4 - 4.0).abs() < 1e-10);
+    }
+
+    #[test]
+    fn test_numpy_example_period_6() {
+        // np.unwrap([ 1, 2, 3, 4, 5, 6, 1, 2, 3], period=6) -> [1, 2, 3, 4, 5, 6, 7, 8, 9]
+        let p: Array<f64> = Array::from_data(vec![1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 1.0, 2.0, 3.0], vec![9]);
+
+        let result = unwrap(&p, None, None, Some(6.0_f64)).unwrap();
+
+        // Expected: [1, 2, 3, 4, 5, 6, 7, 8, 9]
+        for i in 0..9 {
+            let val: f64 = *result.get(i).unwrap();
+            let expected = (i + 1) as f64;
+            assert!((val - expected).abs() < 1e-10,
+                    "Index {}: expected {}, got {}", i, expected, val);
+        }
+    }
+
+    #[test]
+    fn test_numpy_example_period_4_wrap() {
+        // np.unwrap([2, 3, 4, 5, 2, 3, 4, 5], period=4) -> [2, 3, 4, 5, 6, 7, 8, 9]
+        let p: Array<f64> = Array::from_data(vec![2.0, 3.0, 4.0, 5.0, 2.0, 3.0, 4.0, 5.0], vec![8]);
+
+        let result = unwrap(&p, None, None, Some(4.0_f64)).unwrap();
+
+        // Expected: [2, 3, 4, 5, 6, 7, 8, 9]
+        for i in 0..8 {
+            let val: f64 = *result.get(i).unwrap();
+            let expected = (i + 2) as f64;
+            assert!((val - expected).abs() < 1e-10,
+                    "Index {}: expected {}, got {}", i, expected, val);
+        }
+    }
+
+    #[test]
+    fn test_numpy_example_discont_smaller_than_period_half() {
+        // Test the note: "If the discontinuity in p is smaller than period/2,
+        // but larger than discont, no unwrapping is done"
+        // For period=4, period/2=2. So discontinuities < 2 should not be unwrapped
+        // if discont < 2
+        let p: Array<f64> = Array::from_data(vec![0.0, 1.0, 2.5, 3.5], vec![4]);
+
+        // With discont=1.5 (smaller than period/2=2), discontinuity of 1.5 won't be corrected
+        let result = unwrap(&p, Some(1.5_f64), None, Some(4.0_f64)).unwrap();
+
+        // The jump from 2.5 to 3.5 is 1.0, which is < period/2, so no correction
+        // even with discont=1.5, the threshold is max(1.5, 2.0) = 2.0
+        let val0: f64 = *result.get(0).unwrap();
+        let val1: f64 = *result.get(1).unwrap();
+        let val2: f64 = *result.get(2).unwrap();
+        let val3: f64 = *result.get(3).unwrap();
+
+        assert!((val0 - 0.0).abs() < 1e-10);
+        assert!((val1 - 1.0).abs() < 1e-10);
+        assert!((val2 - 2.5).abs() < 1e-10);
+        assert!((val3 - 3.5).abs() < 1e-10);
+    }
+
+    #[test]
+    fn test_numpy_example_discont_larger_than_period_half() {
+        // Test with discont larger than period/2
+        // For period=6.28, period/2=3.14, with discont=4.0
+        // threshold = max(4.0, 3.14) = 4.0
+        let p: Array<f64> = Array::from_data(vec![0.0, 1.0, 6.0], vec![3]);
+
+        let result = unwrap(&p, Some(4.0_f64), None, None).unwrap();
+
+        // Jump from 1.0 to 6.0 is 5.0, which is > threshold 4.0, so correct
+        // val[2] should be 6.0 - 2π ≈ -0.283
+        let val0: f64 = *result.get(0).unwrap();
+        let val1: f64 = *result.get(1).unwrap();
+        let val2: f64 = *result.get(2).unwrap();
+
+        assert!((val0 - 0.0).abs() < 1e-10);
+        assert!((val1 - 1.0).abs() < 1e-10);
+        assert!((val2 - (6.0 - 2.0 * std::f64::consts::PI)).abs() < 1e-10);
+    }
+
+    #[test]
+    fn test_numpy_negative_wrap() {
+        // Test negative jumps (wrapping in negative direction)
+        // Similar to: np.unwrap([5, 4, 3, 2, 1, 0, -1, -2])
+        let p: Array<f64> = Array::from_data(vec![5.0, 4.0, 3.0, 2.0, 1.0, 0.0, 6.0, 5.0], vec![8]);
+
+        let result = unwrap(&p, None, None, Some(7.0_f64)).unwrap();
+
+        // Expected: values should continue decreasing, with -1 becoming 6 (7-1), etc.
+        // After the jump from 0 to 6, the corrected value should be 6 - 7 = -1
+        let val0: f64 = *result.get(0).unwrap();
+        let val1: f64 = *result.get(1).unwrap();
+        let val2: f64 = *result.get(2).unwrap();
+        let val3: f64 = *result.get(3).unwrap();
+        let val4: f64 = *result.get(4).unwrap();
+        let val5: f64 = *result.get(5).unwrap();
+        let val6: f64 = *result.get(6).unwrap();
+        let val7: f64 = *result.get(7).unwrap();
+
+        assert!((val0 - 5.0).abs() < 1e-10);
+        assert!((val1 - 4.0).abs() < 1e-10);
+        assert!((val2 - 3.0).abs() < 1e-10);
+        assert!((val3 - 2.0).abs() < 1e-10);
+        assert!((val4 - 1.0).abs() < 1e-10);
+        assert!((val5 - 0.0).abs() < 1e-10);
+        // Jump from 0 to 6: diff=6 > threshold(3.5), so subtract period 7
+        assert!((val6 - (6.0 - 7.0)).abs() < 1e-10);
+        // Previous cum_correction continues
+        assert!((val7 - (5.0 - 7.0)).abs() < 1e-10);
     }
 }
