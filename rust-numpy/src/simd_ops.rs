@@ -1,10 +1,10 @@
 // SIMD-optimized operations for mathematical ufuncs
 //
 // This module provides SIMD-optimized implementations of common mathematical
-// operations using architecture-specific intrinsics for maximum performance.
+// operations using real architecture-specific intrinsics for maximum performance.
 
 #[cfg(feature = "simd")]
-use stdsimd::prelude::*;
+use crate::simd_intrinsics::*;
 
 /// SIMD chunk size for different architectures
 #[cfg(feature = "simd")]
@@ -23,33 +23,17 @@ pub enum SimdChunkSize {
 #[cfg(feature = "simd")]
 impl SimdChunkSize {
     #[inline]
-    #[cfg(target_arch = "x86_64")]
-    #[cfg(target_feature = "avx2")]
-    const fn new() -> Self {
-        if is_x86_feature_detected!("avx512f") {
+    pub fn new() -> Self {
+        let features = crate::simd_intrinsics::CpuFeatures::detect();
+        if features.has_avx512f {
             SimdChunkSize::Avx512
-        } else {
+        } else if features.has_avx2 {
             SimdChunkSize::Avx2
+        } else if features.has_sse41 {
+            SimdChunkSize::Sse128
+        } else {
+            SimdChunkSize::Scalar
         }
-    }
-
-    #[inline]
-    #[cfg(target_arch = "x86_64")]
-    #[cfg(not(target_feature = "avx2"))]
-    const fn new() -> Self {
-        SimdChunkSize::Sse128
-    }
-
-    #[inline]
-    #[cfg(target_arch = "aarch64")]
-    const fn new() -> Self {
-        SimdChunkSize::Sse128
-    }
-
-    #[inline]
-    #[cfg(not(any(target_arch = "x86_64", target_arch = "aarch64")))]
-    const fn new() -> Self {
-        SimdChunkSize::Scalar
     }
 
     #[inline]
@@ -75,470 +59,211 @@ impl SimdChunkSize {
 
 /// Process array using SIMD-optimized sin function
 #[cfg(feature = "simd")]
-#[cfg(target_arch = "x86_64")]
 pub fn simd_sin_f64(values: &[f64]) -> Vec<f64> {
-    #[cfg(target_feature = "avx2")]
-    {
-        if is_x86_feature_detected!("avx2") {
-            return simd_sin_f64_avx2(values);
-        }
+    let features = crate::simd_intrinsics::CpuFeatures::detect();
+    if features.has_avx2 {
+        let mut result = vec![0.0; values.len()];
+        crate::simd_intrinsics::simd_sin_f64_approx(values, &mut result);
+        result
+    } else {
+        // Fallback to scalar
+        values.iter().copied().map(|x| x.sin()).collect()
     }
-
-    #[cfg(target_feature = "sse4.1")]
-    {
-        if is_x86_feature_detected!("sse4.1") {
-            return simd_sin_f64_sse(values);
-        }
-    }
-
-    // Fallback to scalar
-    values.iter().copied().map(|x| x.sin()).collect()
-}
-
-#[cfg(feature = "simd")]
-#[cfg(target_arch = "x86_64")]
-#[cfg(target_feature = "avx2")]
-#[inline(always)]
-unsafe fn simd_sin_f64_avx2(values: &[f64]) -> Vec<f64> {
-    let mut result = Vec::with_capacity(values.len());
-    let mut i = 0;
-
-    // Process 4 values at a time using AVX2
-    while i + 4 <= values.len() {
-        let v = _mm256_loadu_pd(values.as_ptr().add(i));
-        let s = _mm256_sin_pd(v);
-        _mm256_storeu_pd(result.as_mut_ptr().add(i), s);
-        i += 4;
-    }
-
-    // Process remaining values
-    while i < values.len() {
-        result.push(values[i].sin());
-        i += 1;
-    }
-
-    result.set_len(values.len());
-    result
-}
-
-#[cfg(feature = "simd")]
-#[cfg(target_arch = "x86_64")]
-#[cfg(target_feature = "sse4.1")]
-#[inline(always)]
-unsafe fn simd_sin_f64_sse(values: &[f64]) -> Vec<f64> {
-    let mut result = Vec::with_capacity(values.len());
-    let mut i = 0;
-
-    // Process 2 values at a time using SSE
-    while i + 2 <= values.len() {
-        let v = _mm_loadu_pd(values.as_ptr().add(i));
-        let s = _mm_sin_pd(v);
-        _mm_storeu_pd(result.as_mut_ptr().add(i), s);
-        i += 2;
-    }
-
-    // Process remaining values
-    while i < values.len() {
-        result.push(values[i].sin());
-        i += 1;
-    }
-
-    result.set_len(values.len());
-    result
 }
 
 /// Process array using SIMD-optimized cos function
 #[cfg(feature = "simd")]
-#[cfg(target_arch = "x86_64")]
 pub fn simd_cos_f64(values: &[f64]) -> Vec<f64> {
-    #[cfg(target_feature = "avx2")]
-    {
-        if is_x86_feature_detected!("avx2") {
-            return simd_cos_f64_avx2(values);
-        }
+    let features = crate::simd_intrinsics::CpuFeatures::detect();
+    if features.has_avx2 {
+        let mut result = vec![0.0; values.len()];
+        crate::simd_intrinsics::simd_cos_f64_approx(values, &mut result);
+        result
+    } else {
+        // Fallback to scalar
+        values.iter().copied().map(|x| x.cos()).collect()
     }
-
-    #[cfg(target_feature = "sse4.1")]
-    {
-        if is_x86_feature_detected!("sse4.1") {
-            return simd_cos_f64_sse(values);
-        }
-    }
-
-    // Fallback to scalar
-    values.iter().copied().map(|x| x.cos()).collect()
-}
-
-#[cfg(feature = "simd")]
-#[cfg(target_arch = "x86_64")]
-#[cfg(target_feature = "avx2")]
-#[inline(always)]
-unsafe fn simd_cos_f64_avx2(values: &[f64]) -> Vec<f64> {
-    let mut result = Vec::with_capacity(values.len());
-    let mut i = 0;
-
-    while i + 4 <= values.len() {
-        let v = _mm256_loadu_pd(values.as_ptr().add(i));
-        let c = _mm256_cos_pd(v);
-        _mm256_storeu_pd(result.as_mut_ptr().add(i), c);
-        i += 4;
-    }
-
-    while i < values.len() {
-        result.push(values[i].cos());
-        i += 1;
-    }
-
-    result.set_len(values.len());
-    result
-}
-
-#[cfg(feature = "simd")]
-#[cfg(target_arch = "x86_64")]
-#[cfg(target_feature = "sse4.1")]
-#[inline(always)]
-unsafe fn simd_cos_f64_sse(values: &[f64]) -> Vec<f64> {
-    let mut result = Vec::with_capacity(values.len());
-    let mut i = 0;
-
-    while i + 2 <= values.len() {
-        let v = _mm_loadu_pd(values.as_ptr().add(i));
-        let c = _mm_cos_pd(v);
-        _mm_storeu_pd(result.as_mut_ptr().add(i), c);
-        i += 2;
-    }
-
-    while i < values.len() {
-        result.push(values[i].cos());
-        i += 1;
-    }
-
-    result.set_len(values.len());
-    result
 }
 
 /// Process array using SIMD-optimized exp function
 #[cfg(feature = "simd")]
-#[cfg(target_arch = "x86_64")]
 pub fn simd_exp_f64(values: &[f64]) -> Vec<f64> {
-    #[cfg(target_feature = "avx2")]
-    {
-        if is_x86_feature_detected!("avx2") {
-            return simd_exp_f64_avx2(values);
-        }
+    let features = crate::simd_intrinsics::CpuFeatures::detect();
+    if features.has_avx2 {
+        let mut result = vec![0.0; values.len()];
+        crate::simd_intrinsics::simd_exp_f64_approx(values, &mut result);
+        result
+    } else {
+        // Fallback to scalar
+        values.iter().copied().map(|x| x.exp()).collect()
     }
-
-    // Fallback to scalar
-    values.iter().copied().map(|x| x.exp()).collect()
-}
-
-#[cfg(feature = "simd")]
-#[cfg(target_arch = "x86_64")]
-#[cfg(target_feature = "avx2")]
-#[inline(always)]
-unsafe fn simd_exp_f64_avx2(values: &[f64]) -> Vec<f64> {
-    let mut result = Vec::with_capacity(values.len());
-    let mut i = 0;
-
-    while i + 4 <= values.len() {
-        let v = _mm256_loadu_pd(values.as_ptr().add(i));
-        let e = _mm256_exp_pd(v);
-        _mm256_storeu_pd(result.as_mut_ptr().add(i), e);
-        i += 4;
-    }
-
-    while i < values.len() {
-        result.push(values[i].exp());
-        i += 1;
-    }
-
-    result.set_len(values.len());
-    result
 }
 
 /// Process array using SIMD-optimized log function
 #[cfg(feature = "simd")]
-#[cfg(target_arch = "x86_64")]
 pub fn simd_log_f64(values: &[f64]) -> Vec<f64> {
-    #[cfg(target_feature = "avx2")]
-    {
-        if is_x86_feature_detected!("avx2") {
-            return simd_log_f64_avx2(values);
-        }
+    let features = crate::simd_intrinsics::CpuFeatures::detect();
+    if features.has_avx2 {
+        let mut result = vec![0.0; values.len()];
+        crate::simd_intrinsics::simd_log_f64_approx(values, &mut result);
+        result
+    } else {
+        // Fallback to scalar
+        values.iter().copied().map(|x| x.ln()).collect()
     }
-
-    // Fallback to scalar
-    values.iter().copied().map(|x| x.ln()).collect()
-}
-
-#[cfg(feature = "simd")]
-#[cfg(target_arch = "x86_64")]
-#[cfg(target_feature = "avx2")]
-#[inline(always)]
-unsafe fn simd_log_f64_avx2(values: &[f64]) -> Vec<f64> {
-    let mut result = Vec::with_capacity(values.len());
-    let mut i = 0;
-
-    while i + 4 <= values.len() {
-        let v = _mm256_loadu_pd(values.as_ptr().add(i));
-        let l = _mm256_log_pd(v);
-        _mm256_storeu_pd(result.as_mut_ptr().add(i), l);
-        i += 4;
-    }
-
-    while i < values.len() {
-        result.push(values[i].ln());
-        i += 1;
-    }
-
-    result.set_len(values.len());
-    result
 }
 
 /// Process array using SIMD-optimized sqrt function
 #[cfg(feature = "simd")]
-#[cfg(target_arch = "x86_64")]
 pub fn simd_sqrt_f64(values: &[f64]) -> Vec<f64> {
-    #[cfg(target_feature = "avx2")]
-    {
-        if is_x86_feature_detected!("avx2") {
-            return simd_sqrt_f64_avx2(values);
+    let features = crate::simd_intrinsics::CpuFeatures::detect();
+    if features.has_avx2 {
+        let mut result = vec![0.0; values.len()];
+        crate::simd_intrinsics::simd_sqrt_f64_avx2(values, &mut result);
+        result
+    } else if features.has_sse41 {
+        let mut result = vec![0.0; values.len()];
+        for i in 0..values.len() {
+            result[i] = values[i].sqrt();
         }
+        result
+    } else {
+        // Fallback to scalar
+        values.iter().copied().map(|x| x.sqrt()).collect()
     }
-
-    #[cfg(target_feature = "sse4.1")]
-    {
-        if is_x86_feature_detected!("sse4.1") {
-            return simd_sqrt_f64_sse(values);
-        }
-    }
-
-    // Fallback to scalar
-    values.iter().copied().map(|x| x.sqrt()).collect()
-}
-
-#[cfg(feature = "simd")]
-#[cfg(target_arch = "x86_64")]
-#[cfg(target_feature = "avx2")]
-#[inline(always)]
-unsafe fn simd_sqrt_f64_avx2(values: &[f64]) -> Vec<f64> {
-    let mut result = Vec::with_capacity(values.len());
-    let mut i = 0;
-
-    while i + 4 <= values.len() {
-        let v = _mm256_loadu_pd(values.as_ptr().add(i));
-        let s = _mm256_sqrt_pd(v);
-        _mm256_storeu_pd(result.as_mut_ptr().add(i), s);
-        i += 4;
-    }
-
-    while i < values.len() {
-        result.push(values[i].sqrt());
-        i += 1;
-    }
-
-    result.set_len(values.len());
-    result
-}
-
-#[cfg(feature = "simd")]
-#[cfg(target_arch = "x86_64")]
-#[cfg(target_feature = "sse4.1")]
-#[inline(always)]
-unsafe fn simd_sqrt_f64_sse(values: &[f64]) -> Vec<f64> {
-    let mut result = Vec::with_capacity(values.len());
-    let mut i = 0;
-
-    while i + 2 <= values.len() {
-        let v = _mm_loadu_pd(values.as_ptr().add(i));
-        let s = _mm_sqrt_pd(v);
-        _mm_storeu_pd(result.as_mut_ptr().add(i), s);
-        i += 2;
-    }
-
-    while i < values.len() {
-        result.push(values[i].sqrt());
-        i += 1;
-    }
-
-    result.set_len(values.len());
-    result
 }
 
 /// Process array using SIMD-optimized f64 addition
 #[cfg(feature = "simd")]
-#[cfg(target_arch = "x86_64")]
 pub fn simd_add_f64(a: &[f64], b: &[f64]) -> Vec<f64> {
-    #[cfg(target_feature = "avx2")]
-    {
-        if is_x86_feature_detected!("avx2") {
-            let mut result = Vec::with_capacity(a.len());
-            let mut i = 0;
-            while i + 4 <= a.len() {
-                unsafe {
-                    let va = _mm256_loadu_pd(a.as_ptr().add(i));
-                    let vb = _mm256_loadu_pd(b.as_ptr().add(i));
-                    let res = _mm256_add_pd(va, vb);
-                    _mm256_storeu_pd(result.as_mut_ptr().add(i), res);
-                }
-                i += 4;
-            }
-            while i < a.len() {
-                result.push(a[i] + b[i]);
-                i += 1;
-            }
-            unsafe {
-                result.set_len(a.len());
-            }
-            return result;
-        }
+    let features = crate::simd_intrinsics::CpuFeatures::detect();
+    if features.has_avx2 {
+        let mut result = vec![0.0; a.len()];
+        crate::simd_intrinsics::simd_add_f64_avx2(a, b, &mut result);
+        result
+    } else {
+        // Fallback to scalar
+        a.iter().zip(b.iter()).map(|(x, y)| x + y).collect()
     }
-    a.iter().zip(b.iter()).map(|(x, y)| x + y).collect()
 }
 
 /// Process array using SIMD-optimized f32 addition
 #[cfg(feature = "simd")]
-#[cfg(target_arch = "x86_64")]
 pub fn simd_add_f32(a: &[f32], b: &[f32]) -> Vec<f32> {
-    #[cfg(target_feature = "avx2")]
-    {
-        if is_x86_feature_detected!("avx2") {
-            let mut result = Vec::with_capacity(a.len());
-            let mut i = 0;
-            while i + 8 <= a.len() {
-                unsafe {
-                    let va = _mm256_loadu_ps(a.as_ptr().add(i));
-                    let vb = _mm256_loadu_ps(b.as_ptr().add(i));
-                    let res = _mm256_add_ps(va, vb);
-                    _mm256_storeu_ps(result.as_mut_ptr().add(i), res);
-                }
-                i += 8;
-            }
-            while i < a.len() {
-                result.push(a[i] + b[i]);
-                i += 1;
-            }
-            unsafe {
-                result.set_len(a.len());
-            }
-            return result;
-        }
+    let features = crate::simd_intrinsics::CpuFeatures::detect();
+    if features.has_avx2 {
+        let mut result = vec![0.0; a.len()];
+        crate::simd_intrinsics::simd_add_f32_avx2(a, b, &mut result);
+        result
+    } else {
+        // Fallback to scalar
+        a.iter().zip(b.iter()).map(|(x, y)| x + y).collect()
     }
-    a.iter().zip(b.iter()).map(|(x, y)| x + y).collect()
 }
 
 /// Process array using SIMD-optimized f64 subtraction
 #[cfg(feature = "simd")]
-#[cfg(target_arch = "x86_64")]
 pub fn simd_sub_f64(a: &[f64], b: &[f64]) -> Vec<f64> {
-    #[cfg(target_feature = "avx2")]
-    {
-        if is_x86_feature_detected!("avx2") {
-            let mut result = Vec::with_capacity(a.len());
-            let mut i = 0;
-            while i + 4 <= a.len() {
-                unsafe {
-                    let va = _mm256_loadu_pd(a.as_ptr().add(i));
-                    let vb = _mm256_loadu_pd(b.as_ptr().add(i));
-                    let res = _mm256_sub_pd(va, vb);
-                    _mm256_storeu_pd(result.as_mut_ptr().add(i), res);
-                }
-                i += 4;
-            }
-            while i < a.len() {
-                result.push(a[i] - b[i]);
-                i += 1;
-            }
-            unsafe {
-                result.set_len(a.len());
-            }
-            return result;
-        }
+    let features = crate::simd_intrinsics::CpuFeatures::detect();
+    if features.has_avx2 {
+        let mut result = vec![0.0; a.len()];
+        crate::simd_intrinsics::simd_sub_f64_avx2(a, b, &mut result);
+        result
+    } else {
+        // Fallback to scalar
+        a.iter().zip(b.iter()).map(|(x, y)| x - y).collect()
     }
-    a.iter().zip(b.iter()).map(|(x, y)| x - y).collect()
+}
+
+/// Process array using SIMD-optimized f64 multiplication
+#[cfg(feature = "simd")]
+pub fn simd_mul_f64(a: &[f64], b: &[f64]) -> Vec<f64> {
+    let features = crate::simd_intrinsics::CpuFeatures::detect();
+    if features.has_avx2 {
+        let mut result = vec![0.0; a.len()];
+        crate::simd_intrinsics::simd_mul_f64_avx2(a, b, &mut result);
+        result
+    } else {
+        // Fallback to scalar
+        a.iter().zip(b.iter()).map(|(x, y)| x * y).collect()
+    }
+}
+
+/// Process array using SIMD-optimized f64 division
+#[cfg(feature = "simd")]
+pub fn simd_div_f64(a: &[f64], b: &[f64]) -> Vec<f64> {
+    let features = crate::simd_intrinsics::CpuFeatures::detect();
+    if features.has_avx2 {
+        let mut result = vec![0.0; a.len()];
+        crate::simd_intrinsics::simd_div_f64_avx2(a, b, &mut result);
+        result
+    } else {
+        // Fallback to scalar
+        a.iter().zip(b.iter()).map(|(x, y)| x / y).collect()
+    }
 }
 
 /// Scalar fallback for architectures without SIMD support
-#[cfg(any(
-    not(feature = "simd"),
-    not(target_arch = "x86_64"),
-    not(target_arch = "aarch64")
-))]
+#[cfg(not(feature = "simd"))]
 pub fn simd_sin_f64(values: &[f64]) -> Vec<f64> {
     values.iter().copied().map(|x| x.sin()).collect()
 }
 
-#[cfg(any(
-    not(feature = "simd"),
-    not(target_arch = "x86_64"),
-    not(target_arch = "aarch64")
-))]
+#[cfg(not(feature = "simd"))]
 pub fn simd_cos_f64(values: &[f64]) -> Vec<f64> {
     values.iter().copied().map(|x| x.cos()).collect()
 }
 
-#[cfg(any(
-    not(feature = "simd"),
-    not(target_arch = "x86_64"),
-    not(target_arch = "aarch64")
-))]
+#[cfg(not(feature = "simd"))]
 pub fn simd_exp_f64(values: &[f64]) -> Vec<f64> {
     values.iter().copied().map(|x| x.exp()).collect()
 }
 
-#[cfg(any(
-    not(feature = "simd"),
-    not(target_arch = "x86_64"),
-    not(target_arch = "aarch64")
-))]
+#[cfg(not(feature = "simd"))]
 pub fn simd_log_f64(values: &[f64]) -> Vec<f64> {
     values.iter().copied().map(|x| x.ln()).collect()
 }
 
-#[cfg(any(
-    not(feature = "simd"),
-    not(target_arch = "x86_64"),
-    not(target_arch = "aarch64")
-))]
+#[cfg(not(feature = "simd"))]
 pub fn simd_sqrt_f64(values: &[f64]) -> Vec<f64> {
     values.iter().copied().map(|x| x.sqrt()).collect()
 }
 
+#[cfg(not(feature = "simd"))]
 pub fn simd_add_f64(a: &[f64], b: &[f64]) -> Vec<f64> {
     a.iter().zip(b.iter()).map(|(x, y)| x + y).collect()
 }
 
+#[cfg(not(feature = "simd"))]
 pub fn simd_add_f32(a: &[f32], b: &[f32]) -> Vec<f32> {
     a.iter().zip(b.iter()).map(|(x, y)| x + y).collect()
 }
 
+#[cfg(not(feature = "simd"))]
 pub fn simd_sub_f64(a: &[f64], b: &[f64]) -> Vec<f64> {
     a.iter().zip(b.iter()).map(|(x, y)| x - y).collect()
 }
 
+#[cfg(not(feature = "simd"))]
+pub fn simd_mul_f64(a: &[f64], b: &[f64]) -> Vec<f64> {
+    a.iter().zip(b.iter()).map(|(x, y)| x * y).collect()
+}
+
+#[cfg(not(feature = "simd"))]
+pub fn simd_div_f64(a: &[f64], b: &[f64]) -> Vec<f64> {
+    a.iter().zip(b.iter()).map(|(x, y)| x / y).collect()
+}
+
 /// Benchmark helper to compare SIMD vs scalar performance
 #[cfg(feature = "simd")]
-pub fn benchmark_simd_vs_scalar<T>(
+pub fn benchmark_simd_vs_scalar_f64(
     name: &str,
-    scalar_fn: impl Fn(&[T]) -> Vec<T>,
-    simd_fn: impl Fn(&[T]) -> Vec<T>,
-) where
-    T: Copy + std::fmt::Debug,
-{
-    #[cfg(feature = "simd")]
-    #[cfg(target_arch = "x86_64")]
-    use std::arch::x86_64::*;
+    scalar_fn: impl Fn(&[f64]) -> Vec<f64>,
+    simd_fn: impl Fn(&[f64]) -> Vec<f64>,
+) {
+    use std::time::Instant;
 
-    use crate::dtype::Dtype;
-
-    let test_data: Vec<T> = (0..10000)
-        .map(|i| match std::any::TypeId::of::<T>() {
-            std::any::TypeId::of::<f64>() => unsafe {
-                std::mem::transmute_copy::<i64, f64>(i as i64)
-            },
-            _ => unsafe { std::mem::transmute_copy::<i32, T>(i as i32) },
-        })
-        .collect();
+    let test_data: Vec<f64> = (0..10000).map(|i| i as f64).collect();
 
     let start = Instant::now();
     let _scalar_result = scalar_fn(&test_data);
@@ -614,5 +339,41 @@ mod tests {
         assert_eq!(result.len(), input.len());
         assert!((result[0] - 0.0_f64.sqrt()).abs() < 1e-10);
         assert!((result[2] - 4.0_f64.sqrt()).abs() < 1e-10);
+    }
+
+    #[test]
+    fn test_simd_add() {
+        let a = vec![1.0f64, 2.0, 3.0, 4.0];
+        let b = vec![5.0f64, 6.0, 7.0, 8.0];
+        let result = simd_add_f64(&a, &b);
+
+        assert_eq!(result.len(), a.len());
+        assert_eq!(result, vec![6.0, 8.0, 10.0, 12.0]);
+    }
+
+    #[test]
+    fn test_simd_sub() {
+        let a = vec![5.0f64, 6.0, 7.0, 8.0];
+        let b = vec![1.0f64, 2.0, 3.0, 4.0];
+        let result = simd_sub_f64(&a, &b);
+
+        assert_eq!(result.len(), a.len());
+        assert_eq!(result, vec![4.0, 4.0, 4.0, 4.0]);
+    }
+
+    #[test]
+    fn test_cpu_features() {
+        let features = crate::simd_intrinsics::CpuFeatures::detect();
+        // Should not panic
+        let _width_f64 = features.best_vector_width_f64();
+        let _width_f32 = features.best_vector_width_f32();
+    }
+
+    #[test]
+    fn test_simd_chunk_size() {
+        let chunk_size = SimdChunkSize::new();
+        // Should not panic
+        let _size_f64 = chunk_size.chunk_size_f64();
+        let _size_f32 = chunk_size.chunk_size_f32();
     }
 }

@@ -147,6 +147,8 @@ pub mod rec;
 pub mod reductions;
 pub mod set_ops;
 pub mod simd;
+pub mod simd_intrinsics;
+pub mod simd_ops;
 pub mod slicing;
 pub mod sorting;
 pub mod statistics;
