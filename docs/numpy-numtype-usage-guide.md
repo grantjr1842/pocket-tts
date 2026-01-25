@@ -158,10 +158,10 @@ strict = True
 ```json
 // pyrightconfig.json
 {
-    "include": ["src"],
-    "pythonVersion": "3.8",
-    "typeCheckingMode": "strict",
-    "reportMissingImports": "error"
+  "include": ["src"],
+  "pythonVersion": "3.8",
+  "typeCheckingMode": "strict",
+  "reportMissingImports": "error"
 }
 ```
 
@@ -561,16 +561,16 @@ NumType's MyPy plugin provides:
 ```json
 // pyrightconfig.json
 {
-    "include": ["src"],
-    "exclude": ["**/node_modules", "**/__pycache__"],
-    "pythonVersion": "3.8",
-    "typeCheckingMode": "strict",
-    "reportMissingImports": "error",
-    "reportMissingTypeStubs": "error",
-    "reportUnknownParameterType": "error",
-    "reportUnknownVariableType": "error",
-    "reportUnknownLambdaType": "error",
-    "reportUnknownMemberType": "error"
+  "include": ["src"],
+  "exclude": ["**/node_modules", "**/__pycache__"],
+  "pythonVersion": "3.8",
+  "typeCheckingMode": "strict",
+  "reportMissingImports": "error",
+  "reportMissingTypeStubs": "error",
+  "reportUnknownParameterType": "error",
+  "reportUnknownVariableType": "error",
+  "reportUnknownLambdaType": "error",
+  "reportUnknownMemberType": "error"
 }
 ```
 
@@ -579,11 +579,11 @@ NumType's MyPy plugin provides:
 ```json
 // .vscode/settings.json
 {
-    "python.analysis.typeCheckingMode": "strict",
-    "python.analysis.autoImportCompletions": true,
-    "python.analysis.diagnosticSeverityOverrides": {
-        "reportUnknownMemberType": "information"
-    }
+  "python.analysis.typeCheckingMode": "strict",
+  "python.analysis.autoImportCompletions": true,
+  "python.analysis.diagnosticSeverityOverrides": {
+    "reportUnknownMemberType": "information"
+  }
 }
 ```
 
@@ -823,6 +823,7 @@ print(result[1])  # stderr
 When reporting issues, include:
 
 1. **Environment Information**:
+
    ```python
    import sys
    import numpy as np

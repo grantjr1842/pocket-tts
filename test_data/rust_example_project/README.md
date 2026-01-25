@@ -60,6 +60,7 @@ let test_cases = validator.load_test_cases("array_creation")?;
 ### 2. Validation Framework
 
 Each test case contains:
+
 - **Function name** (e.g., "array", "add", "sqrt")
 - **Input data** (parsed from JSON)
 - **Expected output** (exact NumPy results)
@@ -86,11 +87,13 @@ assert!(arrays_close(result.data(), expected_data));
 ## Key Features
 
 ### ✅ Exact NumPy Compatibility
+
 - Uses the same test data as NumPy 2.4.0
 - Validates shape, dtype, and exact values
 - Handles edge cases (NaN, Inf, empty arrays)
 
 ### ✅ Comprehensive Coverage
+
 - Array creation functions
 - Arithmetic operations
 - Mathematical functions
@@ -98,11 +101,13 @@ assert!(arrays_close(result.data(), expected_data));
 - Cross-language CSV testing
 
 ### ✅ Performance Testing
+
 - Benchmark against generated test data
 - Measure operation timing
 - Compare with NumPy reference
 
 ### ✅ Easy Integration
+
 - Drop-in replacement for your existing Rust NumPy code
 - Simple API matching NumPy patterns
 - Comprehensive error handling
@@ -161,12 +166,14 @@ let result = your_function(&arr)?;
 ## Test Categories
 
 ### Currently Supported
+
 - **Array Creation**: array, zeros, ones, arange, linspace, eye
 - **Arithmetic**: add, subtract, multiply, divide, power
 - **Mathematical**: sqrt, abs, sin, cos, exp, log
 - **Statistical**: sum, mean, min, max, argmin, argmax
 
 ### Ready to Add
+
 - Array manipulation (reshape, transpose, concatenate)
 - Linear algebra (dot, matmul, det, inv)
 - Comparison operations (equal, greater, less)
@@ -222,6 +229,7 @@ cargo bench
 ```
 
 This will benchmark:
+
 - Array creation operations
 - Mathematical functions
 - Statistical operations
@@ -248,6 +256,7 @@ Add to your CI pipeline:
 3. Create integration tests in `tests/integration_tests.rs`
 
 Example:
+
 ```rust
 // In functions.rs
 pub fn new_function(a: &[f64]) -> Result<Vec<f64>, String> {

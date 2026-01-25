@@ -7,17 +7,21 @@
 ## Current State Assessment
 
 ### Existing Implementation
+
 The current ufunc implementation consists of:
+
 - `src/ufunc.rs` (1120 lines) - Core ufunc trait and registration
 - `src/ufunc_ops.rs` (1236 lines) - Concrete ufunc operations
 
 **Current Execution Model:**
+
 - Uses iterator-based execution
 - May perform copies for non-contiguous arrays
 - No explicit stride handling
 - No dtype-specific kernel optimization
 
 ### Performance Implications
+
 1. **Broadcasting Operations**: May allocate temporary buffers
 2. **Non-Contiguous Arrays**: Linear access may be suboptimal
 3. **SIMD Opportunities**: Not currently exploited
@@ -26,9 +30,11 @@ The current ufunc implementation consists of:
 ## Implementation Roadmap
 
 ### Phase 1: Foundation (Current Scope)
+
 **Goal:** Basic strided execution without breaking existing code
 
 #### 1.1 Strided Iterator
+
 ```rust
 /// Strided array iterator
 pub struct StridedIter<'a, T> {
@@ -55,6 +61,7 @@ impl<'a, T> Iterator for StridedIter<'a, T> {
 ```
 
 #### 1.2 Strided Execution Engine
+
 ```rust
 pub struct StridedExecutor;
 
@@ -92,9 +99,11 @@ impl StridedExecutor {
 **Risk:** Low - builds on existing abstractions
 
 ### Phase 2: Kernel Registry
+
 **Goal:** Dtype-specific optimized kernels
 
 #### 2.1 Kernel Trait
+
 ```rust
 pub trait UfuncKernel<T>: Send + Sync {
     fn name(&self) -> &str;
@@ -104,6 +113,7 @@ pub trait UfuncKernel<T>: Send + Sync {
 ```
 
 #### 2.2 Kernel Registry
+
 ```rust
 pub struct KernelRegistry {
     kernels: HashMap<(TypeId, UfuncType), Box<dyn Any>>,
@@ -134,9 +144,11 @@ impl KernelRegistry {
 **Risk:** Medium - requires careful type management
 
 ### Phase 3: SIMD Optimization
+
 **Goal:** Leverage SIMD for contiguous arrays
 
 #### 3.1 SIMD Kernels
+
 ```rust
 #[cfg(target_arch = "x86_64")]
 use std::arch::x86_64::*;
@@ -175,9 +187,11 @@ impl UfuncKernel<f64> for SimdAddKernel {
 **Risk:** High - requires architecture-specific code and testing
 
 ### Phase 4: Optimization & Testing
+
 **Goal:** Comprehensive validation and performance tuning
 
 #### 4.1 Benchmark Suite
+
 ```rust
 #[bench]
 fn bench_strided_add_broadcast_2d(b: &mut Bencher) {
@@ -192,6 +206,7 @@ fn bench_strided_add_broadcast_2d(b: &mut Bencher) {
 ```
 
 #### 4.2 Validation Tests
+
 - Test all array layouts (C, F, non-contiguous)
 - Test all broadcasting combinations
 - Test all dtype combinations
@@ -203,17 +218,18 @@ fn bench_strided_add_broadcast_2d(b: &mut Bencher) {
 
 ## Total Effort Estimate
 
-| Phase | Description | Effort | Dependencies |
-|-------|-------------|--------|--------------|
-| 1 | Basic strided execution | 1-2 days | None |
-| 2 | Kernel registry | 3-5 days | Phase 1 |
-| 3 | SIMD optimization | 1-2 weeks | Phase 2 |
-| 4 | Testing & optimization | 1 week | Phase 3 |
-| **Total** | | **3-4 weeks** | |
+| Phase     | Description             | Effort        | Dependencies |
+| --------- | ----------------------- | ------------- | ------------ |
+| 1         | Basic strided execution | 1-2 days      | None         |
+| 2         | Kernel registry         | 3-5 days      | Phase 1      |
+| 3         | SIMD optimization       | 1-2 weeks     | Phase 2      |
+| 4         | Testing & optimization  | 1 week        | Phase 3      |
+| **Total** |                         | **3-4 weeks** |              |
 
 ## Recommended Approach
 
 ### Option A: Incremental (Recommended)
+
 1. Implement Phase 1 (strided execution)
 2. Add comprehensive tests
 3. Create PR for review
@@ -221,22 +237,27 @@ fn bench_strided_add_broadcast_2d(b: &mut Bencher) {
 5. Add Phase 3 (SIMD) as separate optimization pass
 
 **Pros:**
+
 - Manageable PR sizes
 - Early feedback on design
 - Lower risk per change
 
 **Cons:**
+
 - Multiple PRs
 - Longer timeline to completion
 
 ### Option B: All-at-Once
+
 Implement all phases in a single large PR.
 
 **Pros:**
+
 - Complete solution in one PR
 - Consistent design throughout
 
 **Cons:**
+
 - Large review burden
 - Higher risk of merge conflicts
 - Difficult to test incrementally
@@ -244,12 +265,14 @@ Implement all phases in a single large PR.
 ## Risk Mitigation
 
 ### Technical Risks
+
 1. **Performance Regression**: Mitigate with comprehensive benchmarks
 2. **Numerical Accuracy**: Validate against reference implementation
 3. **Memory Safety**: Use Rust's type system, extensive testing
 4. **Platform Compatibility**: Test on multiple architectures
 
 ### Development Risks
+
 1. **Scope Creep**: Strict adherence to roadmap
 2. **Integration Issues**: Maintain compatibility with existing code
 3. **Testing Burden**: Automated test suite from day one
@@ -257,24 +280,28 @@ Implement all phases in a single large PR.
 ## Success Criteria
 
 ### Phase 1 Success
+
 - [ ] All existing tests pass
 - [ ] 10-20% performance improvement on broadcast operations
 - [ ] No regressions on contiguous operations
 - [ ] Clean API for strided execution
 
 ### Phase 2 Success
+
 - [ ] Kernel registry functional
 - [ ] At least 5 dtype-specific kernels implemented
 - [ ] 20-30% performance improvement overall
 - [ ] Easy to add new kernels
 
 ### Phase 3 Success
+
 - [ ] SIMD kernels for common operations (add, mul, etc.)
 - [ ] 2-5x speedup on contiguous arrays
 - [ ] Runtime CPU feature detection
 - [ ] Fallback to scalar kernels
 
 ### Phase 4 Success
+
 - [ ] All benchmarks green
 - [ ] Documentation complete
 - [ ] Migration guide for existing code
@@ -283,6 +310,7 @@ Implement all phases in a single large PR.
 ## Next Steps
 
 ### Immediate (This Session)
+
 Given the complexity and scope, the recommended action for issue #337 is:
 
 1. **Document the roadmap** (this document)
@@ -291,7 +319,9 @@ Given the complexity and scope, the recommended action for issue #337 is:
 4. **Split into smaller issues** for each phase
 
 ### Alternative Approach
+
 If immediate progress is required:
+
 - Focus on **Phase 1 only** (basic strided execution)
 - Create a minimal, working implementation
 - Test thoroughly
@@ -300,6 +330,7 @@ If immediate progress is required:
 ## Conclusion
 
 This is a **substantial undertaking** that requires:
+
 - 3-4 weeks of focused development
 - Deep knowledge of NumPy internals
 - Performance optimization expertise

@@ -9,9 +9,9 @@ to prevent scripts from appearing frozen.
 import sys
 import time
 import threading
-from typing import Optional, Callable, Any, Dict
+from typing import Optional, Callable, Dict
 from dataclasses import dataclass
-from datetime import datetime, timedelta
+from datetime import datetime
 
 
 @dataclass

@@ -81,6 +81,7 @@ pocket-tts generate --eos-threshold -3.0
 ## Output Format
 
 The generate command always outputs WAV files in the following format:
+
 - **Sample Rate**: 24kHz
 - **Channels**: Mono
 - **Bit Depth**: 16-bit PCM

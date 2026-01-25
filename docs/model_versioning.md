@@ -4,17 +4,17 @@ This document describes the version compatibility between different PocketTTS mo
 
 ## Format Versions
 
-| Format Version | Status | Description | Compatible With |
-|----------------|--------|-------------|-----------------|
-| `1.0` (V1) | Legacy | Initial format without versioning metadata | Current (with warnings) |
-| `2.0` (V2) | Current | Format with version metadata and improved structure | Current |
+| Format Version | Status  | Description                                         | Compatible With         |
+| -------------- | ------- | --------------------------------------------------- | ----------------------- |
+| `1.0` (V1)     | Legacy  | Initial format without versioning metadata          | Current (with warnings) |
+| `2.0` (V2)     | Current | Format with version metadata and improved structure | Current                 |
 
 ## Model Versions
 
-| Model Version | Format Version | Release Date | Description |
-|---------------|----------------|--------------|-------------|
-| `legacy` | 1.0 | - | Models saved before versioning was introduced |
-| `1.0.0` | 2.0 | 2025-01-21 | First versioned model release |
+| Model Version | Format Version | Release Date | Description                                   |
+| ------------- | -------------- | ------------ | --------------------------------------------- |
+| `legacy`      | 1.0            | -            | Models saved before versioning was introduced |
+| `1.0.0`       | 2.0            | 2025-01-21   | First versioned model release                 |
 
 ## Compatibility Notes
 

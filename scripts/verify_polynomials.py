@@ -12,10 +12,10 @@ Usage:
 
 import argparse
 import json
+from typing import Any, Dict, List
+
 import numpy as np
-from numpy.polynomial import Polynomial, Chebyshev, Legendre
-from typing import List, Tuple, Dict, Any
-import sys
+from numpy.polynomial import Chebyshev, Legendre, Polynomial
 
 
 def generate_fitting_test_cases() -> List[Dict[str, Any]]:
@@ -330,25 +330,25 @@ def generate_legendre_test_cases() -> List[Dict[str, Any]]:
     # Basic Legendre fit
     x = np.linspace(-1, 1, 10)
     y = x**3
-    l = Legendre.fit(x, y, 3)
+    leg = Legendre.fit(x, y, 3)
     test_cases.append(
         {
             "test_name": "legendre_fit_cubic",
             "x": x.tolist(),
             "y": y.tolist(),
             "deg": 3,
-            "expected_coeffs": l.coef.tolist(),
+            "expected_coeffs": leg.coef.tolist(),
         }
     )
 
     # Legendre evaluation
-    l = Legendre([1, 0.5, 0.25, 0.125])
+    leg = Legendre([1, 0.5, 0.25, 0.125])
     x = np.array([0.0, 0.5, 1.0])
-    y = l(x)
+    y = leg(x)
     test_cases.append(
         {
             "test_name": "legendre_eval",
-            "coeffs": l.coef.tolist(),
+            "coeffs": leg.coef.tolist(),
             "x": x.tolist(),
             "expected_y": y.tolist(),
         }
