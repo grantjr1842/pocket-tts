@@ -7,6 +7,7 @@ import threading
 import time
 from functools import lru_cache
 from pathlib import Path
+from typing import Dict
 
 import safetensors
 import torch
@@ -64,6 +65,7 @@ class TTSModel(nn.Module):
         self.eos_threshold = eos_threshold
         self.config = config
         self.has_voice_cloning = True
+        self._active_queues: Dict[str, queue.Queue] = {}
 
     @property
     def device(self) -> str:
@@ -72,6 +74,10 @@ class TTSModel(nn.Module):
     @property
     def sample_rate(self) -> int:
         return self.config.mimi.sample_rate
+
+    def get_queue_depths(self) -> Dict[str, int]:
+        """Get the current depth of active generation queues."""
+        return {name: q.qsize() for name, q in self._active_queues.items()}
 
     @classmethod
     def _from_pydantic_config(
@@ -524,7 +530,9 @@ class TTSModel(nn.Module):
             )
 
             for chunk in chunks:
-                text_to_generate, frames_after_eos_guess = prepare_text_prompt(chunk)
+                text_to_generate_prep, frames_after_eos_guess = prepare_text_prompt(
+                    chunk
+                )
                 frames_after_eos_guess += 2
                 effective_frames = (
                     frames_after_eos
@@ -565,6 +573,9 @@ class TTSModel(nn.Module):
         # Set up multithreaded generation and decoding
         latents_queue = queue.Queue()
         result_queue = queue.Queue()
+
+        self._active_queues["latents"] = latents_queue
+        self._active_queues["results"] = result_queue
 
         # Start decoder worker thread
         decoder_thread = threading.Thread(
@@ -607,6 +618,9 @@ class TTSModel(nn.Module):
         # Wait for decoder thread to finish cleanly
         with display_execution_time("Waiting for mimi decoder to finish"):
             decoder_thread.join()
+
+        self._active_queues.pop("latents", None)
+        self._active_queues.pop("results", None)
 
         # Print timing information
         duration_generated_audio = int(
@@ -705,8 +719,8 @@ class TTSModel(nn.Module):
             "Average generation step time: %d ms", int(statistics.mean(steps_times))
         )
 
-    @lru_cache(maxsize=2)
-    def _cached_get_state_for_audio_prompt(
+    @lru_cache(maxsize=4)
+    def get_state_for_audio_prompt_cached(
         self, audio_conditioning: Path | str | torch.Tensor, truncate: bool = False
     ) -> dict:
         return self.get_state_for_audio_prompt(audio_conditioning, truncate)

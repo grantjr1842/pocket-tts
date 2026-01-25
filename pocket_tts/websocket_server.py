@@ -16,6 +16,8 @@ import logging
 import wave
 from typing import Optional
 
+from pocket_tts.streaming import AdaptiveChunker, StreamingMetrics
+
 logger = logging.getLogger(__name__)
 
 
@@ -141,32 +143,70 @@ class TTSWebSocketServer:
                     # Get the model state for the voice
                     model_state = self._get_voice_state(voice)
 
-                    # Generate audio stream
+                    # Initialize metrics and chunker
+                    metrics = StreamingMetrics()
+                    metrics.start()
                     chunk_idx = 0
 
-                    # Run generation in thread pool to avoid blocking
-                    loop = asyncio.get_event_loop()
+                    # Adaptive chunker: small chunks for low TTFC, larger for efficiency
+                    # 100ms chunks (2400 samples at 24kHz)
+                    chunker = AdaptiveChunker(
+                        min_chunk_size=2400, sample_rate=self.sample_rate
+                    )
 
-                    def generate():
-                        return list(
-                            self.tts_model.generate_audio_stream(
-                                model_state=model_state, text_to_generate=text
-                            )
+                    logger.info("Starting real-time generation loop")
+
+                    def get_stream():
+                        return self.tts_model.generate_audio_stream(
+                            model_state=model_state, text_to_generate=text
                         )
 
-                    audio_chunks = await loop.run_in_executor(None, generate)
+                    # We want to iterate over the stream. generate_audio_stream is a generator.
+                    # tts_model.generate_audio_stream uses internal threads and queues.
 
-                    for audio_chunk in audio_chunks:
-                        # Convert to WAV/PCM bytes
+                    # Instead of list(), we iterate directly.
+                    # Note: generate_audio_stream blocks waiting for chunks from result_queue.
+                    # We should run the iteration in a way that doesn't block the event loop?
+                    # Actually, we can just iterate in the main loop of handle_connection if we use an iterator.
+
+                    for audio_chunk in self.tts_model.generate_audio_stream(
+                        model_state=model_state, text_to_generate=text
+                    ):
+                        # Add to chunker
+                        aggregated_chunk = chunker.add(audio_chunk)
+                        if aggregated_chunk is not None:
+                            # Convert to WAV/PCM bytes
+                            is_first = chunk_idx == 0
+                            audio_bytes = self._audio_chunk_to_wav_bytes(
+                                aggregated_chunk, is_first=is_first
+                            )
+
+                            # Base64 encode for JSON transport
+                            audio_b64 = base64.b64encode(audio_bytes).decode("ascii")
+
+                            # Send chunk
+                            await websocket.send(
+                                json.dumps(
+                                    {
+                                        "type": "audio",
+                                        "data": audio_b64,
+                                        "chunk": chunk_idx,
+                                        "format": "wav" if is_first else "pcm",
+                                        "sample_rate": self.sample_rate,
+                                    }
+                                )
+                            )
+                            metrics.on_chunk(aggregated_chunk)
+                            chunk_idx += 1
+
+                    # Flush remaining data
+                    final_chunk = chunker.flush()
+                    if final_chunk is not None:
                         is_first = chunk_idx == 0
                         audio_bytes = self._audio_chunk_to_wav_bytes(
-                            audio_chunk, is_first=is_first
+                            final_chunk, is_first=is_first
                         )
-
-                        # Base64 encode for JSON transport
                         audio_b64 = base64.b64encode(audio_bytes).decode("ascii")
-
-                        # Send chunk
                         await websocket.send(
                             json.dumps(
                                 {
@@ -178,12 +218,21 @@ class TTSWebSocketServer:
                                 }
                             )
                         )
-
+                        metrics.on_chunk(final_chunk)
                         chunk_idx += 1
 
                     # Send completion message
+                    report = metrics.get_report(self.sample_rate)
+                    logger.info("Streaming report: %s", report)
+
                     await websocket.send(
-                        json.dumps({"type": "done", "total_chunks": chunk_idx})
+                        json.dumps(
+                            {
+                                "type": "done",
+                                "total_chunks": chunk_idx,
+                                "metrics": report,
+                            }
+                        )
                     )
 
                     logger.info("Completed generation: %d chunks", chunk_idx)
