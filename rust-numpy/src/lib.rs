@@ -112,18 +112,18 @@
 #![allow(clippy::comparison_chain)] // 1 warning - comparison chain pattern
 
 pub mod advanced_broadcast;
+pub mod advanced_reductions;
 pub mod array;
 pub mod array_creation;
 pub mod array_extra;
 pub mod array_manipulation;
-pub mod advanced_reductions;
 pub mod bitwise;
 pub mod broadcasting;
 pub mod char;
-pub mod complex_simd;
 #[cfg(test)]
 mod char_tests;
 pub mod comparison_ufuncs;
+pub mod complex_simd;
 pub mod constants;
 pub mod cpu_features;
 pub mod datetime;
@@ -139,8 +139,9 @@ pub mod iterator;
 pub mod kernel_api;
 pub mod kernel_impls;
 pub mod kernel_registry;
-pub mod linalg;
+pub mod kernel_registry;
 pub mod layout_optimizer;
+pub mod linalg;
 pub mod math_ufuncs;
 pub mod matrix;
 pub mod memory;
@@ -161,12 +162,17 @@ pub mod simd_ops;
 pub mod slicing;
 pub mod sorting;
 pub mod statistics;
+pub mod strided_executor;
 pub mod strides;
 pub mod type_promotion;
+pub mod typing;
 pub mod ufunc;
 pub mod ufunc_ops;
 pub mod utils;
 pub mod window;
+
+#[path = "src/strided_executor.rs"]
+pub mod strided_executor;
 
 #[cfg(test)]
 mod kernel_tests;
@@ -178,6 +184,42 @@ pub use crate::fft::*;
 pub use crate::matrix::exports::*;
 pub use crate::modules::ma::exports::*;
 pub use crate::modules::testing::exports::*;
+pub use crate::typing::{
+    Array1D, Array2D, Array3D, ArrayIter, ArrayIterMut, ArrayLike, ArrayND, BinaryFunc,
+    BitwiseResult, Bool, BroadcastOperation, BroadcastResult, BroadcastShape, BroadcastStrides,
+    BytesArray, Bytes_, CastOperation, CastResult, ComparisonOperator, ComparisonResult,
+    Complex128, Complex64, ConstantsOperation, ConstantsResult, CpuFeaturesOperation,
+    CpuFeaturesResult, DateTime, DateTimeOperation, DateTimeResult, DtypeLike,
+    DynamicKernelOperation, DynamicKernelResult, ErrorOperation, ErrorResult, FFTDirection,
+    FFTInput, FFTOutput, FftOperation, FftResult, FileFormat, FilePath, Float16, Float32, Float64,
+    ImagPart, Index, Int16, Int32, Int64, Int8, Intp, IteratorItem, IteratorOperations,
+    IteratorResult, IteratorResults, KernelApiOperation, KernelApiResult, KernelImplsOperation,
+    KernelImplsResult, KernelInput, KernelOutput, KernelParams, KernelRegistryOperation,
+    KernelRegistryResults, LayoutOptimizerOperation, LayoutOptimizerResult, LinalgOperation,
+    LinalgResult, MaskType, MaskedArray, MathOperation, MathResult, Matrix, Matrix2D,
+    MatrixOperation, MatrixResult, MemoryOperation, MemoryOperations, MemoryPtr, MemoryPtrMut,
+    MemoryResult, MemoryResults, MemoryView, MemoryViewMut, ModulesOperation, ModulesResult,
+    NDArray, Number, ObjectArray, Object_, ParallelBroadcastingOperation,
+    ParallelBroadcastingResult, ParallelExecutorOperation, ParallelExecutorResult,
+    ParallelOperation, ParallelOpsOperation, ParallelOpsResult, ParallelResult, ParallelTask,
+    PerformanceMetric, PerformanceMetrics, PerformanceMetricsOperation, PerformanceMetricsResult,
+    PolynomialOperation, PolynomialResult, ProfilerOperation, ProfilerResult, ProfilingOperation,
+    ProfilingResult, PromotedType, RandomOperation, RandomResult, RandomSeed, RandomState,
+    RealPart, RecOperation, RecResult, RecordArray, ReduceFunc, ReductionsOperation,
+    ReductionsResult, Result, Scalar, SetOperation, SetOpsOperation, SetOpsResult, SetResult,
+    Shape, SimdMask, SimdOperation, SimdOperation, SimdOpsOldOperation, SimdOpsOldResult,
+    SimdOpsOperation, SimdOpsResult, SimdResult, SimdResult, SimdVector,
+    SimpleDynamicTestOperation, SimpleDynamicTestResult, SimpleSortingTestsOperation,
+    SimpleSortingTestsResult, Slice, SliceInclusive, SliceIndex, SliceResult, SlicingOperation,
+    SlicingResult, SortIndices, SortOrder, SortingOperation, SortingResult, Statistic, Statistics,
+    StatisticsOperation, StatisticsResult, Strides, StridesOperation, StridesResult, StringArray,
+    StringOpsOperation, StringOpsResult, StringResult, String_, StructArray, StructDtype, Tensor3D,
+    Tensor4D, TestNewFunctionsOperation, TestNewFunctionsResult, ThreadPool, TimeDelta,
+    TypePromotionOperation, TypePromotionResult, UInt16, UInt32, UInt64, UInt8, UfuncInput,
+    UfuncOperation, UfuncOpsOperation, UfuncOpsResult, UfuncOutput, UfuncResult, Uintp, UnaryFunc,
+    UtilityOperation, UtilityResult, UtilsOperation, UtilsResult, Vector, Vector1D, Void,
+    WindowOperation, WindowOperations, WindowResult, WindowResults,
+};
 pub use array::Array;
 pub use array_manipulation::{apply_along_axis, apply_over_axes, expand_dims, Vectorize};
 pub use bitwise::*;
@@ -247,16 +289,20 @@ pub use math_ufuncs::{
 pub use ufunc_ops::UfuncEngine;
 // Advanced ufunc features
 pub use ufunc::{
+    // Global functions
+    custom_ufunc_registry,
+    register_custom_ufunc,
+    register_gufunc,
     // Advanced ufunc traits
-    CustomUfunc, GeneralizedUfunc,
+    CustomUfunc,
     // Registries
     CustomUfuncRegistry,
-    // Metadata and profiling
-    UfuncMetadata, UfuncPerformanceMetrics,
+    GeneralizedUfunc,
     // Gufunc signature
     GufuncSignature,
-    // Global functions
-    custom_ufunc_registry, register_custom_ufunc, register_gufunc,
+    // Metadata and profiling
+    UfuncMetadata,
+    UfuncPerformanceMetrics,
 };
 
 // Array creation and conversion functions
@@ -280,6 +326,12 @@ pub use utils::{
     seterrcall, shares_memory, show_config, show_runtime, signedinteger, single, str_, test,
     typename, uint16, uint32, uint64, uint8, unsignedinteger, version, void,
 };
+
+// Typing and annotations
+pub mod typing_exports {
+    pub use crate::typing::*;
+}
+pub use typing::*;
 
 /// Version information
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");

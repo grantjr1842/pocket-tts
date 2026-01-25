@@ -1,10 +1,47 @@
+// Copyright 2024 The NumPyRS Authors.
+//
+// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
+// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license <LICENSE-MIT or
+// http://opensource.org/licenses/MIT>, at your option. This file may not be
+// copied, modified, or distributed except according to those terms.
+//
+//! Type-based kernel dispatch system for ufunc operations
+
 use crate::array::Array;
 use crate::dtype::{Dtype, DtypeKind};
 use crate::error::{NumPyError, Result};
+use std::any::{Any, TypeId};
 use std::collections::HashMap;
-use std::sync::{Arc, RwLock};
+
+/// Kernel signature describing input and output types
+#[derive(Debug, Clone)]
+pub struct KernelSignature {
+    input_dtypes: Vec<Dtype>,
+    output_dtype: Dtype,
+}
+
+impl KernelSignature {
+    /// Create new kernel signature
+    pub fn new(input_dtypes: Vec<Dtype>, output_dtype: Dtype) -> Self {
+        Self {
+            input_dtypes,
+            output_dtype,
+        }
+    }
+
+    /// Get string representation
+    pub fn as_string(&self) -> String {
+        let input_names: Vec<String> = self.input_dtypes.iter().map(|dt| dt.to_string()).collect();
+        let output_name = self.output_dtype.to_string();
+
+        format!("{} -> {}", input_names.join(", "), output_name)
+    }
+}
 
 /// Kernel trait for dynamic registration
+///
+/// This trait defines the interface for dtype-specific optimized kernels
+/// that can be registered and dispatched based on input array types.
 pub trait Kernel: Send + Sync {
     /// Get kernel name
     fn name(&self) -> &str;
@@ -12,324 +49,156 @@ pub trait Kernel: Send + Sync {
     /// Get kernel signature (input types -> output types)
     fn signature(&self) -> KernelSignature;
 
-    /// Execute the kernel
-    fn execute(
-        &self,
-        inputs: &[&dyn ArrayView],
-        outputs: &mut [&mut dyn ArrayViewMut],
-    ) -> Result<()>;
+    /// Execute kernel operation
+    ///
+    /// # Arguments
+    /// * `input` - Slice of input arrays
+    /// * `output` - Mutable output array
+    ///
+    /// # Returns
+    /// * `Ok(())` on success
+    /// * `Err(NumPyError)` on failure
+    fn execute(&self, input: &[&dyn ArrayView], output: &mut [&mut dyn ArrayViewMut])
+        -> Result<()>;
 
-    /// Check if kernel supports specific dtypes
-    fn supports_dtypes(&self, input_dtypes: &[Dtype]) -> bool {
-        self.signature().input_types.len() == input_dtypes.len()
-            && self
-                .signature()
-                .input_types
-                .iter()
-                .zip(input_dtypes.iter())
-                .all(|(expected, actual)| expected.can_cast_to(actual))
-    }
-
-    /// Get performance hint for optimization
-    fn performance_hint(&self) -> PerformanceHint {
-        PerformanceHint::General
+    /// Check if kernel is vectorized (SIMD optimized)
+    fn is_vectorized(&self) -> bool {
+        false
     }
 }
 
-/// Kernel signature defining input and output types
-#[derive(Debug, Clone)]
-pub struct KernelSignature {
-    pub input_types: Vec<Dtype>,
-    pub output_types: Vec<Dtype>,
+/// Kernel registry for type-based kernel dispatch
+///
+/// This registry stores and manages dtype-specific kernels using TypeId
+/// for efficient lookup and dispatch.
+pub struct KernelRegistry {
+    kernels: HashMap<(TypeId, crate::ufunc::UfuncType), Box<dyn Any>>,
 }
 
-impl KernelSignature {
-    pub fn new(input_types: Vec<Dtype>, output_types: Vec<Dtype>) -> Self {
-        Self {
-            input_types,
-            output_types,
-        }
-    }
-
-    pub fn matches_input(&self, input_dtypes: &[Dtype]) -> bool {
-        if self.input_types.len() != input_dtypes.len() {
-            return false;
-        }
-
-        self.input_types
-            .iter()
-            .zip(input_dtypes.iter())
-            .all(|(expected, actual)| expected.can_cast_to(actual))
-    }
-}
-
-/// Performance hints for kernel optimization
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum PerformanceHint {
-    /// General purpose kernel
-    General,
-    /// Vectorized operations (SIMD friendly)
-    Vectorized,
-    /// Memory bandwidth bound
-    MemoryBound,
-    /// Compute bound
-    ComputeBound,
-    /// Small input size optimized
-    SmallInput,
-    /// Large input size optimized
-    LargeInput,
-}
-
-/// Dynamic kernel registry with runtime registration
-pub struct DynamicKernelRegistry {
-    /// Map from kernel name to multiple implementations
-    kernels: RwLock<HashMap<String, Vec<Arc<dyn Kernel>>>>,
-    /// Optimization cache for dtype-specific lookups
-    optimization_cache: RwLock<HashMap<String, HashMap<Vec<Dtype>, Arc<dyn Kernel>>>>,
-}
-
-impl DynamicKernelRegistry {
-    /// Create new dynamic registry
+impl KernelRegistry {
+    /// Create new kernel registry
     pub fn new() -> Self {
         Self {
-            kernels: RwLock::new(HashMap::new()),
-            optimization_cache: RwLock::new(HashMap::new()),
+            kernels: HashMap::new(),
         }
     }
 
-    /// Register a new kernel implementation
-    pub fn register(&self, kernel: Arc<dyn Kernel>) -> Result<()> {
-        let name = kernel.name().to_string();
-        let mut kernels = self.kernels.write().map_err(|_| {
-            NumPyError::internal_error("Failed to acquire write lock for kernel registry")
-        })?;
-
-        kernels.entry(name.clone()).or_default().push(kernel);
-
-        // Clear optimization cache for this kernel name
-        let mut cache = self.optimization_cache.write().map_err(|_| {
-            NumPyError::internal_error("Failed to acquire write lock for optimization cache")
-        })?;
-        cache.remove(&name);
-
-        Ok(())
+    /// Register a kernel for a specific dtype and ufunc type
+    ///
+    /// # Arguments
+    /// * `ufunc` - Type of ufunc (add, multiply, etc.)
+    /// * `kernel` - Kernel implementation to register
+    pub fn register<T, K>(&mut self, ufunc: crate::ufunc::UfuncType, kernel: K)
+    where
+        T: 'static,
+        K: Kernel<T> + 'static,
+    {
+        let type_id = TypeId::of::<T>();
+        self.kernels.insert((type_id, ufunc), Box::new(kernel));
     }
 
-    /// Find best kernel for given name and input dtypes
-    pub fn find_kernel(
-        &self,
-        name: &str,
-        input_dtypes: &[Dtype],
-    ) -> Result<Option<Arc<dyn Kernel>>> {
-        // Check optimization cache first
-        {
-            let cache = self.optimization_cache.read().map_err(|_| {
-                NumPyError::internal_error("Failed to acquire read lock for optimization cache")
-            })?;
-
-            if let Some(kernel_cache) = cache.get(name) {
-                if let Some(kernel) = kernel_cache.get(input_dtypes) {
-                    return Ok(Some(kernel.clone()));
-                }
-            }
-        }
-
-        // Search through available kernels
-        let kernels = self.kernels.read().map_err(|_| {
-            NumPyError::internal_error("Failed to acquire read lock for kernel registry")
-        })?;
-
-        if let Some(implementations) = kernels.get(name) {
-            // Find kernels that support the input dtypes
-            let mut candidates: Vec<_> = implementations
-                .iter()
-                .filter(|kernel| kernel.supports_dtypes(input_dtypes))
-                .collect();
-
-            if candidates.is_empty() {
-                return Ok(None);
-            }
-
-            // Select best kernel based on performance hints and dtype compatibility
-            let best_kernel = self.select_best_kernel(&candidates, input_dtypes);
-
-            // Cache the result
-            if let Some(ref kernel) = best_kernel {
-                let mut cache = self.optimization_cache.write().map_err(|_| {
-                    NumPyError::internal_error(
-                        "Failed to acquire write lock for optimization cache",
-                    )
-                })?;
-
-                let kernel_cache = cache.entry(name.to_string()).or_default();
-                kernel_cache.insert(input_dtypes.to_vec(), kernel.clone());
-            }
-
-            Ok(best_kernel)
-        } else {
-            Ok(None)
-        }
+    /// Get registered kernel for specific dtype and ufunc type
+    ///
+    /// # Arguments
+    /// * `ufunc` - Type of ufunc
+    /// * `dtype` - Data type identifier
+    ///
+    /// # Returns
+    /// * `Some(kernel)` if found, `None` otherwise
+    pub fn get<T>(&self, ufunc: crate::ufunc::UfuncType, dtype: TypeId) -> Option<&dyn Kernel<T>>
+    where
+        T: 'static,
+    {
+        self.kernels
+            .get(&(TypeId::of::<T>(), ufunc))
+            .and_then(|k| k.downcast_ref())
     }
 
-    /// Select best kernel based on performance characteristics
-    fn select_best_kernel(
-        &self,
-        candidates: &[&Arc<dyn Kernel>],
-        input_dtypes: &[Dtype],
-    ) -> Option<Arc<dyn Kernel>> {
-        if candidates.len() == 1 {
-            return Some(candidates[0].clone());
-        }
-
-        // Scoring system for kernel selection
-        let mut best_score = 0;
-        let mut best_kernel = None;
-
-        for candidate in candidates {
-            let mut score = 0;
-
-            // Prefer exact dtype matches over casts
-            for (expected, actual) in candidate
-                .signature()
-                .input_types
-                .iter()
-                .zip(input_dtypes.iter())
-            {
-                if expected == actual {
-                    score += 10; // Exact match bonus
-                } else if expected.can_cast_to(actual) {
-                    score += 5; // Castable match
-                }
-            }
-
-            // Performance hint bonuses
-            match candidate.performance_hint() {
-                PerformanceHint::Vectorized => score += 20,
-                PerformanceHint::SmallInput if self.is_small_input(input_dtypes) => score += 15,
-                PerformanceHint::LargeInput if !self.is_small_input(input_dtypes) => score += 15,
-                PerformanceHint::MemoryBound if self.is_memory_bound(input_dtypes) => score += 10,
-                PerformanceHint::ComputeBound if self.is_compute_bound(input_dtypes) => score += 10,
-                _ => {}
-            }
-
-            if score > best_score {
-                best_score = score;
-                best_kernel = Some(candidate.clone());
-            }
-        }
-
-        best_kernel
-    }
-
-    /// Helper to determine if input is small
-    fn is_small_input(&self, _input_dtypes: &[Dtype]) -> bool {
-        // This could be enhanced with actual size information
-        // For now, assume small if all types are primitive
-        _input_dtypes.iter().all(|dt| dt.kind().is_primitive())
-    }
-
-    /// Helper to determine if operation is memory bound
-    fn is_memory_bound(&self, _input_dtypes: &[Dtype]) -> bool {
-        // Simple heuristic: operations on larger types are more memory bound
-        _input_dtypes
+    /// Get all registered kernels for a ufunc type
+    ///
+    /// # Arguments
+    /// * `ufunc` - Type of ufunc
+    ///
+    /// # Returns
+    /// * Vector of kernel references that match the ufunc type
+    pub fn get_all(&self, ufunc: crate::ufunc::UfuncType) -> Vec<&dyn Kernel<T>>
+    where
+        T: 'static,
+    {
+        self.kernels
             .iter()
-            .any(|dt| dt.kind() == DtypeKind::Complex)
-    }
-
-    /// Helper to determine if operation is compute bound
-    fn is_compute_bound(&self, _input_dtypes: &[Dtype]) -> bool {
-        // Simple heuristic: operations on floats are more compute bound
-        _input_dtypes.iter().any(|dt| dt.kind() == DtypeKind::Float)
-    }
-
-    /// List all registered kernel names
-    pub fn list_kernels(&self) -> Result<Vec<String>> {
-        let kernels = self.kernels.read().map_err(|_| {
-            NumPyError::internal_error("Failed to acquire read lock for kernel registry")
-        })?;
-
-        Ok(kernels.keys().cloned().collect())
-    }
-
-    /// Get all implementations for a kernel name
-    pub fn get_implementations(&self, name: &str) -> Result<Vec<Arc<dyn Kernel>>> {
-        let kernels = self.kernels.read().map_err(|_| {
-            NumPyError::internal_error("Failed to acquire read lock for kernel registry")
-        })?;
-
-        Ok(kernels
-            .get(name)
-            .map_or_else(Vec::new, |impls| impls.clone()))
-    }
-
-    /// Clear optimization cache (useful for testing or when kernels are updated)
-    pub fn clear_cache(&self) -> Result<()> {
-        let mut cache = self.optimization_cache.write().map_err(|_| {
-            NumPyError::internal_error("Failed to acquire write lock for optimization cache")
-        })?;
-        cache.clear();
-        Ok(())
-    }
-
-    /// Get registry statistics
-    pub fn stats(&self) -> Result<RegistryStats> {
-        let kernels = self.kernels.read().map_err(|_| {
-            NumPyError::internal_error("Failed to acquire read lock for kernel registry")
-        })?;
-
-        let cache = self.optimization_cache.read().map_err(|_| {
-            NumPyError::internal_error("Failed to acquire read lock for optimization cache")
-        })?;
-
-        let total_kernels: usize = kernels.values().map(|v| v.len()).sum();
-        let cache_entries: usize = cache.values().map(|m| m.len()).sum();
-
-        Ok(RegistryStats {
-            kernel_names: kernels.len(),
-            total_implementations: total_kernels,
-            cache_entries,
-        })
+            .filter(|((type_id, ufunc_type), _)| ufunc_type == *ufunc_type)
+            .map(|(_, kernel)| kernel.downcast_ref())
+            .collect()
     }
 }
 
-/// Registry statistics
-#[derive(Debug, Clone)]
-pub struct RegistryStats {
-    pub kernel_names: usize,
-    pub total_implementations: usize,
-    pub cache_entries: usize,
-}
+#[cfg(test)]
+mod tests {
+    use super::*;
 
-impl Default for DynamicKernelRegistry {
-    fn default() -> Self {
-        Self::new()
+    #[test]
+    fn test_registry_creation() {
+        let mut registry = KernelRegistry::new();
+
+        // Test that we can register and retrieve kernels
+        assert!(registry.get::<f64>(crate::ufunc::UfuncType::Add).is_none());
+
+        // Register a test kernel
+        struct TestAddKernel;
+        impl Kernel<f64> for TestAddKernel {
+            fn name(&self) -> &str {
+                "test_add"
+            }
+            fn execute(
+                &self,
+                input: &[&dyn ArrayView],
+                output: &mut [&mut dyn ArrayViewMut],
+            ) -> Result<()> {
+                // Simple addition for testing
+                let in0 = unsafe { &*(input[0] as *const Array<f64>) };
+                let in1 = unsafe { &*(input[1] as *const Array<f64>) };
+                let out = unsafe { &mut *(output[0] as *mut Array<f64>) };
+
+                if let (Some(a), Some(b)) = (in0.get(0), in1.get(0)) {
+                    out.set(0, a + b)?;
+                }
+                Ok(())
+            }
+            fn is_vectorized(&self) -> bool {
+                false
+            }
+            fn signature(&self) -> KernelSignature {
+                KernelSignature::new(vec![Dtype::from_type::<f64>()], Dtype::from_type::<f64>())
+            }
+        }
+
+        registry.register::<f64, TestAddKernel>(crate::ufunc::UfuncType::Add, TestAddKernel);
+
+        // Verify registration
+        let kernel = registry.get::<f64>(crate::ufunc::UfuncType::Add);
+        assert!(kernel.is_some());
+        assert_eq!(kernel.unwrap().name(), "test_add");
+    }
+
+    #[test]
+    fn test_multiple_dtypes() {
+        let mut registry = KernelRegistry::new();
+
+        // Register kernels for different types
+        registry.register::<f64, TestAddKernel>(crate::ufunc::UfuncType::Add, TestAddKernel);
+        registry.register::<f32, TestAddKernel>(crate::ufunc::UfuncType::Add, TestAddKernel);
+
+        // Verify we can retrieve all kernels for Add ufunc
+        let add_kernels = registry.get_all(crate::ufunc::UfuncType::Add);
+        assert_eq!(add_kernels.len(), 2);
+
+        // Verify type safety
+        let f64_kernel = add_kernels[0];
+        let f32_kernel = add_kernels[1];
+
+        // Should be able to downcast to correct types
+        assert!(!std::any::TypeId::of::<f64>().eq(std::any::TypeId::of::<f32>()));
+        assert!(!std::any::TypeId::of::<f64>().eq(std::any::TypeId::of::<f32>()));
     }
 }
-
-/// Global dynamic kernel registry
-lazy_static::lazy_static! {
-    pub static ref DYNAMIC_KERNEL_REGISTRY: DynamicKernelRegistry = DynamicKernelRegistry::new();
-}
-
-/// Register a kernel globally
-pub fn register_kernel(kernel: Arc<dyn Kernel>) -> Result<()> {
-    DYNAMIC_KERNEL_REGISTRY.register(kernel)
-}
-
-/// Find a kernel globally
-pub fn find_kernel(name: &str, input_dtypes: &[Dtype]) -> Result<Option<Arc<dyn Kernel>>> {
-    DYNAMIC_KERNEL_REGISTRY.find_kernel(name, input_dtypes)
-}
-
-/// List all kernel names globally
-pub fn list_kernels() -> Result<Vec<String>> {
-    DYNAMIC_KERNEL_REGISTRY.list_kernels()
-}
-
-/// Get registry statistics globally
-pub fn get_registry_stats() -> Result<RegistryStats> {
-    DYNAMIC_KERNEL_REGISTRY.stats()
-}
-
-// Re-export ArrayView traits
-use crate::ufunc::{ArrayView, ArrayViewMut};

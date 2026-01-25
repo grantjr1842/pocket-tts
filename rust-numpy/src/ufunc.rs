@@ -234,37 +234,14 @@ where
         let in1 = unsafe { &*(inputs[1] as *const _ as *const Array<T>) };
         let output = unsafe { &mut *(outputs[0] as *mut _ as *mut Array<T>) };
 
-        // Handle where_mask
-        let mask = if let Some(m) = where_mask {
-            Some(crate::broadcasting::broadcast_to(m, output.shape())?)
-        } else {
-            None
-        };
+        // Try kernel registry for type-specific optimization
+        if let (Some(kernel), _) = crate::kernel_registry::get_kernel_registry()
+            .and_then(|registry| registry.get::<T>(crate::ufunc::UfuncType::Add)) {
+            kernel.execute(&[in0, in1], &mut [output])?;
+        }
 
-        // Fast path for C-contiguous arrays of same shape
-        if in0.is_c_contiguous()
-            && in1.is_c_contiguous()
-            && output.is_c_contiguous()
-            && in0.shape() == in1.shape()
-            && in0.shape() == output.shape()
-            && mask
-                .as_ref()
-                .map_or(true, |m| m.is_c_contiguous() && m.shape() == output.shape())
-        {
-            let d0 = in0.data.as_slice();
-            let d1 = in1.data.as_slice();
-            let out_slice = unsafe {
-                std::slice::from_raw_parts_mut(output.as_mut_ptr() as *mut T, output.size())
-            };
-
-            for i in 0..output.size() {
-                if mask
-                    .as_ref()
-                    .map_or(true, |m| *m.get_linear(i).unwrap_or(&false))
-                {
-                    out_slice[i] =
-                        (self.operation)(d0[in0.offset + i].clone(), d1[in1.offset + i].clone());
-                }
+        // Fall back to original implementation if no kernel available
+        self.execute_binary_with_mask(inputs, output, where_mask)?
             }
             return Ok(());
         }

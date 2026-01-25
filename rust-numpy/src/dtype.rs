@@ -318,6 +318,7 @@ impl Dtype {
 
     /// Parse dtype from string (NumPy compatible)
     pub fn from_str(s: &str) -> Result<Self, String> {
+        let s = s.strip_prefix("np.").unwrap_or(s);
         match s {
             "int8" | "i1" => Ok(Dtype::Int8 { byteorder: None }),
             "int16" | "i2" => Ok(Dtype::Int16 { byteorder: None }),
@@ -340,6 +341,10 @@ impl Dtype {
             "unicode" => Ok(Dtype::Unicode { length: None }),
             "object" => Ok(Dtype::Object),
             _ => {
+                if s.starts_with("dtype[") && s.ends_with(']') {
+                    let inner = &s[6..s.len() - 1];
+                    return Self::from_str(inner);
+                }
                 if s.starts_with("datetime64") {
                     let unit = s
                         .strip_prefix("datetime64[")
