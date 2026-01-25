@@ -651,7 +651,9 @@ def main():
             np.savetxt(
                 os.path.join(test_dir, f"{name}.csv"), arr.flatten(), delimiter=","
             )
-        except Exception:
+        except (ValueError, TypeError) as e:
+            # CSV export may fail for complex dtypes - this is expected for some arrays
+            # NumPy format is already saved above, so this is a nice-to-have feature
             pass
 
     print(f"Test data saved to {test_dir}")

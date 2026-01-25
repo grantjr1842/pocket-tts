@@ -3,6 +3,7 @@ use crate::broadcasting::{broadcast_arrays, compute_broadcast_shape};
 
 use crate::error::{NumPyError, Result};
 use crate::ufunc::UfuncRegistry;
+use crate::profiler::{is_profiling_enabled, profile_with_elements};
 use std::sync::Arc;
 
 /// Ufunc execution engine
@@ -44,20 +45,44 @@ impl UfuncEngine {
 
         // Create output array
         let output_shape = compute_broadcast_shape(a.shape(), b.shape());
-        let mut output = Array::zeros(output_shape);
+        let elements = output_shape.iter().product();
 
-        // Create array views for ufunc execution
-        let views: Vec<&dyn crate::ufunc::ArrayView> = broadcasted
-            .iter()
-            .map(|arr| arr as &dyn crate::ufunc::ArrayView)
-            .collect();
+        // Execute with optional profiling
+        let result: Result<Array<T>> = if is_profiling_enabled() {
+            profile_with_elements(ufunc_name, elements, || {
+                let mut output = Array::zeros(output_shape.clone());
 
-        let mut outputs: Vec<&mut dyn crate::ufunc::ArrayViewMut> = vec![&mut output];
+                // Create array views for ufunc execution
+                let views: Vec<&dyn crate::ufunc::ArrayView> = broadcasted
+                    .iter()
+                    .map(|arr| arr as &dyn crate::ufunc::ArrayView)
+                    .collect();
 
-        // Execute ufunc
-        ufunc.execute(&views, &mut outputs, where_mask)?;
+                let mut outputs: Vec<&mut dyn crate::ufunc::ArrayViewMut> = vec![&mut output];
 
-        Ok(output)
+                // Execute ufunc
+                ufunc.execute(&views, &mut outputs, where_mask)?;
+
+                Ok(output)
+            })
+        } else {
+            let mut output = Array::zeros(output_shape);
+
+            // Create array views for ufunc execution
+            let views: Vec<&dyn crate::ufunc::ArrayView> = broadcasted
+                .iter()
+                .map(|arr| arr as &dyn crate::ufunc::ArrayView)
+                .collect();
+
+            let mut outputs: Vec<&mut dyn crate::ufunc::ArrayViewMut> = vec![&mut output];
+
+            // Execute ufunc
+            ufunc.execute(&views, &mut outputs, where_mask)?;
+
+            Ok(output)
+        };
+
+        result
     }
 
     /// Execute comparison ufunc on two arrays
