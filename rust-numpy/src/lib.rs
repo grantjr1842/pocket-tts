@@ -116,6 +116,7 @@ pub mod array;
 pub mod array_creation;
 pub mod array_extra;
 pub mod array_manipulation;
+pub mod advanced_reductions;
 pub mod bitwise;
 pub mod broadcasting;
 pub mod char;
