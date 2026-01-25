@@ -6,9 +6,7 @@ Validates generated test cases against NumPy reference implementation
 
 import numpy as np
 import json
-import sys
 import traceback
-from pathlib import Path
 
 
 class NumPyTestValidator:
@@ -480,7 +478,7 @@ def main():
     )
 
     # Print summary
-    print(f"\nValidation Summary:")
+    print("\nValidation Summary:")
     print(f"Total tests: {report['summary']['total_tests']}")
     print(f"Passed: {report['summary']['passed']}")
     print(f"Failed: {report['summary']['failed']}")

@@ -37,7 +37,7 @@
 ### Supported Data Types
 
 | Category   | Types                             |
-|------------|-----------------------------------|
+| ---------- | --------------------------------- |
 | **16-bit** | `uint16_t`, `int16_t`, `_Float16` |
 | **32-bit** | `uint32_t`, `int32_t`, `float`    |
 | **64-bit** | `uint64_t`, `int64_t`, `double`   |
@@ -300,6 +300,7 @@ void x86simdsort::qsort(T* arr, size_t size, bool hasnan = false, bool descendin
 ```
 
 **Parameters:**
+
 - `arr`: Pointer to array data
 - `size`: Number of elements in array
 - `hasnan`: Whether array contains NaN values (floating-point only)
@@ -313,11 +314,13 @@ void x86simdsort::object_qsort(T* arr, U arrsize, Func key_func);
 ```
 
 **Parameters:**
+
 - `arr`: Pointer to array of custom objects
 - `arrsize`: Number of objects (any integer type)
 - `key_func`: Lambda function to extract sorting key
 
 **Key Function Signature:**
+
 ```cpp
 [](T obj) -> key_t { return key_value; }
 ```
@@ -332,6 +335,7 @@ void x86simdsort::keyvalue_qsort(T1* key, T2* val, size_t size, bool hasnan = fa
 ```
 
 **Parameters:**
+
 - `key`: Pointer to key array
 - `val`: Pointer to value array
 - `size`: Number of elements
@@ -384,7 +388,7 @@ The library automatically selects the optimal implementation based on CPU capabi
 Typical speedup factors compared to `std::sort`:
 
 | Data Type       | AVX-512 Speedup | AVX2 Speedup |
-|-----------------|-----------------|--------------|
+| --------------- | --------------- | ------------ |
 | 32-bit integers | 3-5x            | 2-3x         |
 | 64-bit integers | 2-4x            | 1.5-2.5x     |
 | 32-bit floats   | 3-5x            | 2-3x         |
@@ -484,6 +488,7 @@ void fast_sort(std::vector<T>& data, bool descending = false) {
 **Problem**: `error: 'x86simdsort' has not been declared`
 
 **Solution**: Ensure you're including the correct header:
+
 ```cpp
 #include "x86simdsort.h"  // Not <x86simdsort.h>
 ```
@@ -493,6 +498,7 @@ void fast_sort(std::vector<T>& data, bool descending = false) {
 **Problem**: Undefined reference to x86simdsort functions
 
 **Solution**:
+
 - Install the library: `sudo meson install`
 - Use pkg-config: `$(pkg-config --cflags --libs x86simdsortcpp)`
 - Or use as Meson subproject
@@ -502,6 +508,7 @@ void fast_sort(std::vector<T>& data, bool descending = false) {
 **Problem**: No performance improvement over std::sort
 
 **Solutions**:
+
 - Check CPU supports AVX2/AVX-512: `grep avx2 /proc/cpuinfo`
 - Ensure release build with optimizations: `-O3 -DNDEBUG`
 - Verify data types are supported
@@ -512,6 +519,7 @@ void fast_sort(std::vector<T>& data, bool descending = false) {
 **Problem**: Incorrect sorting with NaN values
 
 **Solution**: Always set `hasnan=true` when NaNs might be present:
+
 ```cpp
 bool hasnan = std::any_of(arr.begin(), arr.end(),
                          [](T x) { return std::isnan(x); });
@@ -523,6 +531,7 @@ x86simdsort::qsort(arr.data(), arr.size(), hasnan, false);
 **Problem**: Object sorting slower than expected
 
 **Solutions**:
+
 - Keep key function simple and fast
 - Avoid expensive operations in key function
 - Consider caching keys if they're expensive to compute
@@ -531,16 +540,19 @@ x86simdsort::qsort(arr.data(), arr.size(), hasnan, false);
 ### Platform-Specific Considerations
 
 #### Linux
+
 - Ensure proper CPU features are available
 - Use `-march=native` for best performance
 - Consider NUMA effects for large arrays
 
 #### Windows
+
 - Use appropriate Visual Studio version (2017+)
 - May need `/arch:AVX2` or `/arch:AVX512` flags
 - Check Windows SDK compatibility
 
 #### macOS
+
 - Xcode 10+ recommended
 - Apple Silicon uses different SIMD instructions (ARM NEON)
 - May need Rosetta for Intel SIMD instructions
@@ -583,7 +595,7 @@ python -m pip install numpy
 Typical NumPy sorting speedups:
 
 | Operation        | Speedup (AVX-512) | Speedup (AVX2) |
-|------------------|-------------------|----------------|
+| ---------------- | ----------------- | -------------- |
 | `np.sort()`      | 3-5x              | 2-3x           |
 | `np.argsort()`   | 2-4x              | 1.5-2.5x       |
 | `np.partition()` | 3-5x              | 2-3x           |

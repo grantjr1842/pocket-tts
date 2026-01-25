@@ -111,6 +111,7 @@ python scripts/ralph-dashboard-watch.py --serve --port 8735
 ## Features
 
 ### ProgressMonitor Features
+
 - Visual progress bar with customizable width
 - Percentage completion and item counts
 - Elapsed time and ETA calculation
@@ -119,12 +120,14 @@ python scripts/ralph-dashboard-watch.py --serve --port 8735
 - Thread-safe operation
 
 ### TaskProgress Features
+
 - Context manager for automatic cleanup
 - Step descriptions for better UX
 - Nested progress tracking support
 - Error handling with graceful exit
 
 ### SimpleHeartbeat Features
+
 - Lightweight heartbeat for unknown-duration tasks
 - Configurable interval
 - Automatic elapsed time tracking
@@ -133,6 +136,7 @@ python scripts/ralph-dashboard-watch.py --serve --port 8735
 ## Configuration Options
 
 ### ProgressMonitor
+
 - `total`: Total number of items/steps
 - `width`: Progress bar width (default: 50)
 - `show_heartbeat`: Enable heartbeat indicators (default: True)
@@ -140,12 +144,14 @@ python scripts/ralph-dashboard-watch.py --serve --port 8735
 - `show_eta`: Show estimated time remaining (default: True)
 
 ### TaskProgress
+
 - `task_name`: Human-readable task name
 - `total_steps`: Number of steps in the task
 - `show_progress`: Enable progress display (default: True)
 - `step_descriptions`: Optional mapping of step numbers to descriptions
 
 ### SimpleHeartbeat
+
 - `interval`: Heartbeat interval in seconds (default: 5.0)
 - `message`: Descriptive message for the heartbeat
 
@@ -181,6 +187,7 @@ python scripts/demo_progress.py
 ```
 
 This demonstrates:
+
 - Basic progress bars
 - Task-based workflows
 - Simple heartbeats
@@ -191,16 +198,19 @@ This demonstrates:
 ## Troubleshooting
 
 ### Progress bars not showing
+
 - Ensure the script imports `progress_monitor` correctly
 - Check that progress is being updated
 - Verify the terminal supports ANSI codes
 
 ### Heartbeat not working
+
 - Check that the heartbeat thread isn't being blocked
 - Ensure the interval is reasonable (not too short/long)
 - Make sure `stop()` is called when done
 
 ### Performance issues
+
 - Reduce update frequency for very fast operations
 - Use larger heartbeat intervals for long-running tasks
 - Consider disabling progress bars entirely with `--no-progress`
@@ -208,11 +218,13 @@ This demonstrates:
 ## Adding Progress to New Scripts
 
 1. Import the required classes:
+
    ```python
    from progress_monitor import ProgressMonitor, TaskProgress, SimpleHeartbeat
    ```
 
 2. Add fallback imports for compatibility:
+
    ```python
    try:
        from progress_monitor import ProgressMonitor
@@ -225,6 +237,7 @@ This demonstrates:
 3. Choose the appropriate tool based on your use case
 
 4. Add command-line options for disabling progress if needed:
+
    ```python
    parser.add_argument("--no-progress", action="store_true", help="Disable progress bars")
    ```

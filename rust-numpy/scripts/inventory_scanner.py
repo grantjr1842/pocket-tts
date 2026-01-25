@@ -64,7 +64,9 @@ def scan_rust_enums(src_path):
                 with open(file_path, "r", encoding="utf-8") as f:
                     content = f.read()
 
-                    matches = re.findall(r"pub\s+enum\s+([A-Za-z_][A-Za-z0-9_]*)", content)
+                    matches = re.findall(
+                        r"pub\s+enum\s+([A-Za-z_][A-Za-z0-9_]*)", content
+                    )
                     for enum_name in matches:
                         key = (module_name, enum_name)
                         if key in seen:
