@@ -10,6 +10,7 @@ python = "3.11.*"
 scipy = ">=1.15.2,<2"
 openblas = ">=0.3.31,<0.4"
 numpy = ">=2.2.6,<2.4"
+structlog = ">=25.5.0,<26"
 
 [pypi-dependencies]
 pocket-tts = { path = ".", editable = true }
