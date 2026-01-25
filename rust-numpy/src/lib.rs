@@ -136,6 +136,9 @@ pub mod fft;
 #[cfg(test)]
 mod fft_tests;
 pub mod iterator;
+pub mod kernel_api;
+pub mod kernel_impls;
+pub mod kernel_registry;
 pub mod linalg;
 pub mod layout_optimizer;
 pub mod math_ufuncs;
@@ -166,7 +169,7 @@ pub mod utils;
 pub mod window;
 
 #[cfg(test)]
-mod test_new_functions;
+mod kernel_tests;
 
 // Re-export key types for convenience
 pub use crate::array_extra::exports::*;
@@ -208,6 +211,11 @@ pub use statistics::{
 };
 pub use type_promotion::promote_types;
 // Complex utility functions
+pub use kernel_api::{
+    execute_binary, execute_unary, init_kernel_registry, register_binary_kernel,
+    register_unary_kernel,
+};
+pub use kernel_registry::{DynamicKernelRegistry, Kernel, PerformanceHint, RegistryStats};
 pub use math_ufuncs::{
     abs,
     absolute,
