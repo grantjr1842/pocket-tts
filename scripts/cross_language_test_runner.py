@@ -20,6 +20,7 @@ import traceback
 @dataclass
 class TestResult:
     """Result of a single test execution"""
+
     test_name: str
     function: str
     numpy_result: Any
@@ -75,7 +76,7 @@ class CrossLanguageTestFramework:
                 numpy_result=numpy_result,
                 rust_result=rust_result,
                 passed=passed,
-                performance={"numpy_time": numpy_time, "rust_time": rust_time}
+                performance={"numpy_time": numpy_time, "rust_time": rust_time},
             )
 
         except Exception as e:
@@ -85,7 +86,7 @@ class CrossLanguageTestFramework:
                 numpy_result=None,
                 rust_result=None,
                 passed=False,
-                error=str(e)
+                error=str(e),
             )
 
         self.results.append(result)
@@ -192,12 +193,10 @@ class CrossLanguageTestFramework:
                 "total": total_tests,
                 "passed": passed_tests,
                 "failed": failed_tests,
-                "pass_rate": passed_tests / total_tests if total_tests > 0 else 0
+                "pass_rate": passed_tests / total_tests if total_tests > 0 else 0,
             },
             "results": [asdict(r) for r in self.results],
-            "failures": [
-                asdict(r) for r in self.results if not r.passed
-            ]
+            "failures": [asdict(r) for r in self.results if not r.passed],
         }
 
         return report
@@ -205,14 +204,14 @@ class CrossLanguageTestFramework:
     def save_report(self, output_path: str):
         """Save report to JSON file"""
         report = self.generate_report()
-        with open(output_path, 'w') as f:
+        with open(output_path, "w") as f:
             json.dump(report, f, indent=2, default=str)
         print(f"Report saved to {output_path}")
 
 
 def load_test_suite(test_file: str) -> List[Dict]:
     """Load test suite from JSON file"""
-    with open(test_file, 'r') as f:
+    with open(test_file, "r") as f:
         return json.load(f)
 
 
@@ -220,24 +219,19 @@ def main():
     """Main entry point"""
     import argparse
 
-    parser = argparse.ArgumentParser(
-        description="Cross-Language Testing Framework"
-    )
+    parser = argparse.ArgumentParser(description="Cross-Language Testing Framework")
     parser.add_argument(
         "--test-file",
         default="test_suites/basic_operations.json",
-        help="Path to test suite JSON file"
+        help="Path to test suite JSON file",
     )
     parser.add_argument(
         "--output",
         default="test_results/results.json",
-        help="Output path for test results"
+        help="Output path for test results",
     )
     parser.add_argument(
-        "--tolerance",
-        type=float,
-        default=1e-10,
-        help="Numerical comparison tolerance"
+        "--tolerance", type=float, default=1e-10, help="Numerical comparison tolerance"
     )
 
     args = parser.parse_args()
@@ -266,9 +260,9 @@ def main():
 
     # Print summary
     report = framework.generate_report()
-    print("\n" + "="*60)
+    print("\n" + "=" * 60)
     print("Test Summary")
-    print("="*60)
+    print("=" * 60)
     print(f"Total:  {report['summary']['total']}")
     print(f"Passed: {report['summary']['passed']}")
     print(f"Failed: {report['summary']['failed']}")
@@ -281,30 +275,22 @@ def create_sample_test_suite():
         {
             "name": "array_creation_basic",
             "function": "array",
-            "inputs": [[1, 2, 3, 4, 5]]
+            "inputs": [[1, 2, 3, 4, 5]],
         },
-        {
-            "name": "array_sum",
-            "function": "sum",
-            "inputs": [[1, 2, 3, 4, 5]]
-        },
+        {"name": "array_sum", "function": "sum", "inputs": [[1, 2, 3, 4, 5]]},
         {
             "name": "array_mean",
             "function": "mean",
-            "inputs": [[1.0, 2.0, 3.0, 4.0, 5.0]]
+            "inputs": [[1.0, 2.0, 3.0, 4.0, 5.0]],
         },
-        {
-            "name": "array_std",
-            "function": "std",
-            "inputs": [[1.0, 2.0, 3.0, 4.0, 5.0]]
-        }
+        {"name": "array_std", "function": "std", "inputs": [[1.0, 2.0, 3.0, 4.0, 5.0]]},
     ]
 
     # Create directory
     Path("test_suites").mkdir(exist_ok=True)
 
     # Save sample tests
-    with open("test_suites/basic_operations.json", 'w') as f:
+    with open("test_suites/basic_operations.json", "w") as f:
         json.dump(sample_tests, f, indent=2)
 
     print("Created sample test suite: test_suites/basic_operations.json")
