@@ -43,7 +43,12 @@ from pocket_tts.utils.utils import (
 )
 from pocket_tts.utils.weights_loading import get_flow_lm_state_dict, get_mimi_state_dict
 
-torch.set_num_threads(1)
+# Configure PyTorch threading
+# Can be overridden via POCKET_TTS_NUM_THREADS environment variable
+# Default is 1 thread, but can be set to 2, 4, etc. for potential performance gains
+_default_threads = int(os.environ.get("POCKET_TTS_NUM_THREADS", "1"))
+torch.set_num_threads(_default_threads)
+logger.info(f"PyTorch configured with {_default_threads} thread(s)")
 logger = logging.getLogger(__name__)
 
 
