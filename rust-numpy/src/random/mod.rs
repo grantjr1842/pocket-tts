@@ -7,15 +7,16 @@
 
 //! Random number generation utils
 
+pub mod bit_generator;
+pub mod generator;
 pub mod random_state;
 
 use crate::array::Array;
 use crate::dtype::Dtype;
 use crate::error::NumPyError;
 use num_traits::NumCast;
-use rand::{rngs::StdRng, SeedableRng};
 use rand_distr::uniform::SampleUniform;
-pub use random_state::{RandomGenerator, RandomState};
+pub use random_state::RandomState;
 use std::cell::RefCell;
 
 thread_local! {
@@ -47,7 +48,7 @@ pub fn uniform<T: Clone + PartialOrd + SampleUniform + Default + 'static>(
     DEFAULT_RNG.with(|rng| rng.borrow_mut().uniform(low, high, shape))
 }
 
-pub fn normal<T: Clone + PartialOrd + SampleUniform + Default + 'static>(
+pub fn normal<T: Clone + PartialOrd + SampleUniform + Default + 'static + Into<f64> + From<f64>>(
     mean: T,
     std: T,
     shape: &[usize],
@@ -55,365 +56,225 @@ pub fn normal<T: Clone + PartialOrd + SampleUniform + Default + 'static>(
     DEFAULT_RNG.with(|rng| rng.borrow_mut().normal(mean, std, shape))
 }
 
-pub fn standard_normal<T: Clone + From<f64> + PartialOrd + SampleUniform + Default + 'static>(
+pub fn standard_normal<
+    T: Clone + PartialOrd + SampleUniform + Default + 'static + Into<f64> + From<f64>,
+>(
     shape: &[usize],
 ) -> Result<Array<T>, NumPyError> {
-    normal(T::from(0.0), T::from(1.0), shape)
+    DEFAULT_RNG.with(|rng| rng.borrow_mut().standard_normal(shape))
 }
 
-pub fn permutation(n: usize) -> Result<Array<usize>, NumPyError> {
-    DEFAULT_RNG.with(|rng| rng.borrow_mut().permutation(n))
-}
-
-pub fn choice<T: Clone + Default + 'static>(
-    a: &Array<T>,
-    size: usize,
+pub fn binomial<T: Clone + Default + 'static + From<f64>>(
+    n: u64,
+    p: f64,
+    shape: &[usize],
 ) -> Result<Array<T>, NumPyError> {
-    DEFAULT_RNG.with(|rng| rng.borrow_mut().choice(a, size))
+    DEFAULT_RNG.with(|rng| rng.borrow_mut().binomial(n, p, shape))
 }
 
-pub fn sample<T: Clone + Default + 'static>(
-    a: &Array<T>,
-    k: usize,
+pub fn poisson<T: Clone + Default + 'static + From<f64>>(
+    lam: f64,
+    shape: &[usize],
 ) -> Result<Array<T>, NumPyError> {
-    DEFAULT_RNG.with(|rng| rng.borrow_mut().sample(a, k))
+    DEFAULT_RNG.with(|rng| rng.borrow_mut().poisson(lam, shape))
 }
 
-pub struct SeedSequence {
-    seed: u64,
-    position: u64,
+pub fn exponential<T: Clone + Default + 'static + From<f64>>(
+    scale: f64,
+    shape: &[usize],
+) -> Result<Array<T>, NumPyError> {
+    DEFAULT_RNG.with(|rng| rng.borrow_mut().exponential(scale, shape))
 }
 
-impl SeedSequence {
-    pub fn new(seed: u64) -> Self {
-        Self { seed, position: 0 }
-    }
+pub fn gamma<T: Clone + Default + 'static + From<f64>>(
+    shape_param: f64,
+    scale: f64,
+    shape: &[usize],
+) -> Result<Array<T>, NumPyError> {
+    DEFAULT_RNG.with(|rng| rng.borrow_mut().gamma(shape_param, scale, shape))
+}
 
-    pub fn next(&mut self) -> u64 {
-        use rand::RngCore;
-        let mut rng = StdRng::seed_from_u64(self.seed + self.position);
-        let next_seed = rng.next_u64();
-        self.position += 1;
-        next_seed
-    }
+pub fn beta<T: Clone + Default + 'static + From<f64>>(
+    a: f64,
+    b: f64,
+    shape: &[usize],
+) -> Result<Array<T>, NumPyError> {
+    DEFAULT_RNG.with(|rng| rng.borrow_mut().beta(a, b, shape))
+}
 
-    pub fn spawn(&mut self) -> RandomState {
-        RandomState::seed_from_u64(self.next())
-    }
+pub fn chisquare<T: Clone + Default + 'static + From<f64>>(
+    df: f64,
+    shape: &[usize],
+) -> Result<Array<T>, NumPyError> {
+    DEFAULT_RNG.with(|rng| rng.borrow_mut().chisquare(df, shape))
+}
+
+pub fn gumbel<T: Clone + Default + 'static + From<f64>>(
+    loc: f64,
+    scale: f64,
+    shape: &[usize],
+) -> Result<Array<T>, NumPyError> {
+    DEFAULT_RNG.with(|rng| rng.borrow_mut().gumbel(loc, scale, shape))
+}
+
+pub fn logistic<T: Clone + Default + 'static + From<f64>>(
+    loc: f64,
+    scale: f64,
+    shape: &[usize],
+) -> Result<Array<T>, NumPyError> {
+    DEFAULT_RNG.with(|rng| rng.borrow_mut().logistic(loc, scale, shape))
+}
+
+pub fn lognormal<T: Clone + Default + 'static + From<f64>>(
+    mean: f64,
+    sigma: f64,
+    shape: &[usize],
+) -> Result<Array<T>, NumPyError> {
+    DEFAULT_RNG.with(|rng| rng.borrow_mut().lognormal(mean, sigma, shape))
+}
+
+pub fn multinomial<T: Clone + Default + 'static + From<f64>>(
+    n: u64,
+    pvals: &[f64],
+    size: Option<&[usize]>,
+) -> Result<Array<T>, NumPyError> {
+    DEFAULT_RNG.with(|rng| rng.borrow_mut().multinomial(n, pvals, size))
+}
+
+pub fn dirichlet<T: Clone + Default + 'static + From<f64>>(
+    alpha: &[f64],
+    size: Option<&[usize]>,
+) -> Result<Array<T>, NumPyError> {
+    DEFAULT_RNG.with(|rng| rng.borrow_mut().dirichlet(alpha, size))
+}
+
+pub fn geometric<T: Clone + Default + 'static + From<f64>>(
+    p: f64,
+    shape: &[usize],
+) -> Result<Array<T>, NumPyError> {
+    DEFAULT_RNG.with(|rng| rng.borrow_mut().geometric(p, shape))
+}
+
+pub fn negative_binomial<T: Clone + Default + 'static + From<f64>>(
+    n: u64,
+    p: f64,
+    shape: &[usize],
+) -> Result<Array<T>, NumPyError> {
+    DEFAULT_RNG.with(|rng| rng.borrow_mut().negative_binomial(n, p, shape))
+}
+
+pub fn hypergeometric<T: Clone + Default + 'static + From<f64>>(
+    ngood: u64,
+    nbad: u64,
+    nsample: u64,
+    shape: &[usize],
+) -> Result<Array<T>, NumPyError> {
+    DEFAULT_RNG.with(|rng| rng.borrow_mut().hypergeometric(ngood, nbad, nsample, shape))
+}
+
+pub fn logseries<T: Clone + Default + 'static + From<f64>>(
+    p: f64,
+    shape: &[usize],
+) -> Result<Array<T>, NumPyError> {
+    DEFAULT_RNG.with(|rng| rng.borrow_mut().logseries(p, shape))
+}
+
+pub fn rayleigh<T: Clone + Default + 'static + From<f64>>(
+    scale: f64,
+    shape: &[usize],
+) -> Result<Array<T>, NumPyError> {
+    DEFAULT_RNG.with(|rng| rng.borrow_mut().rayleigh(scale, shape))
+}
+
+pub fn wald<T: Clone + Default + 'static + From<f64>>(
+    mean: f64,
+    scale: f64,
+    shape: &[usize],
+) -> Result<Array<T>, NumPyError> {
+    DEFAULT_RNG.with(|rng| rng.borrow_mut().wald(mean, scale, shape))
+}
+
+pub fn weibull<T: Clone + Default + 'static + From<f64>>(
+    a: f64,
+    shape: &[usize],
+) -> Result<Array<T>, NumPyError> {
+    DEFAULT_RNG.with(|rng| rng.borrow_mut().weibull(a, shape))
+}
+
+pub fn triangular<T: Clone + Default + 'static + From<f64>>(
+    left: f64,
+    mode: f64,
+    right: f64,
+    shape: &[usize],
+) -> Result<Array<T>, NumPyError> {
+    DEFAULT_RNG.with(|rng| rng.borrow_mut().triangular(left, mode, right, shape))
+}
+
+pub fn pareto<T: Clone + Default + 'static + From<f64>>(
+    a: f64,
+    shape: &[usize],
+) -> Result<Array<T>, NumPyError> {
+    DEFAULT_RNG.with(|rng| rng.borrow_mut().pareto(a, shape))
+}
+
+pub fn zipf<T: Clone + Default + 'static + From<f64>>(
+    a: f64,
+    shape: &[usize],
+) -> Result<Array<T>, NumPyError> {
+    DEFAULT_RNG.with(|rng| rng.borrow_mut().zipf(a, shape))
+}
+
+pub fn standard_cauchy<T: Clone + Default + 'static + From<f64>>(
+    shape: &[usize],
+) -> Result<Array<T>, NumPyError> {
+    DEFAULT_RNG.with(|rng| rng.borrow_mut().standard_cauchy(shape))
+}
+
+pub fn standard_exponential<T: Clone + Default + 'static + From<f64>>(
+    shape: &[usize],
+) -> Result<Array<T>, NumPyError> {
+    DEFAULT_RNG.with(|rng| rng.borrow_mut().standard_exponential(shape))
+}
+
+pub fn standard_gamma<T: Clone + Default + 'static + From<f64>>(
+    shape_param: f64,
+    shape: &[usize],
+) -> Result<Array<T>, NumPyError> {
+    DEFAULT_RNG.with(|rng| rng.borrow_mut().standard_gamma(shape_param, shape))
+}
+
+pub fn bernoulli<T: Clone + Default + 'static + From<f64>>(
+    p: f64,
+    shape: &[usize],
+) -> Result<Array<T>, NumPyError> {
+    DEFAULT_RNG.with(|rng| rng.borrow_mut().bernoulli(p, shape))
+}
+
+pub fn f<T: Clone + Default + 'static + From<f64>>(
+    dfnum: f64,
+    dfden: f64,
+    shape: &[usize],
+) -> Result<Array<T>, NumPyError> {
+    DEFAULT_RNG.with(|rng| rng.borrow_mut().f(dfnum, dfden, shape))
+}
+
+pub fn power<T: Clone + Default + 'static + From<f64>>(
+    a: f64,
+    shape: &[usize],
+) -> Result<Array<T>, NumPyError> {
+    DEFAULT_RNG.with(|rng| rng.borrow_mut().power(a, shape))
+}
+
+pub fn vonmises<T: Clone + Default + 'static + From<f64>>(
+    mu: f64,
+    kappa: f64,
+    shape: &[usize],
+) -> Result<Array<T>, NumPyError> {
+    DEFAULT_RNG.with(|rng| rng.borrow_mut().vonmises(mu, kappa, shape))
 }
 
 pub fn seed(seed: u64) {
     DEFAULT_RNG.with(|rng| {
         *rng.borrow_mut() = RandomState::seed_from_u64(seed);
     });
-}
-
-pub fn get_state() -> u64 {
-    use rand::RngCore;
-    DEFAULT_RNG.with(|rng| rng.borrow_mut().rng.next_u64())
-}
-
-pub fn set_state(state: u64) {
-    DEFAULT_RNG.with(|rng| {
-        *rng.borrow_mut() = RandomState::seed_from_u64(state);
-    });
-}
-
-pub fn binomial<T>(n: isize, p: T, size: Option<&[usize]>) -> Result<Array<T>, NumPyError>
-where
-    T: Clone + Into<f64> + From<f64> + Default + 'static,
-{
-    DEFAULT_RNG.with(|rng| rng.borrow_mut().binomial(n, p, size))
-}
-
-pub fn poisson<T>(lam: T, size: Option<&[usize]>) -> Result<Array<T>, NumPyError>
-where
-    T: Clone + Into<f64> + From<f64> + Default + 'static,
-{
-    DEFAULT_RNG.with(|rng| rng.borrow_mut().poisson(lam, size))
-}
-
-pub fn exponential<T>(scale: T, size: Option<&[usize]>) -> Result<Array<T>, NumPyError>
-where
-    T: Clone + Into<f64> + From<f64> + Default + 'static,
-{
-    DEFAULT_RNG.with(|rng| rng.borrow_mut().exponential(scale, size))
-}
-
-pub fn gamma<T>(shape: T, scale: T, size: Option<&[usize]>) -> Result<Array<T>, NumPyError>
-where
-    T: Clone + Into<f64> + From<f64> + Default + 'static,
-{
-    DEFAULT_RNG.with(|rng| rng.borrow_mut().gamma(shape, scale, size))
-}
-
-pub fn beta<T>(a: T, b: T, size: Option<&[usize]>) -> Result<Array<T>, NumPyError>
-where
-    T: Clone + Into<f64> + From<f64> + Default + 'static,
-{
-    DEFAULT_RNG.with(|rng| rng.borrow_mut().beta(a, b, size))
-}
-
-pub fn chisquare<T>(df: T, size: Option<&[usize]>) -> Result<Array<T>, NumPyError>
-where
-    T: Clone + Into<f64> + From<f64> + Default + 'static,
-{
-    DEFAULT_RNG.with(|rng| rng.borrow_mut().chisquare(df, size))
-}
-
-pub fn gumbel<T>(loc: T, scale: T, size: Option<&[usize]>) -> Result<Array<T>, NumPyError>
-where
-    T: Clone + Into<f64> + From<f64> + Default + 'static,
-{
-    DEFAULT_RNG.with(|rng| rng.borrow_mut().gumbel(loc, scale, size))
-}
-
-pub fn laplace<T>(loc: T, scale: T, size: Option<&[usize]>) -> Result<Array<T>, NumPyError>
-where
-    T: Clone + Into<f64> + From<f64> + Default + 'static,
-{
-    DEFAULT_RNG.with(|rng| rng.borrow_mut().laplace(loc, scale, size))
-}
-
-pub fn lognormal<T>(mean: T, sigma: T, size: Option<&[usize]>) -> Result<Array<T>, NumPyError>
-where
-    T: Clone + Into<f64> + From<f64> + Default + 'static,
-{
-    DEFAULT_RNG.with(|rng| rng.borrow_mut().lognormal(mean, sigma, size))
-}
-
-pub fn multinomial<T>(
-    n: isize,
-    pvals: &Array<T>,
-    size: Option<&[usize]>,
-) -> Result<Array<T>, NumPyError>
-where
-    T: Clone + Into<f64> + From<f64> + Default + 'static,
-{
-    DEFAULT_RNG.with(|rng| rng.borrow_mut().multinomial(n, pvals, size))
-}
-
-pub fn dirichlet<T>(alpha: &Array<T>, size: Option<&[usize]>) -> Result<Array<T>, NumPyError>
-where
-    T: Clone + Into<f64> + From<f64> + Default + 'static,
-{
-    DEFAULT_RNG.with(|rng| rng.borrow_mut().dirichlet(alpha, size))
-}
-
-pub fn geometric<T>(p: T, size: Option<&[usize]>) -> Result<Array<T>, NumPyError>
-where
-    T: Clone + Into<f64> + From<f64> + Default + 'static,
-{
-    DEFAULT_RNG.with(|rng| rng.borrow_mut().geometric(p, size))
-}
-
-pub fn negative_binomial<T>(n: isize, p: T, size: Option<&[usize]>) -> Result<Array<T>, NumPyError>
-where
-    T: Clone + Into<f64> + From<f64> + Default + 'static,
-{
-    DEFAULT_RNG.with(|rng| rng.borrow_mut().negative_binomial(n, p, size))
-}
-
-pub fn hypergeometric<T>(
-    ngood: isize,
-    nbad: isize,
-    nsample: isize,
-    size: Option<&[usize]>,
-) -> Result<Array<T>, NumPyError>
-where
-    T: Clone + Into<f64> + From<f64> + Default + 'static,
-{
-    DEFAULT_RNG.with(|rng| rng.borrow_mut().hypergeometric(ngood, nbad, nsample, size))
-}
-
-pub fn logseries<T>(p: T, size: Option<&[usize]>) -> Result<Array<T>, NumPyError>
-where
-    T: Clone + Into<f64> + From<f64> + Default + 'static,
-{
-    DEFAULT_RNG.with(|rng| rng.borrow_mut().logseries(p, size))
-}
-
-pub fn rayleigh<T>(scale: T, size: Option<&[usize]>) -> Result<Array<T>, NumPyError>
-where
-    T: Clone + Into<f64> + From<f64> + Default + 'static,
-{
-    DEFAULT_RNG.with(|rng| rng.borrow_mut().rayleigh(scale, size))
-}
-
-pub fn wald<T>(mean: T, scale: T, size: Option<&[usize]>) -> Result<Array<T>, NumPyError>
-where
-    T: Clone + Into<f64> + From<f64> + Default + 'static,
-{
-    DEFAULT_RNG.with(|rng| rng.borrow_mut().wald(mean, scale, size))
-}
-
-pub fn weibull<T>(a: T, size: Option<&[usize]>) -> Result<Array<T>, NumPyError>
-where
-    T: Clone + Into<f64> + From<f64> + Default + 'static,
-{
-    DEFAULT_RNG.with(|rng| rng.borrow_mut().weibull(a, size))
-}
-
-pub fn triangular<T>(
-    left: T,
-    mode: T,
-    right: T,
-    size: Option<&[usize]>,
-) -> Result<Array<T>, NumPyError>
-where
-    T: Clone + Into<f64> + From<f64> + Default + 'static,
-{
-    DEFAULT_RNG.with(|rng| rng.borrow_mut().triangular(left, mode, right, size))
-}
-
-pub fn pareto<T>(a: T, size: Option<&[usize]>) -> Result<Array<T>, NumPyError>
-where
-    T: Clone + Into<f64> + From<f64> + Default + 'static,
-{
-    DEFAULT_RNG.with(|rng| rng.borrow_mut().pareto(a, size))
-}
-
-pub fn zipf<T>(a: T, size: Option<&[usize]>) -> Result<Array<T>, NumPyError>
-where
-    T: Clone + Into<f64> + From<f64> + Default + 'static,
-{
-    DEFAULT_RNG.with(|rng| rng.borrow_mut().zipf(a, size))
-}
-
-pub fn standard_cauchy<T>(size: Option<&[usize]>) -> Result<Array<T>, NumPyError>
-where
-    T: Clone + Into<f64> + From<f64> + Default + 'static,
-{
-    DEFAULT_RNG.with(|rng| rng.borrow_mut().standard_cauchy(size))
-}
-
-pub fn standard_exponential<T>(size: Option<&[usize]>) -> Result<Array<T>, NumPyError>
-where
-    T: Clone + Into<f64> + From<f64> + Default + 'static,
-{
-    DEFAULT_RNG.with(|rng| rng.borrow_mut().standard_exponential(size))
-}
-
-pub fn standard_gamma<T>(shape: T, size: Option<&[usize]>) -> Result<Array<T>, NumPyError>
-where
-    T: Clone + Into<f64> + From<f64> + Default + 'static,
-{
-    DEFAULT_RNG.with(|rng| rng.borrow_mut().standard_gamma(shape, size))
-}
-
-pub fn shuffle<T: Clone + Default + 'static>(arr: &mut Array<T>) -> Result<(), NumPyError> {
-    DEFAULT_RNG.with(|rng| rng.borrow_mut().shuffle(arr))
-}
-
-pub fn rand<T>(d0: usize, d1: Option<usize>) -> Result<Array<T>, NumPyError>
-where
-    T: Clone + Into<f64> + From<f64> + Default + 'static,
-{
-    DEFAULT_RNG.with(|rng| rng.borrow_mut().rand(d0, d1))
-}
-
-pub fn randn<T>(d0: usize, d1: Option<usize>) -> Result<Array<T>, NumPyError>
-where
-    T: Clone + Into<f64> + From<f64> + Default + 'static,
-{
-    DEFAULT_RNG.with(|rng| rng.borrow_mut().randn(d0, d1))
-}
-
-pub fn random_integers<T>(
-    low: T,
-    high: Option<T>,
-    size: Option<&[usize]>,
-) -> Result<Array<T>, NumPyError>
-where
-    T: Clone + PartialOrd + SampleUniform + Default + NumCast + 'static,
-{
-    let high_val = high.unwrap_or(NumCast::from(100).unwrap_or_default());
-    let shape = size.unwrap_or(&[1]);
-    randint(low, high_val, shape)
-}
-
-pub fn random_sample<T>(size: Option<&[usize]>) -> Result<Array<T>, NumPyError>
-where
-    T: Clone
-        + Into<f64>
-        + From<f64>
-        + PartialOrd
-        + rand_distr::uniform::SampleUniform
-        + Default
-        + 'static,
-{
-    let shape = size.unwrap_or(&[1]);
-    uniform(T::from(0.0), T::from(1.0), shape)
-}
-
-pub fn ranf<T>(size: Option<&[usize]>) -> Result<Array<T>, NumPyError>
-where
-    T: Clone
-        + Into<f64>
-        + From<f64>
-        + rand_distr::uniform::SampleUniform
-        + Default
-        + PartialOrd
-        + 'static,
-{
-    random_sample(size)
-}
-
-pub fn legacy_sample<T>(size: Option<&[usize]>) -> Result<Array<T>, NumPyError>
-where
-    T: Clone
-        + Into<f64>
-        + From<f64>
-        + rand_distr::uniform::SampleUniform
-        + Default
-        + PartialOrd
-        + 'static,
-{
-    random_sample(size)
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_random_generation() {
-        let arr = random::<f64>(&[2, 3], Dtype::Float64 { byteorder: None }).unwrap();
-        assert_eq!(arr.shape(), vec![2, 3]);
-    }
-
-    #[test]
-    fn test_randint() {
-        let arr = randint(0, 10, &[2, 2]).unwrap();
-        assert_eq!(arr.shape(), vec![2, 2]);
-    }
-
-    #[test]
-    fn test_permutation() {
-        let perm = permutation(5).unwrap();
-        assert_eq!(perm.shape(), vec![5]);
-        let mut sorted = perm.to_vec();
-        sorted.sort();
-        assert_eq!(sorted, vec![0, 1, 2, 3, 4]);
-    }
-
-    #[test]
-    fn test_random_state_struct() {
-        let mut rs = RandomState::new();
-        let arr = rs.normal(0.0, 1.0, &[2, 2]).unwrap();
-        assert_eq!(arr.shape(), vec![2, 2]);
-
-        let mut rs_seeded = RandomState::seed_from_u64(42);
-        let arr1 = rs_seeded.uniform::<f64>(0.0, 1.0, &[5]).unwrap();
-
-        let mut rs_seeded_again = RandomState::seed_from_u64(42);
-        let arr2 = rs_seeded_again.uniform::<f64>(0.0, 1.0, &[5]).unwrap();
-
-        // Check reproducibility
-        for i in 0..5 {
-            let val1 = *arr1.get_linear(i).unwrap();
-            let val2 = *arr2.get_linear(i).unwrap();
-            assert!((val1 - val2).abs() < 1e-10);
-        }
-    }
 }
