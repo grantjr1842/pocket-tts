@@ -13,6 +13,8 @@ numpy = "~=2.3.5"
 websockets = "~=16.0"
 pre-commit = "~=4.5.1"
 pipdeptree = ">=2.30.0,<3"
+structlog = ">=25.5.0,<26"
+pytest-cov = ">=7.0.0,<8"
 
 [pypi-dependencies]
 pocket-tts = { path = ".", editable = true }
