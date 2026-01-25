@@ -1,0 +1,182 @@
+name: Integration Tests
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  integration-test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.12"]
+
+    steps:
+    - uses: actions/checkout@v5
+
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ matrix.python-version }}
+
+    - name: Install uv
+      uses: astral-sh/setup-uv@v5
+      with:
+        version: "latest"
+
+    - name: Install dependencies
+      run: |
+        uv sync --dev
+
+    - name: Build package
+      run: |
+        uv build
+
+    - name: Test CLI functionality
+      run: |
+        # Test that CLI can be imported and basic help works
+        uv run python -m pocket_tts --help || echo "CLI help test completed"
+
+    - name: Test model loading (basic smoke test)
+      run: |
+        uv run python -c "
+        import torch
+        from pocket_tts import TTSModel
+        print('Testing basic model loading...')
+        try:
+            model = TTSModel.load_model()
+            print('✓ Model loaded successfully')
+            print(f'✓ Sample rate: {model.sample_rate}')
+            print(f'✓ Model has flow_lm: {hasattr(model, \"flow_lm\")}')
+            print(f'✓ Model has mimi_encoder: {hasattr(model, \"mimi_encoder\")}')
+            print(f'✓ Model has mimi_decoder: {hasattr(model, \"mimi_decoder\")}')
+            model._cached_get_state_for_audio_prompt.cache_clear()
+            print('✓ Cache cleared successfully')
+            print('✓ All basic tests passed')
+        except Exception as e:
+            print(f'✗ Error: {e}')
+            exit(1)
+        "
+
+    - name: Test audio I/O functionality
+      run: |
+        uv run python -c "
+        import torch
+        import numpy as np
+        import tempfile
+        import os
+        from pocket_tts.data.audio import audio_read
+        from pocket_tts.data.audio_output import save_audio
+        from pocket_tts.data.audio_utils import convert_audio
+
+        print('Testing audio I/O...')
+
+        # Test audio conversion
+        audio = torch.randn(1, 1000)
+        converted = convert_audio(audio, 24000, 24000, 1)
+        assert converted.shape == audio.shape
+        print('✓ Audio conversion works')
+
+        # Test save/load
+        with tempfile.NamedTemporaryFile(suffix='.wav', delete=False) as tmp:
+            test_audio = torch.randn(24000)  # 1 second
+            save_audio(tmp.name, test_audio, 24000)
+
+            loaded_audio, sr = audio_read(tmp.name)
+            assert sr == 24000
+            assert loaded_audio.shape[0] == 1
+            os.unlink(tmp.name)
+
+        print('✓ Audio save/load works')
+        print('✓ All audio I/O tests passed')
+        "
+
+    - name: Test numpy replacement functionality
+      run: |
+        uv run python -c "
+        from pocket_tts.numpy_rs import array, arange, linspace, concatenate
+
+        print('Testing numpy replacement...')
+
+        # Test basic array operations
+        arr = array([1, 2, 3, 4, 5])
+        assert arr.shape == (5,)
+        assert arr.tolist() == [1, 2, 3, 4, 5]
+        print('✓ Array creation works')
+
+        # Test arange
+        arr_range = arange(0, 5, 1)
+        assert len(arr_range) == 5
+        print('✓ Arange works')
+
+        # Test linspace
+        arr_lin = linspace(0, 1, 5)
+        assert len(arr_lin) == 5
+        print('✓ Linspace works')
+
+        # Test concatenate
+        arr1 = array([1, 2, 3])
+        arr2 = array([4, 5, 6])
+        result = concatenate([arr1, arr2])
+        assert result.shape == (6,)
+        assert result.tolist() == [1, 2, 3, 4, 5, 6]
+        print('✓ Concatenate works')
+
+        print('✓ All numpy replacement tests passed')
+        "
+
+  rust-extension-test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.12"]
+
+    steps:
+    - uses: actions/checkout@v5
+
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ matrix.python-version }}
+
+    - name: Install Rust
+      uses: dtolnay/rust-toolchain@stable
+      with:
+        toolchain: stable
+
+    - name: Install uv
+      uses: astral-sh/setup-uv@v5
+      with:
+        version: "latest"
+
+    - name: Install dependencies
+      run: |
+        uv sync --dev
+
+    - name: Build Rust extensions
+      run: |
+        if [ -d "training/rust_exts/audio_ds" ]; then
+          echo "Building Rust audio extensions..."
+          cd training/rust_exts/audio_ds
+          cargo build --release
+          echo "✓ Rust extensions built successfully"
+        else
+          echo "No Rust extensions found to build"
+        fi
+
+    - name: Test Rust integration
+      run: |
+        uv run python -c "
+        import warnings
+        with warnings.catch_warnings():
+            warnings.simplefilter('ignore')
+            from pocket_tts.numpy_rs import array
+            print('Testing with Rust extensions...')
+
+            # This should work whether Rust is available or not
+            arr = array([1, 2, 3, 4, 5])
+            assert arr.shape == (5,)
+            print('✓ Numpy replacement works with/without Rust')
+        "

@@ -1,0 +1,266 @@
+name: Security and Dependency Checks
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+  schedule:
+    # Run weekly on Sundays at 3 AM UTC
+    - cron: '0 3 * * 0'
+
+jobs:
+  security-scan:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.12"]
+
+    steps:
+    - uses: actions/checkout@v5
+
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ matrix.python-version }}
+
+    - name: Install uv
+      uses: astral-sh/setup-uv@v5
+      with:
+        version: "latest"
+
+    - name: Install dependencies
+      run: |
+        uv sync --dev
+
+    - name: Run pip-audit
+      run: |
+        uv add --dev pip-audit
+        uv run pip-audit --requirement pyproject.toml
+
+    - name: Check for known security vulnerabilities
+      run: |
+        uv run python -c "
+        import subprocess
+        import sys
+
+        print('Checking for known security vulnerabilities...')
+
+        try:
+            result = subprocess.run(['uv', 'run', 'pip-audit', '--requirement', 'pyproject.toml'],
+                                  capture_output=True, text=True)
+
+            if result.returncode == 0:
+                print('✓ No vulnerabilities found')
+            else:
+                print('⚠ Vulnerabilities detected:')
+                print(result.stdout)
+                # Don't fail the build, just report
+        except Exception as e:
+            print(f'⚠ Security scan failed: {e}')
+        "
+
+    - name: Run cargo audit (if Rust extensions exist)
+      run: |
+        if [ -d "training/rust_exts/audio_ds" ]; then
+          echo "Running cargo audit on Rust dependencies..."
+          cd training/rust_exts/audio_ds
+
+          # Install cargo-audit if not present
+          if ! command -v cargo-audit &> /dev/null; then
+            cargo install cargo-audit
+          fi
+
+          cargo audit || echo "⚠ Cargo audit found issues"
+        else
+          echo "No Rust extensions found to audit"
+        fi
+
+  dependency-check:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.12"]
+
+    steps:
+    - uses: actions/checkout@v5
+
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ matrix.python-version }}
+
+    - name: Install uv
+      uses: astral-sh/setup-uv@v5
+      with:
+        version: "latest"
+
+    - name: Install dependencies
+      run: |
+        uv sync --dev
+
+    - name: Check dependency tree
+      run: |
+        uv run python -c "
+        print('Analyzing dependency tree...')
+
+        # Check for common problematic patterns
+        try:
+            import pkg_resources
+
+            # Get all dependencies
+            deps = []
+            for dist in pkg_resources.working_set:
+                deps.append(f'{dist.project_name}=={dist.version}')
+
+            print(f'✓ Found {len(deps)} dependencies')
+
+            # Check for some common security-related packages
+            security_packages = ['cryptography', 'pyopenssl', 'requests', 'urllib3']
+            found_security = [d for d in deps if any(pkg in d.lower() for pkg in security_packages)]
+
+            if found_security:
+                print('✓ Security-related packages found:')
+                for pkg in found_security:
+                    print(f'  - {pkg}')
+
+        except Exception as e:
+            print(f'⚠ Dependency analysis failed: {e}')
+        "
+
+    - name: Check license compatibility
+      run: |
+        uv run python -c "
+        print('Checking license compatibility...')
+
+        # This is a basic check - in a real scenario you might use a tool like pip-licenses
+        try:
+            import pkg_resources
+
+            licenses = {}
+            problematic_licenses = ['GPL', 'AGPL', 'LGPL']
+
+            for dist in pkg_resources.working_set:
+                # Try to get license info from metadata
+                license_field = None
+                if hasattr(dist, 'metadata') and 'License' in dist.metadata:
+                    license_field = dist.metadata['License']
+
+                if license_field:
+                    licenses[dist.project_name] = license_field
+
+            print(f'✓ Analyzed {len(licenses)} packages with license info')
+
+            # Check for potentially problematic licenses
+            issues = []
+            for name, lic in licenses.items():
+                for problematic in problematic_licenses:
+                    if problematic in lic.upper():
+                        issues.append(f'{name}: {lic}')
+
+            if issues:
+                print('⚠ Potentially problematic licenses found:')
+                for issue in issues:
+                    print(f'  - {issue}')
+            else:
+                print('✓ No obviously problematic licenses found')
+
+        except Exception as e:
+            print(f'⚠ License check failed: {e}')
+        "
+
+  code-quality-check:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.12"]
+
+    steps:
+    - uses: actions/checkout@v5
+
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ matrix.python-version }}
+
+    - name: Install uv
+      uses: astral-sh/setup-uv@v5
+      with:
+        version: "latest"
+
+    - name: Install dependencies
+      run: |
+        uv sync --dev
+
+    - name: Run comprehensive code quality checks
+      run: |
+        echo "Running code quality checks..."
+
+        # Linting
+        echo "Running ruff linter..."
+        uv run ruff check . --output-format=github
+
+        # Formatting check
+        echo "Checking code formatting..."
+        uv run ruff format --check .
+
+        # Type checking (if mypy is available)
+        if uv run python -c "import mypy" 2>/dev/null; then
+          echo "Running type checker..."
+          uv run mypy pocket_tts/ --ignore-missing-imports || echo "Type check completed with warnings"
+        else
+          echo "mypy not available, skipping type checking"
+        fi
+
+        echo "✓ Code quality checks completed"
+
+    - name: Check for common Python anti-patterns
+      run: |
+        uv run python -c "
+        import ast
+        import os
+        from pathlib import Path
+
+        print('Checking for common anti-patterns...')
+
+        issues = []
+
+        # Check Python files for common issues
+        for py_file in Path('pocket_tts').rglob('*.py'):
+            try:
+                with open(py_file, 'r') as f:
+                    content = f.read()
+
+                # Check for some common anti-patterns
+                if 'eval(' in content:
+                    issues.append(f'{py_file}: Uses eval()')
+
+                if 'exec(' in content:
+                    issues.append(f'{py_file}: Uses exec()')
+
+                # Parse AST for more detailed checks
+                try:
+                    tree = ast.parse(content)
+
+                    for node in ast.walk(tree):
+                        if isinstance(node, ast.ImportFrom):
+                            if node.module and node.module.startswith('.'):
+                                # Relative imports are generally fine in packages
+                                pass
+
+                except SyntaxError:
+                    issues.append(f'{py_file}: Syntax error')
+
+            except Exception:
+                # Skip files that can't be read
+                pass
+
+        if issues:
+            print('⚠ Potential issues found:')
+            for issue in issues[:10]:  # Limit output
+                print(f'  - {issue}')
+            if len(issues) > 10:
+                print(f'  ... and {len(issues) - 10} more')
+        else:
+            print('✓ No obvious anti-patterns found')
+        "

@@ -38,6 +38,7 @@ dev = [
   "pytest-xdist>=3.8.0",
   "onnx>=1.15.0",
   "onnxruntime>=1.17.0",
+  "pyyaml>=6.0.3",
 ]
 
 

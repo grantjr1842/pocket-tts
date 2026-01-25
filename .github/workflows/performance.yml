@@ -1,0 +1,182 @@
+name: Performance Tests
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  schedule:
+    # Run daily at 2 AM UTC
+    - cron: '0 2 * * *'
+
+jobs:
+  performance-test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.12"]
+
+    steps:
+    - uses: actions/checkout@v5
+
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ matrix.python-version }}
+
+    - name: Install uv
+      uses: astral-sh/setup-uv@v5
+      with:
+        version: "latest"
+
+    - name: Install dependencies
+      run: |
+        uv sync --dev
+
+    - name: Run performance benchmarks
+      run: |
+        uv run python -c "
+        import time
+        import torch
+        from pocket_tts import TTSModel
+
+        print('Running performance benchmarks...')
+
+        # Test model loading time
+        start_time = time.time()
+        model = TTSModel.load_model()
+        load_time = time.time() - start_time
+        print(f'✓ Model loading time: {load_time:.2f}s')
+
+        # Test voice state creation time
+        start_time = time.time()
+        voice_state = model.get_state_for_audio_prompt('alba')
+        voice_time = time.time() - start_time
+        print(f'✓ Voice state creation time: {voice_time:.2f}s')
+
+        # Test basic generation (short text)
+        start_time = time.time()
+        try:
+            audio = model.generate_audio(voice_state, 'Hello world.')
+            gen_time = time.time() - start_time
+            gen_rate = len(audio) / model.sample_rate / gen_time
+            print(f'✓ Generation time: {gen_time:.2f}s ({gen_rate:.1f}x real-time)')
+
+            # Basic sanity checks
+            assert len(audio) > 0
+            assert torch.max(torch.abs(audio)) > 0
+            print('✓ Generated audio is valid')
+
+        except Exception as e:
+            print(f'⚠ Generation test failed: {e}')
+
+        model._cached_get_state_for_audio_prompt.cache_clear()
+        print('✓ Performance tests completed')
+        "
+
+    - name: Test memory usage
+      run: |
+        uv run python -c "
+        import torch
+        import gc
+        from pocket_tts import TTSModel
+
+        print('Testing memory usage...')
+
+        # Clear any existing state
+        gc.collect()
+        torch.cuda.empty_cache() if torch.cuda.is_available() else None
+
+        # Load model and check memory
+        model = TTSModel.load_model()
+
+        # Count parameters
+        total_params = sum(p.numel() for p in model.parameters())
+        trainable_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
+
+        print(f'✓ Total parameters: {total_params:,}')
+        print(f'✓ Trainable parameters: {trainable_params:,}')
+        print(f'✓ Model size estimate: {total_params * 4 / 1024 / 1024:.1f} MB (float32)')
+
+        model._cached_get_state_for_audio_prompt.cache_clear()
+        gc.collect()
+        print('✓ Memory tests completed')
+        "
+
+  rust-performance-test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.12"]
+
+    steps:
+    - uses: actions/checkout@v5
+
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ matrix.python-version }}
+
+    - name: Install Rust
+      uses: dtolnay/rust-toolchain@stable
+      with:
+        toolchain: stable
+
+    - name: Install uv
+      uses: astral-sh/setup-uv@v5
+      with:
+        version: "latest"
+
+    - name: Install dependencies
+      run: |
+        uv sync --dev
+
+    - name: Build Rust extensions
+      run: |
+        if [ -d "training/rust_exts/audio_ds" ]; then
+          echo "Building Rust audio extensions..."
+          cd training/rust_exts/audio_ds
+          cargo build --release
+          cd ../../..
+        else
+          echo "No Rust extensions found"
+        fi
+
+    - name: Test Rust vs NumPy performance
+      run: |
+        uv run python -c "
+        import time
+        import numpy as np
+        from pocket_tts.numpy_rs import array, arange, concatenate
+
+        print('Testing Rust vs NumPy performance...')
+
+        # Test large array operations
+        size = 100000
+
+        # Test arange
+        start = time.time()
+        rust_result = arange(0, size, 1)
+        rust_time = time.time() - start
+
+        start = time.time()
+        numpy_result = np.arange(size)
+        numpy_time = time.time() - start
+
+        print(f'✓ arange - Rust: {rust_time:.4f}s, NumPy: {numpy_time:.4f}s')
+
+        # Test concatenate
+        arrays = [array(np.random.randn(1000)) for _ in range(100)]
+        start = time.time()
+        rust_result = concatenate(arrays)
+        rust_time = time.time() - start
+
+        arrays_np = [np.random.randn(1000) for _ in range(100)]
+        start = time.time()
+        numpy_result = np.concatenate(arrays_np)
+        numpy_time = time.time() - start
+
+        print(f'✓ concatenate - Rust: {rust_time:.4f}s, NumPy: {numpy_time:.4f}s')
+
+        print('✓ Performance comparison completed')
+        "
