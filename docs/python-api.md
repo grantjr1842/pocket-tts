@@ -261,3 +261,120 @@ scipy.io.wavfile.write("batch_output.wav", model.sample_rate, full_audio.numpy()
 You can refer to our CLI implementation which can stream audio to a wav file.
 
 For more information about the command-line interface, see the [Generate Documentation](generate.md) or [Serve Documentation](serve.md).
+
+## Audio Processing Utilities
+
+`pocket-tts` provides several utility functions for audio processing which are particularly useful when preparing audio prompts for voice cloning.
+
+### Audio I/O
+
+#### `load_wav(path, sample_rate=None)`
+
+Load an audio file from disk.
+
+**Parameters:**
+
+- `path` (str | Path): Path to the audio file
+- `sample_rate` (int | None): Target sample rate. If None, original sample rate is preserved.
+
+**Returns:**
+
+- `Tuple[torch.Tensor, int]`: A tuple containing the audio tensor (1D or 2D) and the sample rate.
+
+#### `save_audio(filename, audio, sample_rate)`
+
+Save an audio tensor to a WAV file.
+
+**Parameters:**
+
+- `filename` (str | Path): Output filename
+- `audio` (torch.Tensor): Audio tensor to save
+- `sample_rate` (int): Sample rate of the audio
+
+### Audio Manipulation
+
+#### `normalize_audio(audio, target_level=-20.0)`
+
+Normalize audio loudness to a target level.
+
+**Parameters:**
+
+- `audio` (torch.Tensor): Input audio tensor
+- `target_level` (float): Target loudness in dB (default: -20.0)
+
+**Returns:**
+
+- `torch.Tensor`: Normalized audio tensor
+
+#### `apply_gain(audio, gain_db)`
+
+Apply gain (amplification/attenuation) to audio.
+
+**Parameters:**
+
+- `audio` (torch.Tensor): Input audio tensor
+- `gain_db` (float): Gain in decibels
+
+**Returns:**
+
+- `torch.Tensor`: Processed audio tensor
+
+#### `resample_audio(audio, orig_sr, target_sr)`
+
+Resample audio to a new sample rate.
+
+**Parameters:**
+
+- `audio` (torch.Tensor): Input audio tensor
+- `orig_sr` (int): Original sample rate
+- `target_sr` (int): Target sample rate
+
+**Returns:**
+
+- `torch.Tensor`: Resampled audio tensor
+
+#### `apply_fade(audio, fade_in=0.1, fade_out=0.1, sample_rate=24000)`
+
+Apply fade-in and fade-out effects to audio.
+
+**Parameters:**
+
+- `audio` (torch.Tensor): Input audio tensor
+- `fade_in` (float): Fade-in duration in seconds (default: 0.1)
+- `fade_out` (float): Fade-out duration in seconds (default: 0.1)
+- `sample_rate` (int): Sample rate of the audio
+
+**Returns:**
+
+- `torch.Tensor`: Audio with fades applied
+
+#### `compute_audio_metrics(audio, sample_rate)`
+
+Compute basic metrics for an audio clip.
+
+**Parameters:**
+
+- `audio` (torch.Tensor): Input audio tensor
+- `sample_rate` (int): Sample rate
+
+**Returns:**
+
+- `dict`: Dictionary containing `duration_sec`, `rms_db`, `peak_db`.
+
+## NumPy Compatibility
+
+To reduce dependencies and simplify deployment, `pocket-tts` includes a lightweight, drop-in replacement for common NumPy functions via `rust-numpy`.
+
+If NumPy is installed in the environment, `pocket-tts` will use the standard NumPy library. If NumPy is missing, it falls back to the internal `rust-numpy` implementation.
+
+**Available functions:**
+`arange`, `array`, `clip`, `min`, `max`, `mean`, `median`, `sum`, `sqrt`, `log`, `std`, `var`, `reshape`, `transpose`, `concatenate`, `vstack`, `hstack`, `zeros`, `ones`, `eye`, `linspace`, `interp`, `dot`, `matmul`, `abs`, `power`, `frombuffer`, `size`, `percentile`.
+
+```python
+# You can import these directly from pocket_tts.numpy_rs
+# (or just use standard numpy if you prefer)
+from pocket_tts.numpy_rs import array, mean
+
+data = array([1.0, 2.0, 3.0])
+avg = mean(data)
+```
