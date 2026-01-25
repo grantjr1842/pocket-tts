@@ -1,8 +1,8 @@
 use crate::array::Array;
 use crate::dtype::{Dtype, DtypeKind};
 use crate::error::{NumPyError, Result};
-use std::marker::PhantomData;
 use std::collections::HashMap;
+use std::marker::PhantomData;
 use std::sync::{Arc, RwLock};
 use std::time::Instant;
 
@@ -236,33 +236,28 @@ where
 
         // Try kernel registry for type-specific optimization
         if let (Some(kernel), _) = crate::kernel_registry::get_kernel_registry()
-            .and_then(|registry| registry.get::<T>(crate::ufunc::UfuncType::Add)) {
+            .and_then(|registry| registry.get::<T>(crate::ufunc::UfuncType::Add))
+        {
             kernel.execute(&[in0, in1], &mut [output])?;
-        }
+        } else {
+            // Fall back to original implementation using iterators
+            let broadcasted = crate::broadcasting::broadcast_arrays(&[in0, in1])?;
+            let arr0 = &broadcasted[0];
+            let arr1 = &broadcasted[1];
 
-        // Fall back to original implementation if no kernel available
-        self.execute_binary_with_mask(inputs, output, where_mask)?
-            }
-            return Ok(());
-        }
-
-        // Generic path using iterators
-        let broadcasted = crate::broadcasting::broadcast_arrays(&[in0, in1])?;
-        let arr0 = &broadcasted[0];
-        let arr1 = &broadcasted[1];
-
-        for i in 0..output.size() {
-            if mask
-                .as_ref()
-                .map_or(true, |m| *m.get_linear(i).unwrap_or(&false))
-            {
-                if let (Some(a), Some(b)) = (arr0.get(i), arr1.get(i)) {
-                    output.set(i, (self.operation)(a.clone(), b.clone()))?;
+            for i in 0..output.size() {
+                if where_mask
+                    .as_ref()
+                    .map_or(true, |m| *m.get_linear(i).unwrap_or(&false))
+                {
+                    if let (Some(a), Some(b)) = (arr0.get(i), arr1.get(i)) {
+                        output.set(i, (self.operation)(a.clone(), b.clone()))?;
+                    }
                 }
             }
         }
 
-        Ok(())
+        Ok(());
     }
 }
 
@@ -1276,8 +1271,7 @@ impl GufuncSignature {
         // For symbolic dimensions (i, j, k, m, n), we use placeholder size of 1
         // In a full implementation, we would track dimension names to ensure consistency
         let parse_dims = |part: &str| -> Result<Vec<Vec<usize>>> {
-            part
-                .split(')')
+            part.split(')')
                 .filter(|s| !s.is_empty())
                 .map(|s| {
                     let inner = s.trim_start_matches('(');

@@ -139,7 +139,6 @@ pub mod iterator;
 pub mod kernel_api;
 pub mod kernel_impls;
 pub mod kernel_registry;
-pub mod kernel_registry;
 pub mod layout_optimizer;
 pub mod linalg;
 pub mod math_ufuncs;
@@ -164,15 +163,6 @@ pub mod sorting;
 pub mod statistics;
 pub mod strided_executor;
 pub mod strides;
-pub mod type_promotion;
-pub mod typing;
-pub mod ufunc;
-pub mod ufunc_ops;
-pub mod utils;
-pub mod window;
-
-#[path = "src/strided_executor.rs"]
-pub mod strided_executor;
 
 #[cfg(test)]
 mod kernel_tests;
@@ -226,8 +216,8 @@ pub use bitwise::*;
 pub use char::exports::{
     add as char_add, capitalize, center, count as char_count, endswith, expandtabs, find,
     index as char_index, isalnum, isalpha, isdigit, isnumeric, isspace, join, lower, lstrip,
-    lstrip_chars, multiply as char_multiply, replace, rfind, rindex, rstrip, rstrip_chars,
-    split as char_split, startswith, strip, strip_chars, upper, zfill,
+    multiply as char_multiply, replace, rfind, rindex, rstrip, split as char_split, startswith,
+    strip, upper, zfill,
 };
 pub use dist::{cdist, pdist, squareform};
 pub use dtype::{Casting, Dtype, DtypeKind};

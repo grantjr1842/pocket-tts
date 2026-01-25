@@ -703,6 +703,7 @@ impl Generator {
             data.push(T::from(dist.sample(&mut self.bit_gen)));
         }
         Ok(Array::from_data(data, shape.to_vec()))
+}
 
     // --- Utility Methods ---
 
