@@ -13,6 +13,7 @@ numpy = "~=2.3.5"
 websockets = "~=16.0"
 pre-commit = "~=4.5.1"
 pipdeptree = ">=2.30.0,<3"
+memory_profiler = ">=0.61.0,<0.62"
 
 [pypi-dependencies]
 pocket-tts = { path = ".", editable = true }

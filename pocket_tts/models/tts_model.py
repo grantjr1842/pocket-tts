@@ -42,6 +42,10 @@ from pocket_tts.utils.utils import (
     size_of_dict,
 )
 from pocket_tts.utils.weights_loading import get_flow_lm_state_dict, get_mimi_state_dict
+from pocket_tts.utils.memory_optimizer import (
+    memory_efficient_context,
+    optimize_model_memory,
+)
 
 torch.set_num_threads(1)
 logger = logging.getLogger(__name__)
@@ -94,6 +98,10 @@ class TTSModel(nn.Module):
         tts_model = cls(
             flow_lm, temp, lsd_decode_steps, noise_clamp, eos_threshold, config
         )
+
+        # Apply memory optimizations
+        optimize_model_memory(tts_model)
+
         return tts_model
 
     @classmethod
@@ -458,16 +466,26 @@ class TTSModel(nn.Module):
             ValueError: If text_to_generate is empty or invalid.
             RuntimeError: If generation fails due to model errors.
         """
-        audio_chunks = []
-        for chunk in self.generate_audio_stream(
-            model_state=model_state,
-            text_to_generate=text_to_generate,
-            frames_after_eos=frames_after_eos,
-            copy_state=copy_state,
-            max_tokens=max_tokens,
-        ):
-            audio_chunks.append(chunk)
-        return torch.cat(audio_chunks, dim=0)
+        # Use memory-efficient context for generation
+        with memory_efficient_context():
+            audio_chunks = []
+            for chunk in self.generate_audio_stream(
+                model_state=model_state,
+                text_to_generate=text_to_generate,
+                frames_after_eos=frames_after_eos,
+                copy_state=copy_state,
+                max_tokens=max_tokens,
+            ):
+                audio_chunks.append(chunk)
+
+            # Use memory pool for tensor concatenation if available
+            if len(audio_chunks) > 0:
+                result = torch.cat(audio_chunks, dim=0)
+                # Clear chunks to free memory
+                audio_chunks.clear()
+                return result
+            else:
+                return torch.empty(0)
 
     @torch.no_grad
     def generate_audio_stream(
