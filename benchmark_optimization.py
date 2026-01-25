@@ -11,7 +11,7 @@ This script compares performance between:
 import time
 import sys
 import numpy as np
-from typing import Dict, List, Tuple
+from typing import Dict, Tuple
 
 # Import both implementations
 try:

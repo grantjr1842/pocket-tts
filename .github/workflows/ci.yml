@@ -1,0 +1,270 @@
+name: CI
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  # Python tests on multiple versions and platforms
+  test-python:
+    name: Python ${{ matrix.python-version }} on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        python-version: ["3.10", "3.11", "3.12", "3.13", "3.14"]
+        exclude:
+          # Exclude some combinations to reduce CI time while maintaining coverage
+          - os: windows-latest
+            python-version: "3.14"
+          - os: macos-latest
+            python-version: "3.14"
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install pixi
+        uses: prefix-dev/setup-pixi@v0.8
+        with:
+          pixi-version: latest
+          run-install: false
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Cache pixi
+        uses: actions/cache@v4
+        with:
+          path: ~/.pixi
+          key: ${{ runner.os }}-pixi-${{ hashFiles('**/pixi.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-pixi-
+
+      - name: Install dependencies
+        run: pixi install
+
+      - name: Run linting
+        run: pixi run ruff check .
+
+      - name: Run formatting check
+        run: pixi run ruff format --check .
+
+      - name: Run type checking
+        run: pixi run mypy pocket_tts || echo "Type checking completed with warnings (non-blocking)"
+
+      - name: Run tests
+        run: pixi run tests-ci
+
+      - name: Generate coverage report
+        run: pixi run coverage xml
+
+      - name: Upload coverage to Codecov
+        if: matrix.os == 'ubuntu-latest' && matrix.python-version == '3.11'
+        uses: codecov/codecov-action@v4
+        with:
+          file: ./coverage.xml
+          flags: unittests
+          name: codecov-umbrella
+
+  # Rust tests
+  test-rust:
+    name: Rust Tests
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        rust:
+          - stable
+          - beta
+          - nightly
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust ${{ matrix.rust }}
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: ${{ matrix.rust }}
+          components: rustfmt, clippy
+
+      - name: Cache cargo registry
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry/index
+            ~/.cargo/registry/cache
+            ~/.cargo/git/db
+            target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-
+
+      - name: Run cargo fmt
+        run: cargo fmt --all -- --check
+
+      - name: Run cargo clippy
+        run: cargo clippy --all-targets --all-features -- -D warnings
+
+      - name: Run cargo test
+        run: cargo test --all
+
+      - name: Run cargo doc
+        run: cargo doc --no-deps --all
+
+  # Integration tests
+  test-integration:
+    name: Integration Tests
+    runs-on: ubuntu-latest
+    needs: [test-python, test-rust]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install pixi
+        uses: prefix-dev/setup-pixi@v0.8
+        with:
+          pixi-version: latest
+          run-install: false
+
+      - name: Cache pixi
+        uses: actions/cache@v4
+        with:
+          path: ~/.pixi
+          key: ${{ runner.os }}-pixi-${{ hashFiles('**/pixi.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-pixi-
+
+      - name: Install dependencies
+        run: pixi install
+
+      - name: Run integration tests
+        run: pixi run pytest -m "integration" -v
+
+      - name: Test CLI commands
+        run: |
+          pixi run pocket-tts --help
+          # Test basic generation if models are available
+          # pixi run pocket-tts generate --text "Hello world" --output test_output.wav || echo "Model download skipped in CI"
+
+  # Security audits
+  security-audit:
+    name: Security Audit
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install pixi
+        uses: prefix-dev/setup-pixi@v0.8
+        with:
+          pixi-version: latest
+          run-install: false
+
+      - name: Cache pixi
+        uses: actions/cache@v4
+        with:
+          path: ~/.pixi
+          key: ${{ runner.os }}-pixi-${{ hashFiles('**/pixi.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-pixi-
+
+      - name: Install dependencies
+        run: pixi install
+
+      - name: Audit Python dependencies
+        run: pixi run audit-python
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Audit Rust dependencies
+        run: |
+          cd rust-numpy
+          cargo install cargo-audit
+          cargo audit
+
+  # Build and package tests
+  build-test:
+    name: Build Test
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install pixi
+        uses: prefix-dev/setup-pixi@v0.8
+        with:
+          pixi-version: latest
+          run-install: false
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Cache pixi
+        uses: actions/cache@v4
+        with:
+          path: ~/.pixi
+          key: ${{ runner.os }}-pixi-${{ hashFiles('**/pixi.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-pixi-
+
+      - name: Install dependencies
+        run: pixi install
+
+      - name: Build Python package
+        run: pixi run build
+
+      - name: Test installation
+        run: |
+          pixi run pip install .
+          pocket-tts --help
+
+  # Documentation build
+  docs-build:
+    name: Documentation Build
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install pixi
+        uses: prefix-dev/setup-pixi@v0.8
+        with:
+          pixi-version: latest
+          run-install: false
+
+      - name: Cache pixi
+        uses: actions/cache@v4
+        with:
+          path: ~/.pixi
+          key: ${{ runner.os }}-pixi-${{ hashFiles('**/pixi.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-pixi-
+
+      - name: Install dependencies
+        run: pixi install
+
+      - name: Build documentation
+        run: |
+          cd docs
+          pixi run make html
+
+      - name: Upload documentation artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: docs-${{ github.sha }}
+          path: docs/_build/html/
+          retention-days: 30

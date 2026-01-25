@@ -8,8 +8,6 @@ Key optimizations:
 4. SIMD-friendly implementations where possible
 """
 
-import functools
-import warnings
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple, Union
 

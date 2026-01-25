@@ -86,7 +86,9 @@ def test_get_state_for_audio_prompt():
 
     if not model.has_voice_cloning:
         # Skip voice cloning tests if not available
-        pytest.skip("Voice cloning not available - model loaded without voice cloning weights")
+        pytest.skip(
+            "Voice cloning not available - model loaded without voice cloning weights"
+        )
 
     # From HuggingFace URL
     voice_state = model.get_state_for_audio_prompt(
