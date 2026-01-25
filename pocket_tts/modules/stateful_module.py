@@ -80,11 +80,28 @@ class StatefulModule(ABC, nn.Module):
         return super().__init__(*args, **kwds)
 
     @abstractmethod
-    def init_state(self, batch_size: int, sequence_length: int):
-        """Initialize the state."""
-        raise NotImplementedError
+    def init_state(
+        self, batch_size: int, sequence_length: int
+    ) -> dict[str, torch.Tensor]:
+        """Initialize the state for the given batch size and sequence length.
+
+        Args:
+            batch_size: Number of sequences in the batch
+            sequence_length: Length of each sequence
+
+        Returns:
+            Dictionary containing the state tensors for this module
+        """
 
     def increment_step(self, state: dict, increment: int = 1):
+        """Advance the state by the specified increment.
+
+        Args:
+            state: The state dictionary for this module
+            increment: Number of steps to advance the state (default: 1)
+        """
+        # Default implementation - subclasses should override for specific behavior
+        # This provides a no-op base implementation for modules that don't need step tracking
         pass
 
     # Remove type hints to prevent beartype wrapping
