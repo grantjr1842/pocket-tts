@@ -142,6 +142,7 @@ pub mod parallel;
 pub mod polynomial;
 pub mod random;
 pub mod rec;
+pub mod reductions;
 pub mod set_ops;
 pub mod simd;
 pub mod slicing;
@@ -151,7 +152,11 @@ pub mod strides;
 pub mod type_promotion;
 pub mod ufunc;
 pub mod ufunc_ops;
+pub mod utils;
 pub mod window;
+
+#[cfg(test)]
+mod test_new_functions;
 
 // Re-export key types for convenience
 pub use crate::array_extra::exports::*;
@@ -174,6 +179,9 @@ pub use dtype::{Casting, Dtype, DtypeKind};
 pub use error::{NumPyError, Result};
 pub use linalg::norm;
 pub use rec::{array as rec_array, fromarrays, fromrecords, RecArray};
+pub use reductions::{
+    all, all_bool, any, any_bool, argmax, argmin, cumprod, cumsum, max, mean, min, prod, sum,
+};
 pub use set_ops::exports::*;
 pub use statistics::{
     average, bincount, corrcoef, cov, digitize, histogram, histogram2d, histogramdd, median,
@@ -185,8 +193,15 @@ pub use type_promotion::promote_types;
 pub use math_ufuncs::{
     abs,
     absolute,
+    acos,
+    acosh,
     angle,
     angle32,
+    asin,
+    asinh,
+    atan,
+    atan2,
+    atanh,
     conj,
     conj32,
     conjugate,
@@ -205,6 +220,28 @@ pub use math_ufuncs::{
 };
 pub use ufunc_ops::UfuncEngine;
 
+// Array creation and conversion functions
+pub use array_creation::{
+    array, array2string, array_repr, array_str, asanyarray, asarray, asarray_chkfinite,
+    ascontiguousarray, asfortranarray, asmatrix, copy, copyto,
+};
+
+// Reduction functions
+pub use statistics::{amax, amin, max_reduce, min_reduce};
+
+// Utility functions
+pub use utils::{
+    base_repr, binary_repr, bitwise_count, bitwise_invert, bitwise_left_shift, bitwise_right_shift,
+    bmat, bool, bool_, byte, bytes_, can_cast, character, common_type, complex128, complex64,
+    complexfloating, double, errstate, finfo, flexible, floating, generic, get_include,
+    get_printoptions, getbufsize, geterr, geterrcall, half, iinfo, inexact, info, int16, int32,
+    int64, int8, integer, iscomplex, iscomplexobj, isdtype, isfortran, isnat, isreal, isrealobj,
+    isscalar, issubdtype, iterable, may_share_memory, min_scalar_type, mintypecode, object_,
+    promote_types as utils_promote_types, result_type, set_printoptions, setbufsize, seterr,
+    seterrcall, shares_memory, show_config, show_runtime, signedinteger, single, str_, test,
+    typename, uint16, uint32, uint64, uint8, unsignedinteger, version, void,
+};
+
 /// Version information
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");
 
@@ -218,7 +255,6 @@ pub type Int = i64;
 pub type Complex = num_complex::Complex<f64>;
 
 // Re-export common constants
-pub use array_creation::{copy, frombuffer, fromfunction, fromiter, vander};
 pub use constants::*;
 /// Create array macro for convenient array creation
 #[macro_export]

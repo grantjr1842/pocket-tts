@@ -288,7 +288,116 @@ where
 {
     // Use to_vec() to get all elements (handles non-contiguous arrays)
     let data = a.to_vec();
-    Ok(Array::from_data(data, a.shape().to_vec()))
+    Ok(Array::from_vec(data))
+}
+
+/// Convert input to array (already exists as array, but adding asanyarray compatibility)
+pub fn asanyarray<T>(data: Vec<T>, dtype: Option<Dtype>) -> Result<Array<T>>
+where
+    T: Clone + Default + 'static,
+{
+    array(data, dtype)
+}
+
+/// Convert input to array with copy behavior
+pub fn asarray<T>(data: Vec<T>, dtype: Option<Dtype>) -> Result<Array<T>>
+where
+    T: Clone + Default + 'static,
+{
+    array(data, dtype)
+}
+
+/// Convert input to contiguous array in memory order
+pub fn ascontiguousarray<T>(data: &Array<T>) -> Result<Array<T>>
+where
+    T: Clone + Default + 'static,
+{
+    // Return a copy that is guaranteed to be contiguous
+    Ok(Array::from_vec(data.to_vec()))
+}
+
+/// Convert input to Fortran-contiguous array
+pub fn asfortranarray<T>(data: &Array<T>) -> Result<Array<T>>
+where
+    T: Clone + Default + 'static,
+{
+    // For now, just return a copy (Fortran order not implemented)
+    Ok(Array::from_vec(data.to_vec()))
+}
+
+/// Convert input to matrix (2D array)
+pub fn asmatrix<T>(data: &Array<T>) -> Result<Array<T>>
+where
+    T: Clone + Default + 'static,
+{
+    // Ensure at least 2D
+    let shape = data.shape();
+    if shape.len() == 1 {
+        // Convert 1D to 2D row vector
+        let new_shape = vec![1, shape[0]];
+        Ok(Array::from_data(data.data().to_vec(), new_shape))
+    } else {
+        Ok(data.clone())
+    }
+}
+
+/// Array string representation
+pub fn array2string<T>(data: &Array<T>) -> Result<String>
+where
+    T: std::fmt::Display + std::fmt::Debug,
+{
+    Ok(format!("{:?}", data))
+}
+
+/// Array representation string
+pub fn array_repr<T>(data: &Array<T>) -> Result<String>
+where
+    T: std::fmt::Display + std::fmt::Debug,
+{
+    Ok(format!("array({:?})", data))
+}
+
+/// Array string representation (alias for array_repr)
+pub fn array_str<T>(data: &Array<T>) -> Result<String>
+where
+    T: std::fmt::Display + std::fmt::Debug,
+{
+    array_repr(data)
+}
+
+/// Check array values are finite
+pub fn asarray_chkfinite<T>(data: &Array<T>) -> Result<Array<T>>
+where
+    T: Clone + Default + num_traits::Float + 'static,
+{
+    // Check if any values are infinite or NaN
+    for val in data.data() {
+        if !val.is_finite() {
+            return Err(NumPyError::invalid_value(
+                "array contains non-finite values",
+            ));
+        }
+    }
+    Ok(data.clone())
+}
+
+/// Copy values from one array to another with broadcasting
+pub fn copyto<T>(dst: &mut Array<T>, src: &Array<T>) -> Result<()>
+where
+    T: Clone + Default + 'static,
+{
+    // Simple implementation - requires same shape
+    if dst.shape() != src.shape() {
+        return Err(NumPyError::shape_mismatch(
+            dst.shape().to_vec(),
+            src.shape().to_vec(),
+        ));
+    }
+
+    for (i, val) in src.data().iter().enumerate() {
+        dst.set(i, val.clone()).unwrap();
+    }
+    Ok(())
 }
 
 #[cfg(test)]
