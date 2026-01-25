@@ -421,212 +421,212 @@ class NumPyTestExamples:
                 "input": (arr1, arr2),
                 "output": np.isin(arr1, arr2),
                 "result": [False, False, True, True, True],
-            }
+            },
         }
         return examples
 
     # Sorting Tests
     def test_sorting(self):
-    """Test sorting operations"""
-    arr = np.array([3, 1, 4, 1, 5, 9, 2, 6])
+        """Test sorting operations"""
+        arr = np.array([3, 1, 4, 1, 5, 9, 2, 6])
 
-    examples = {
-        "sort": {
-            "input": (arr,),
-            "output": np.sort(arr),
-            "result": [1, 1, 2, 3, 4, 5, 6, 9],
-        },
-        "argsort": {
-            "input": (arr,),
-            "output": np.argsort(arr),
-            "result": [1, 3, 6, 0, 2, 4, 7, 5],
-        },
-        "lexsort": {
-            "input": ((np.array([1, 2, 3]), np.array([3, 2, 1])),),
-            "output": np.lexsort((np.array([1, 2, 3]), np.array([3, 2, 1]))),
-            "result": [2, 1, 0],
-        },
-        "partition": {
-            "input": (arr, 3),
-            "output": np.partition(arr, 3),
-            "description": "Partition array around kth element",
-        },
-        "argpartition": {
-            "input": (arr, 3),
-            "output": np.argpartition(arr, 3),
-            "description": "Indices that would partition array",
-        },
-    }
-    return examples
+        examples = {
+            "sort": {
+                "input": (arr,),
+                "output": np.sort(arr),
+                "result": [1, 1, 2, 3, 4, 5, 6, 9],
+            },
+            "argsort": {
+                "input": (arr,),
+                "output": np.argsort(arr),
+                "result": [1, 3, 6, 0, 2, 4, 7, 5],
+            },
+            "lexsort": {
+                "input": ((np.array([1, 2, 3]), np.array([3, 2, 1])),),
+                "output": np.lexsort((np.array([1, 2, 3]), np.array([3, 2, 1]))),
+                "result": [2, 1, 0],
+            },
+            "partition": {
+                "input": (arr, 3),
+                "output": np.partition(arr, 3),
+                "description": "Partition array around kth element",
+            },
+            "argpartition": {
+                "input": (arr, 3),
+                "output": np.argpartition(arr, 3),
+                "description": "Indices that would partition array",
+            },
+        }
+        return examples
 
-# Random Module Tests
-def test_random_functions(self):
-    """Test random module functions"""
-    rng = np.random.default_rng(42)
+    # Random Module Tests
+    def test_random_functions(self):
+        """Test random module functions"""
+        rng = np.random.default_rng(42)
 
-    examples = {
-        "random": {
-            "input": ((5,),),
-            "output": rng.random(5),
-            "description": "Random floats in [0, 1)",
-        },
-        "randint": {
-            "input": ((0, 10, 5),),
-            "output": rng.integers(0, 10, 5),
-            "description": "Random integers",
-        },
-        "normal": {
-            "input": ((0, 1, 5),),
-            "output": rng.normal(0, 1, 5),
-            "description": "Normal distribution",
-        },
-        "uniform": {
-            "input": ((0, 1, 5),),
-            "output": rng.uniform(0, 1, 5),
-            "description": "Uniform distribution",
-        },
-        "choice": {
-            "input": ((np.array([1, 2, 3, 4, 5]), 3),),
-            "output": rng.choice(np.array([1, 2, 3, 4, 5]), 3),
-            "description": "Random choice from array",
-        },
-        "permutation": {
-            "input": ((5,),),
-            "output": rng.permutation(5),
-            "description": "Random permutation",
-        },
-        "shuffle": {
-            "input": (np.array([1, 2, 3, 4, 5]),),
-            "output": None,  # In-place operation
-            "description": "Shuffle array in-place",
-        },
-    }
-    return examples
+        examples = {
+            "random": {
+                "input": ((5,),),
+                "output": rng.random(5),
+                "description": "Random floats in [0, 1)",
+            },
+            "randint": {
+                "input": ((0, 10, 5),),
+                "output": rng.integers(0, 10, 5),
+                "description": "Random integers",
+            },
+            "normal": {
+                "input": ((0, 1, 5),),
+                "output": rng.normal(0, 1, 5),
+                "description": "Normal distribution",
+            },
+            "uniform": {
+                "input": ((0, 1, 5),),
+                "output": rng.uniform(0, 1, 5),
+                "description": "Uniform distribution",
+            },
+            "choice": {
+                "input": ((np.array([1, 2, 3, 4, 5]), 3),),
+                "output": rng.choice(np.array([1, 2, 3, 4, 5]), 3),
+                "description": "Random choice from array",
+            },
+            "permutation": {
+                "input": ((5,),),
+                "output": rng.permutation(5),
+                "description": "Random permutation",
+            },
+            "shuffle": {
+                "input": (np.array([1, 2, 3, 4, 5]),),
+                "output": None,  # In-place operation
+                "description": "Shuffle array in-place",
+            },
+        }
+        return examples
 
-# FFT Tests
-def test_fft_functions(self):
-    """Test FFT functions"""
-    arr = np.array([1, 2, 3, 4, 5, 6, 7, 8])
+    # FFT Tests
+    def test_fft_functions(self):
+        """Test FFT functions"""
+        arr = np.array([1, 2, 3, 4, 5, 6, 7, 8])
 
-    examples = {
-        "fft": {
-            "input": (arr,),
-            "output": np.fft.fft(arr),
-            "description": "Fast Fourier Transform",
-        },
-        "ifft": {
-            "input": (np.fft.fft(arr),),
-            "output": np.fft.ifft(np.fft.fft(arr)),
-            "description": "Inverse FFT",
-        },
-        "fft2": {
-            "input": (np.array([[1, 2], [3, 4]]),),
-            "output": np.fft.fft2(np.array([[1, 2], [3, 4]])),
-            "description": "2D FFT",
-        },
-        "fftfreq": {
-            "input": ((8,),),
-            "output": np.fft.fftfreq(8),
-            "description": "FFT frequency bins",
-        },
-        "fftshift": {
-            "input": (np.fft.fft(arr),),
-            "output": np.fft.fftshift(np.fft.fft(arr)),
-            "description": "Shift FFT output",
-        },
-    }
-    return examples
+        examples = {
+            "fft": {
+                "input": (arr,),
+                "output": np.fft.fft(arr),
+                "description": "Fast Fourier Transform",
+            },
+            "ifft": {
+                "input": (np.fft.fft(arr),),
+                "output": np.fft.ifft(np.fft.fft(arr)),
+                "description": "Inverse FFT",
+            },
+            "fft2": {
+                "input": (np.array([[1, 2], [3, 4]]),),
+                "output": np.fft.fft2(np.array([[1, 2], [3, 4]])),
+                "description": "2D FFT",
+            },
+            "fftfreq": {
+                "input": ((8,),),
+                "output": np.fft.fftfreq(8),
+                "description": "FFT frequency bins",
+            },
+            "fftshift": {
+                "input": (np.fft.fft(arr),),
+                "output": np.fft.fftshift(np.fft.fft(arr)),
+                "description": "Shift FFT output",
+            },
+        }
+        return examples
 
-# Edge Cases and Special Values Tests
-def test_edge_cases(self):
-    """Test edge cases and special values"""
-    examples = {
-        "nan_handling": {
-            "input": (np.array([1, 2, np.nan, 4]),),
-            "output": np.isnan(np.array([1, 2, np.nan, 4])),
-            "result": [False, False, True, False],
-        },
-        "inf_handling": {
-            "input": (np.array([1, np.inf, -np.inf, 4]),),
-            "output": np.isinf(np.array([1, np.inf, -np.inf, 4])),
-            "result": [False, True, True, False],
-        },
-        "empty_array": {"input": ((),), "output": np.array([]), "shape": (0,)},
-        "zero_division": {
-            "input": (np.array([1, 2, 3]), np.array([0, 1, 0])),
-            "output": np.divide(np.array([1, 2, 3]), np.array([0, 1, 0])),
-            "description": "Handles division by zero",
-        },
-        "complex_numbers": {
-            "input": (np.array([1 + 2j, 3 - 4j]),),
-            "output": np.abs(np.array([1 + 2j, 3 - 4j])),
-            "result": [2.23606797749979, 5.0],
-        },
-    }
-    return examples
+    # Edge Cases and Special Values Tests
+    def test_edge_cases(self):
+        """Test edge cases and special values"""
+        examples = {
+            "nan_handling": {
+                "input": (np.array([1, 2, np.nan, 4]),),
+                "output": np.isnan(np.array([1, 2, np.nan, 4])),
+                "result": [False, False, True, False],
+            },
+            "inf_handling": {
+                "input": (np.array([1, np.inf, -np.inf, 4]),),
+                "output": np.isinf(np.array([1, np.inf, -np.inf, 4])),
+                "result": [False, True, True, False],
+            },
+            "empty_array": {"input": ((),), "output": np.array([]), "shape": (0,)},
+            "zero_division": {
+                "input": (np.array([1, 2, 3]), np.array([0, 1, 0])),
+                "output": np.divide(np.array([1, 2, 3]), np.array([0, 1, 0])),
+                "description": "Handles division by zero",
+            },
+            "complex_numbers": {
+                "input": (np.array([1 + 2j, 3 - 4j]),),
+                "output": np.abs(np.array([1 + 2j, 3 - 4j])),
+                "result": [2.23606797749979, 5.0],
+            },
+        }
+        return examples
 
-def run_all_tests(self):
-    """Run all test examples and return results"""
-    all_tests = {}
+    def run_all_tests(self):
+        """Run all test examples and return results"""
+        all_tests = {}
 
-    test_methods = [
-        self.test_array_creation,
-        self.test_array_operations,
-        self.test_statistical_functions,
-        self.test_array_manipulation,
-        self.test_indexing_slicing,
-        self.test_linear_algebra,
-        self.test_mathematical_functions,
-        self.test_comparison_logical,
-        self.test_shape_operations,
-        self.test_set_operations,
-        self.test_sorting,
-        self.test_random_functions,
-        self.test_fft_functions,
-        self.test_edge_cases,
-    ]
+        test_methods = [
+            self.test_array_creation,
+            self.test_array_operations,
+            self.test_statistical_functions,
+            self.test_array_manipulation,
+            self.test_indexing_slicing,
+            self.test_linear_algebra,
+            self.test_mathematical_functions,
+            self.test_comparison_logical,
+            self.test_shape_operations,
+            self.test_set_operations,
+            self.test_sorting,
+            self.test_random_functions,
+            self.test_fft_functions,
+            self.test_edge_cases,
+        ]
 
-    for method in test_methods:
-        test_name = method.__name__.replace("test_", "")
-        try:
-            all_tests[test_name] = method()
-        except Exception as e:
-            all_tests[test_name] = {"error": str(e)}
-
-    return all_tests
-
-def generate_test_data_files(self):
-    """Generate test data files for cross-language testing"""
-    test_data = {}
-
-    # Generate arrays of different dtypes and shapes
-    shapes = [(10,), (5, 4), (2, 3, 4)]
-    dtypes = [
-        "int8",
-        "int16",
-        "int32",
-        "int64",
-        "float16",
-        "float32",
-        "float64",
-        "complex64",
-        "complex128",
-    ]
-
-    for shape in shapes:
-        for dtype in dtypes:
-            key = f"array_{shape}_{dtype}"
+        for method in test_methods:
+            test_name = method.__name__.replace("test_", "")
             try:
-                arr = np.random.randn(*shape).astype(dtype)
-                if "complex" in dtype:
-                    arr = arr + 1j * np.random.randn(*shape).astype(
-                        dtype.replace("complex", "float")
-                    )
-                test_data[key] = arr
+                all_tests[test_name] = method()
             except Exception as e:
-                print(f"Could not generate {key}: {e}")
+                all_tests[test_name] = {"error": str(e)}
 
-    return test_data
+        return all_tests
+
+    def generate_test_data_files(self):
+        """Generate test data files for cross-language testing"""
+        test_data = {}
+
+        # Generate arrays of different dtypes and shapes
+        shapes = [(10,), (5, 4), (2, 3, 4)]
+        dtypes = [
+            "int8",
+            "int16",
+            "int32",
+            "int64",
+            "float16",
+            "float32",
+            "float64",
+            "complex64",
+            "complex128",
+        ]
+
+        for shape in shapes:
+            for dtype in dtypes:
+                key = f"array_{shape}_{dtype}"
+                try:
+                    arr = np.random.randn(*shape).astype(dtype)
+                    if "complex" in dtype:
+                        arr = arr + 1j * np.random.randn(*shape).astype(
+                            dtype.replace("complex", "float")
+                        )
+                    test_data[key] = arr
+                except Exception as e:
+                    print(f"Could not generate {key}: {e}")
+
+        return test_data
 
 
 def main():
@@ -656,6 +656,7 @@ def main():
         try:
             import pyarrow as pa
             import pyarrow.parquet as pq
+
             table = pa.table({"data": arr.flatten()})
             pq.write_table(table, os.path.join(test_dir, f"{name}.parquet"))
         except ImportError:

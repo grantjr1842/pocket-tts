@@ -1,6 +1,7 @@
 # GitHub Projects (v2): Ralph Views (Label-wired)
 
 This repo’s automation uses **labels** as the source of truth:
+
 - `ralph/workset`
 - `ralph/status:*`
 - `ralph/owner:*`
@@ -33,21 +34,26 @@ The provided script creates the following **Table** views:
 ## Run
 
 ### Organization-owned project
+
 ```bash
 ./scripts/create-ralph-project-views.sh org <ORG> <PROJECT_NUMBER>
 ```
 
 ### User-owned project
+
 ```bash
 ./scripts/create-ralph-project-views.sh user <PROJECT_NUMBER>
 ```
 
 Notes:
+
 - The script uses `gh api` and requires `gh auth login`.
 - For user-owned projects, the REST endpoint requires the **numeric user id**, which the script fetches automatically.
 
 ## Customize
+
 Edit the `VIEWS` block in `scripts/create-ralph-project-views.sh` if you want to:
+
 - add a board view (layout `board`)
 - add a roadmap view (layout `roadmap`)
 - include additional filters (e.g., by component labels)

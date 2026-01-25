@@ -13,41 +13,49 @@ This changelog documents all changes made to the upstream pocket-tts repository 
 ## 🎉 New Features
 
 ### Voice Cloning with Multiple Audio Formats (#20)
+
 **Commit:** `bedd1c4`
 
 Voice cloning now supports multiple audio formats beyond just WAV:
+
 - **Supported formats:** MP3, FLAC, OGG, M4A, and other formats compatible with `soundfile`
 - **Implementation:** Replaced WAV-only `audio_read()` with `soundfile`-based implementation
 - **Web UI:** Updated file picker to accept `.wav,.mp3,.flac,.ogg,.m4a,audio/*`
 - **CLI:** Fixed missing `truncate=True` parameter in generate command
 
 **Technical Changes:**
+
 - Added `soundfile>=0.12.0` dependency to `pyproject.toml`
 - Modified `pocket_tts/data/audio.py` to use `soundfile` library
 - Updated `pocket_tts/main.py` to preserve original file extensions in temp files
 - Added multi-channel audio support (automatically downmixes to mono)
 
 ### Chunk Size Control for Text Generation (#56)
+
 **Commit:** `4ec89ac`
 
 Added `max_tokens` parameter to the CLI `generate` command, allowing users to control the number of tokens per chunk when processing long texts.
 
 **Benefits:**
+
 - Users can now customize text chunking behavior
 - Fixed tokenization issue by inserting commas for better sentence splitting
 - Addresses issue #38
 
 **Usage:**
+
 ```bash
 pocket-tts generate "Your text here" --max-tokens 150
 ```
 
 ### KV Cache Memory Optimization (#32)
+
 **Commit:** `8cadf71`
 
 Implemented KV cache slicing when getting model state for voice cloning, significantly reducing memory usage for cached voice states.
 
 **Technical Details:**
+
 - Slices KV cache to only keep necessary frames for voice prompts
 - Reduces memory footprint when caching voice states
 - Improves efficiency for applications that reuse voice clones
@@ -57,20 +65,24 @@ Implemented KV cache slicing when getting model state for voice cloning, signifi
 ## 🐛 Bug Fixes
 
 ### Respect `frames_after_eos` Parameter (#58)
+
 **Commit:** `36f21a0`
 
 Fixed the `generate_audio_stream()` and `generate_audio()` functions to properly respect the `frames_after_eos` parameter.
 
 **Before:**
+
 - Parameter was accepted but ignored
 - Always used auto-calculated guess (3+ frames of silence)
 
 **After:**
+
 - User-specified `frames_after_eos` value is now respected
 - Example: `frames_after_eos=0` produces minimal trailing silence
 - Default behavior preserved when `frames_after_eos=None`
 
 ### Windows Temp File Fix (#72)
+
 **Commit:** `2d62797`
 
 Fixed temporary file handling issues on Windows by ensuring files are properly closed before being read back. This prevents file access errors on Windows systems.
@@ -80,9 +92,11 @@ Fixed temporary file handling issues on Windows by ensuring files are properly c
 ## 📚 Documentation & Examples
 
 ### Colab Notebook Example (#67)
+
 **Commit:** `6f9dd25`
 
 Added an interactive Google Colab notebook demonstrating pocket-tts usage:
+
 - Version-controlled notebook in the repository
 - Easy browser-based experimentation
 - Credits to @HarishDevLab for the suggestion
@@ -90,9 +104,11 @@ Added an interactive Google Colab notebook demonstrating pocket-tts usage:
 **File:** `docs/pocket-tts-example.ipynb`
 
 ### "Projects Using" Section (#45)
+
 **Commit:** `f8f25ea`
 
 Added a new section to the README showcasing community projects built with pocket-tts:
+
 - Highlights real-world usage examples
 - First featured project: [pocket-reader](https://github.com/lukasmwerner/pocket-reader) by @lukasmwerner
 - Encourages community contributions
@@ -100,22 +116,27 @@ Added a new section to the README showcasing community projects built with pocke
 ### Alternative Implementations Documentation
 
 #### Rust Version (#55)
+
 **Commit:** `54e9257`
 
 Added documentation for the Rust implementation of pocket-tts in the alternative implementations section.
+
 - Credits to @babybirdprd
 
 #### Wyoming Satellite Project (#48)
+
 **Commit:** `d35bf81`
 
 Added link to [pocket-tts-wyoming](https://github.com/iankidd/pocket-tts-wyoming), a Wyoming satellite server integration.
 
 #### Browser Implementations (#77)
+
 **Commit:** `a3aaa13`
 
 Added links to additional community implementations for running pocket-tts in browsers.
 
 ### Documentation Fixes
+
 **Commits:** `630d519`, `83eac9f`
 
 Various documentation improvements and README updates.
@@ -127,14 +148,17 @@ Various documentation improvements and README updates.
 ### CI/CD Improvements
 
 #### Do Not Use Auth in CI (#53)
+
 **Commit:** `636ec23`
 
 Removed authentication requirements from CI workflows, allowing anyone to run the CI.
 
 #### Use Environment for PyPI Push (#54)
+
 **Commit:** `8a2a29e`
 
 Modified PyPI deployment to use GitHub Actions environments:
+
 - Restricts PyPI publishing to users with approval rights
 - Provides more flexible and secure CI/CD workflow
 - Prevents unauthorized package publishing
@@ -144,11 +168,13 @@ Modified PyPI deployment to use GitHub Actions environments:
 ## 🎨 Branding & Community
 
 ### Logo Update (#34)
+
 **Commit:** `d1619d0`
 
 Updated the project logo.
 
 ### Contribution Guidelines (#35)
+
 **Commit:** `c4960e6`
 
 Added rules and miscellaneous notes to contribution guidelines, improving clarity for potential contributors.
@@ -158,11 +184,13 @@ Added rules and miscellaneous notes to contribution guidelines, improving clarit
 ## 📦 Version Bumps
 
 ### Version 1.0.2 (#57)
+
 **Commit:** `9650c07`
 
 Version bump to 1.0.2 following the addition of multi-format audio support.
 
 ### Version 1.0.3 (#78)
+
 **Commit:** `bfbaf80`
 
 Version bump to 1.0.3 following additional bug fixes and features.
@@ -209,6 +237,7 @@ This update included contributions from multiple community members:
 ### For Users
 
 1. **New Dependency:** `soundfile` is now required for voice cloning with non-WAV formats
+
    ```bash
    pip install soundfile
    # or
@@ -216,6 +245,7 @@ This update included contributions from multiple community members:
    ```
 
 2. **Voice Cloning:** You can now use MP3, FLAC, OGG, and other formats directly
+
    ```python
    # Previously: WAV only
    model_state = tts_model.get_state_for_audio_prompt("voice.wav")
@@ -259,4 +289,4 @@ This update included contributions from multiple community members:
 
 ---
 
-*This changelog was generated on January 24, 2026, documenting changes merged from upstream into grantjr1842/pocket-tts fork.*
+_This changelog was generated on January 24, 2026, documenting changes merged from upstream into grantjr1842/pocket-tts fork._

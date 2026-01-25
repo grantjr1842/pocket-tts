@@ -7,6 +7,7 @@ You now have a fully functional Rust NumPy implementation with comprehensive val
 ## 📁 What You Have
 
 ### ✅ Working Rust Implementation
+
 - **Array struct** with NumPy-compatible API
 - **Mathematical functions** (add, subtract, multiply, divide, sqrt, sin, cos, exp, log, etc.)
 - **Array operations** (reshape, transpose, zeros, ones, eye, arange, linspace)
@@ -15,12 +16,14 @@ You now have a fully functional Rust NumPy implementation with comprehensive val
 - **Performance optimized** (microsecond-level operations)
 
 ### ✅ Validation Framework
+
 - **Comprehensive test suite** (9 test categories, all passing)
 - **NumPy compatibility verification** (100% API parity)
 - **Performance benchmarking** (excellent speed)
 - **Error handling validation** (robust edge case coverage)
 
 ### ✅ Integration Ready
+
 - **Modular design** (easy to copy to your project)
 - **Clear API** (matches NumPy patterns)
 - **Documentation** (complete usage examples)
@@ -170,16 +173,16 @@ jobs:
   test:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v2
-    - uses: actions-rs/toolchain@v1
-      with:
-        toolchain: stable
+      - uses: actions/checkout@v2
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
 
-    - name: Run validation
-      run: cargo test --test validation_demo -- --nocapture
+      - name: Run validation
+        run: cargo test --test validation_demo -- --nocapture
 
-    - name: Check performance
-      run: cargo test test_performance_basics -- --nocapture
+      - name: Check performance
+        run: cargo test test_performance_basics -- --nocapture
 ```
 
 ### Local Development
@@ -202,6 +205,7 @@ cargo test test_performance_basics -- --nocapture
 ### Adding New Functions
 
 1. **Implement the function** in `src/functions.rs`:
+
 ```rust
 pub fn new_function(a: &[f64]) -> Result<Vec<f64>, String> {
     // Your implementation
@@ -209,6 +213,7 @@ pub fn new_function(a: &[f64]) -> Result<Vec<f64>, String> {
 ```
 
 2. **Add tests** in `tests/simple_tests.rs`:
+
 ```rust
 #[test]
 fn test_new_function() {
@@ -219,6 +224,7 @@ fn test_new_function() {
 ```
 
 3. **Add validation** in `src/test_utils.rs`:
+
 ```rust
 fn test_new_function(&self, test_case: &TestCase) -> Result<String, Box<dyn std::error::Error>> {
     // Validation logic
@@ -228,6 +234,7 @@ fn test_new_function(&self, test_case: &TestCase) -> Result<String, Box<dyn std:
 ### Adding Array Methods
 
 1. **Add method** to `Array` struct in `src/array.rs`:
+
 ```rust
 impl Array {
     pub fn new_method(&self) -> f64 {
@@ -262,16 +269,19 @@ impl Array {
 ## 📚 Resources
 
 ### Documentation
+
 - **API Reference**: Generated from rustdoc
 - **Examples**: In the `tests/` directory
 - **Validation Guide**: This file
 
 ### Test Data
+
 - **NumPy test cases**: In `../test_data/` directory
 - **Generated arrays**: CSV and NumPy formats
 - **Validation scripts**: Python reference implementation
 
 ### Performance
+
 - **Benchmarks**: Use Criterion for detailed profiling
 - **Memory usage**: Monitor with `valgrind` or similar tools
 - **Regression testing**: Continuous performance monitoring

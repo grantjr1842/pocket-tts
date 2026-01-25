@@ -9,7 +9,7 @@ This is an ambitious project to recreate NumPy's entire functionality in pure Ru
 ## Architecture
 
 - **Core Array System**: Multi-dimensional arrays with full NumPy memory model
-- **Dtype System**: Complete NumPy dtype compatibility  
+- **Dtype System**: Complete NumPy dtype compatibility
 - **Ufunc System**: Universal functions with broadcasting
 - **Multi-Backend**: Pluggable backends (CPU, CUDA, Metal, WASM)
 - **C-API Compatible**: Drop-in replacement for NumPy C extensions
@@ -17,9 +17,10 @@ This is an ambitious project to recreate NumPy's entire functionality in pure Ru
 ## Current Progress
 
 ### ✅ Completed
+
 - [x] Project architecture and build system
 - [x] Core array data structures
-- [x] Complete dtype system  
+- [x] Complete dtype system
 - [x] Memory management with SIMD alignment
 - [x] Stride calculations and broadcasting logic
 - [x] Error handling matching NumPy exceptions
@@ -27,6 +28,7 @@ This is an ambitious project to recreate NumPy's entire functionality in pure Ru
 - [x] Constants and mathematical values
 
 ### 🚧 In Progress
+
 - [ ] Array indexing and slicing operations
 - [ ] Ufunc execution engine
 - [ ] Broadcasting implementation
@@ -35,6 +37,7 @@ This is an ambitious project to recreate NumPy's entire functionality in pure Ru
 - [ ] Random number generation
 
 ### 📋 Planned
+
 - [ ] CUDA backend
 - [ ] Metal backend
 - [ ] WASM backend
@@ -78,6 +81,7 @@ let eps = constants::float::EPSILON;
 ## Development Roadmap
 
 ### Phase 1: Core Foundation (Current)
+
 - [x] Array structure and memory management
 - [x] Dtype system with all NumPy types
 - [x] Broadcasting and stride calculations
@@ -85,23 +89,27 @@ let eps = constants::float::EPSILON;
 - [ ] Basic ufunc operations
 
 ### Phase 2: Mathematical Operations
+
 - [ ] Complete ufunc system (all mathematical functions)
 - [ ] Reduction operations (sum, mean, std, etc.)
 - [ ] Comparison and logical operations
 - [ ] Linear algebra (matrix operations, decompositions)
 
-### Phase 3: Advanced Modules  
+### Phase 3: Advanced Modules
+
 - [ ] FFT operations
 - [ ] Random number generation
 - [ ] String and datetime operations
 - [ ] Masked arrays
 
 ### Phase 4: Performance & Integration
+
 - [ ] SIMD optimizations
 - [ ] GPU backends (CUDA/Metal)
 - [ ] C-API compatibility
 
 ### Phase 5: Ecosystem
+
 - [ ] Performance benchmarks
 - [ ] NumPy conformance suite
 - [ ] Documentation and examples
@@ -110,9 +118,11 @@ let eps = constants::float::EPSILON;
 ## Requirements
 
 ### For Users
+
 - Rust 1.70+
 
 ### For Development
+
 - Rust toolchain
 - CUDA Toolkit (for CUDA backend)
 - Xcode (for Metal backend on macOS)
@@ -120,6 +130,7 @@ let eps = constants::float::EPSILON;
 ## Contributing
 
 This is a massive undertaking that requires:
+
 1. **Core contributors**: Array operations, memory management, ufuncs
 2. **Mathematical experts**: Linear algebra, FFT, optimization
 3. **Performance engineers**: SIMD, GPU programming, benchmarks
@@ -127,6 +138,7 @@ This is a massive undertaking that requires:
 ## Motivation
 
 The goal is to provide:
+
 - **Performance**: Rust's safety + speed for scientific computing
 - **Integration**: Drop-in NumPy replacement for existing code
 - **Portability**: Multi-backend support for different platforms

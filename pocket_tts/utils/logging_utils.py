@@ -1,5 +1,8 @@
 import logging
+import sys
 from contextlib import contextmanager
+
+import structlog
 
 
 class PocketTTSFilter(logging.Filter):
@@ -7,8 +10,29 @@ class PocketTTSFilter(logging.Filter):
         return record.name.startswith("pocket_tts")
 
 
+def configure_structlog(log_level):
+    """Configure structlog processors and formatting."""
+    structlog.configure(
+        processors=[
+            structlog.contextvars.merge_contextvars,
+            structlog.processors.add_log_level,
+            structlog.processors.StackInfoRenderer(),
+            structlog.dev.set_exc_info,
+            structlog.processors.TimeStamper(fmt="iso"),
+            structlog.processors.JSONRenderer(),
+        ],
+        wrapper_class=structlog.make_filtering_bound_logger(log_level),
+        context_class=dict,
+        logger_factory=structlog.PrintLoggerFactory(),
+        cache_logger_on_first_use=True,
+    )
+
+
 @contextmanager
 def enable_logging(library_name, level):
+    # Configure structlog
+    configure_structlog(level)
+
     # Get the specific logger and its parent
     logger = logging.getLogger(library_name)
     parent_logger = logging.getLogger("pocket_tts")
@@ -23,7 +47,14 @@ def enable_logging(library_name, level):
 
     # Clear existing handlers and add our custom formatter with filter
     parent_logger.handlers.clear()
-    handler = logging.StreamHandler()
+
+    # Create a handler that redirects standard logging to structlog
+    # For now, we'll keep the StreamHandler but format it to be more structured-friendly or just simple text
+    # Since we are introducing structlog, we might want to use it primarily.
+    # However, to be less invasive, let's keep the standard handler for the CLI output for now,
+    # but ensure the PerformanceMonitor uses structlog directly.
+
+    handler = logging.StreamHandler(sys.stderr)
     formatter = logging.Formatter("%(levelname)s: %(message)s")
     handler.setFormatter(formatter)
     handler.addFilter(PocketTTSFilter())

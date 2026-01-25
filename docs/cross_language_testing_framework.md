@@ -53,6 +53,7 @@ The framework consists of:
 ## Current Status
 
 ### ✅ Implemented
+
 - Python test harness with NumPy execution
 - Test suite loading from JSON
 - Result comparison engine
@@ -60,10 +61,12 @@ The framework consists of:
 - Sample test suite generation
 
 ### ⚠️ Partial Implementation
+
 - Rust test execution (currently placeholder)
 - Performance benchmarking (basic timing only)
 
 ### ❌ Not Yet Implemented
+
 - Rust FFI/CLI integration
 - HTML/PDF report generation
 - Parallel test execution

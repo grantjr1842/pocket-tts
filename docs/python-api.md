@@ -42,6 +42,7 @@ The main class for text-to-speech generation.
 Load and return a TTSModel instance with pre-trained weights.
 
 **Parameters:**
+
 - `variant` (str): Model variant identifier (default: "b6369a24")
 - `temp` (float): Sampling temperature for generation (default: 0.7)
 - `lsd_decode_steps` (int): Number of generation steps (default: 1)
@@ -49,9 +50,11 @@ Load and return a TTSModel instance with pre-trained weights.
 - `eos_threshold` (float): Threshold for end-of-sequence detection (default: -4.0)
 
 **Returns:**
+
 - `TTSModel`: Loaded model instance on CPU
 
 **Example:**
+
 ```python
 from pocket_tts import TTSModel
 
@@ -94,13 +97,16 @@ print(f"Sample rate: {model.sample_rate} Hz")
 Extract model state for a given audio file or URL (voice cloning).
 
 **Parameters:**
+
 - `audio_conditioning` (Path | str | torch.Tensor): Audio file path, URL, or tensor
 - `truncate` (bool): Whether to truncate the audio (default: False)
 
 **Returns:**
+
 - `dict`: Model state dictionary containing hidden states and positional information
 
 **Example:**
+
 ```python
 from pocket_tts import TTSModel
 
@@ -123,6 +129,7 @@ voice_state = model.get_state_for_audio_prompt(
 Enable optional `torch.compile` acceleration for inference modules.
 
 **Parameters:**
+
 - `backend` (str): torch.compile backend (default: "inductor")
 - `mode` (str): torch.compile mode (default: "reduce-overhead")
 - `fullgraph` (bool): Require full graph capture (default: False)
@@ -130,9 +137,11 @@ Enable optional `torch.compile` acceleration for inference modules.
 - `targets` (Iterable[str] | str): Compile targets ("all", "flow-lm", "mimi-decoder")
 
 **Returns:**
+
 - `TTSModel`: The same model instance
 
 **Example:**
+
 ```python
 from pocket_tts import TTSModel
 
@@ -148,15 +157,18 @@ audio = model.generate_audio(voice_state, "Hello from compiled inference.")
 Generate complete audio tensor from text input.
 
 **Parameters:**
+
 - `model_state` (dict): Model state from `get_state_for_audio_prompt()`
 - `text_to_generate` (str): Text to convert to speech
 - `frames_after_eos` (int | None): Frames to generate after EOS detection (default: None)
 - `copy_state` (bool): Whether to copy the state (default: True)
 
 **Returns:**
+
 - `torch.Tensor`: Audio 1D tensor with shape [samples]
 
 **Example:**
+
 ```python
 from pocket_tts import TTSModel
 
@@ -178,9 +190,11 @@ Generate audio streaming chunks from text input.
 **Parameters:** Same as `generate_audio()`
 
 **Yields:**
+
 - `torch.Tensor`: Audio chunks with shape [samples]
 
 **Example:**
+
 ```python
 from pocket_tts import TTSModel
 
@@ -243,6 +257,7 @@ scipy.io.wavfile.write("batch_output.wav", model.sample_rate, full_audio.numpy()
 ```
 
 ### Streaming to File
+
 You can refer to our CLI implementation which can stream audio to a wav file.
 
 For more information about the command-line interface, see the [Generate Documentation](generate.md) or [Serve Documentation](serve.md).

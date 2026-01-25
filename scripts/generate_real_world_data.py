@@ -14,17 +14,14 @@ Usage:
 
 import argparse
 import json
-import os
 import time
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any, Dict
 
 import numpy as np
-import pandas as pd
 import pyarrow as pa
 import pyarrow.parquet as pq
-from scipy import signal, stats, fft
-import matplotlib.pyplot as plt
+from scipy import signal
 
 
 class TestDataGenerator:
