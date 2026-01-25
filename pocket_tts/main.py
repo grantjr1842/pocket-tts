@@ -213,6 +213,28 @@ def serve(
     uvicorn.run("pocket_tts.main:web_app", host=host, port=port, reload=reload)
 
 
+@cli_app.command()
+def websocket(
+    voice: Annotated[
+        str, typer.Option(help="Path to voice prompt audio file (voice to clone)")
+    ] = DEFAULT_AUDIO_PROMPT,
+    host: Annotated[str, typer.Option(help="Host to bind to")] = "localhost",
+    port: Annotated[int, typer.Option(help="Port to bind to")] = 8765,
+):
+    """Start the WebSocket TTS server for real-time streaming."""
+    from pocket_tts.websocket_server import create_websocket_server
+
+    log_level = logging.INFO
+    with enable_logging("pocket_tts", log_level):
+        tts_model = TTSModel.load_model(DEFAULT_VARIANT)
+        model_state_for_voice = tts_model.get_state_for_audio_prompt(voice)
+
+        server = create_websocket_server(
+            tts_model, model_state_for_voice, host=host, port=port
+        )
+        server.run()
+
+
 # ------------------------------------------------------
 # The pocket-tts single generation CLI implementation
 # ------------------------------------------------------
