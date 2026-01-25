@@ -188,7 +188,7 @@ pub use statistics::{
     nanmax, nanmean, nanmedian, nanmin, nanpercentile, nanprod, nanquantile, nanstd, nansum,
     nanvar, percentile, ptp, quantile, std, var,
 };
-pub use type_promotion::promote_types;
+pub use type_promotion::{promote_types, TypePromotionRules};
 // Complex utility functions
 pub use math_ufuncs::{
     abs,
