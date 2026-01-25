@@ -84,4 +84,158 @@ ws.addEventListener("message", (event) => {
 });
 ```
 
+## Advanced Deployment
+
+### Docker Deployment
+
+Create a `Dockerfile`:
+
+```dockerfile
+FROM python:3.11-slim
+
+WORKDIR /app
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    libsndfile1 \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install pocket-tts
+RUN pip install --no-cache-dir pocket-tts
+
+# Expose port
+EXPOSE 8000
+
+# Set environment variables
+ENV POCKET_TTS_HOST=0.0.0.0
+ENV POCKET_TTS_PORT=8000
+
+# Run server
+CMD ["pocket-tts", "serve"]
+```
+
+Build and run:
+
+```bash
+# Build image
+docker build -t pocket-tts-server .
+
+# Run container
+docker run -p 8000:8000 pocket-tts-server
+
+# Run with custom voice
+docker run -p 8000:8000 \
+  -v /path/to/voices:/voices:ro \
+  -e POCKET_TTS_VOICE=/voices/custom.wav \
+  pocket-tts-server
+```
+
+### Docker Compose
+
+Create `docker-compose.yml`:
+
+```yaml
+version: '3.8'
+
+services:
+  pocket-tts:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      - POCKET_TTS_HOST=0.0.0.0
+      - POCKET_TTS_PORT=8000
+    volumes:
+      - ./voices:/voices:ro
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+```
+
+Run:
+
+```bash
+docker-compose up -d
+```
+
+### Load Balancing
+
+For high-traffic deployments, use a load balancer with multiple instances:
+
+```yaml
+# docker-compose.yml with multiple instances
+version: '3.8'
+
+services:
+  pocket-tts-1:
+    build: .
+    ports:
+      - "8001:8000"
+    environment:
+      - POCKET_TTS_PORT=8000
+
+  pocket-tts-2:
+    build: .
+    ports:
+      - "8002:8000"
+    environment:
+      - POCKET_TTS_PORT=8000
+
+  nginx:
+    image: nginx:alpine
+    ports:
+      - "8000:80"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - pocket-tts-1
+      - pocket-tts-2
+```
+
+Nginx configuration (`nginx.conf`):
+
+```nginx
+events {
+    worker_connections 1024;
+}
+
+http {
+    upstream pocket_tts_backend {
+        least_conn;
+        server pocket-tts-1:8000;
+        server pocket-tts-2:8000;
+    }
+
+    server {
+        listen 80;
+
+        location / {
+            proxy_pass http://pocket_tts_backend;
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_read_timeout 300s;
+        }
+    }
+}
+```
+
+### Production Server with Gunicorn
+
+```bash
+# Install gunicorn
+pip install gunicorn
+
+# Run with Gunicorn
+gunicorn pocket_tts.serve:app \
+  --workers 1 \
+  --worker-class uvicorn.workers.UvicornWorker \
+  --bind 0.0.0.0:8000 \
+  --timeout 120 \
+  --access-logfile - \
+  --error-logfile -
+```
+
 For more advanced usage, see the [Python API documentation](python-api.md) for direct integration with the TTS model.

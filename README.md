@@ -119,6 +119,29 @@ so we recommend to keep the model and voice states in memory if you can.
 
 You can check out the [Python API documentation](https://github.com/kyutai-labs/pocket-tts/tree/main/docs/python-api.md) for more details and examples.
 
+## Documentation
+
+Comprehensive documentation is available in the [docs/](docs/) directory:
+
+### Core Documentation
+- [Configuration Guide](docs/configuration-guide.md) - Environment variables, model compilation, voice configuration, and server settings
+- [Python API Documentation](docs/python-api.md) - Complete Python API reference and examples
+- [Error Handling Guide](docs/error-handling-guide.md) - Systematic error handling patterns and best practices
+- [Performance Optimization Guide](docs/performance-optimization-guide.md) - Model compilation, memory management, and CPU optimization
+
+### Command-Line Tools
+- [Generate Command Documentation](docs/generate.md) - CLI reference for audio generation with advanced examples
+- [Serve Command Documentation](docs/serve.md) - Server deployment with Docker and load balancing
+
+### Advanced Topics
+- [Integration Examples](docs/integration-examples.md) - Complete examples for FastAPI, Tkinter, AWS Lambda, Google Cloud Functions, Discord bots, and CLI tools
+- [Migration Guide](docs/migration-guide.md) - Version compatibility, breaking changes, and rollback procedures
+- [Troubleshooting Guide](docs/troubleshooting.md) - Common issues, debugging techniques, and solutions
+
+### Quick Links
+- [Command Map](docs/command-map.md) - Development commands for format, lint, test, and build
+- [Documentation Index](docs/documentation-index.md) - Complete navigation guide for all documentation
+
 ## Unsupported features
 
 At the moment, we do not support (but would love pull requests adding):
