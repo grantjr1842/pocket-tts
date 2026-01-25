@@ -84,8 +84,39 @@ class MimiModel(nn.Module):
             return x
         return self.upsample(x, mimi_state)
 
-    def forward(self, x: torch.Tensor):
-        raise NotImplementedError()
+    def forward(self, x: torch.Tensor, mimi_state=None) -> torch.Tensor:
+        """Forward pass through the Mimi model: encode -> quantize -> decode.
+
+        Args:
+            x: Input audio tensor of shape [B, C, T]
+            mimi_state: Optional state dictionary for streaming inference
+
+        Returns:
+            Decoded audio tensor of shape [B, C, T]
+        """
+        if x.dim() != 3:
+            raise ValueError(
+                f"MimiModel.forward expects audio of shape [B, C, T] but got {x.shape}"
+            )
+
+        # Encode to latent space
+        latent = self.encode_to_latent(x)
+
+        # Quantize the latent representation
+        quantized = self.quantizer(latent.transpose(-1, -2))
+
+        # Decode from quantized latent
+        if mimi_state is not None:
+            # Use streaming state if provided
+            decoded = self.decode_from_latent(quantized, mimi_state)
+        else:
+            # Non-streaming mode: create temporary state
+            # For non-streaming, we don't need state management
+            emb = quantized
+            (emb,) = self.decoder_transformer(emb, mimi_state)
+            decoded = self.decoder(emb, mimi_state)
+
+        return decoded
 
     def decode_from_latent(self, latent: torch.Tensor, mimi_state) -> torch.Tensor:
         emb = self._to_encoder_framerate(latent, mimi_state)
