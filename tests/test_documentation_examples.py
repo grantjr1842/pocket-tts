@@ -72,11 +72,21 @@ def make_my_voice_file():
 
 @pytest.mark.usefixtures("make_my_voice_file")
 def test_get_state_for_audio_prompt():
+    """Test getting voice state from various audio sources.
+
+    Note: This test requires voice cloning capability. If the model was loaded
+    without voice cloning weights, the test will skip the voice cloning examples.
+    """
     from pocket_tts import TTSModel
 
     model = TTSModel.load_model()
-    # hack to make it work without auth
-    model.has_voice_cloning = True
+
+    # Test with predefined voice (always available)
+    voice_state = model.get_state_for_audio_prompt("marius")
+
+    if not model.has_voice_cloning:
+        # Skip voice cloning tests if not available
+        pytest.skip("Voice cloning not available - model loaded without voice cloning weights")
 
     # From HuggingFace URL
     voice_state = model.get_state_for_audio_prompt(

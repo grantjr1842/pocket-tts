@@ -660,6 +660,8 @@ def main():
             table = pa.table({"data": arr.flatten()})
             pq.write_table(table, os.path.join(test_dir, f"{name}.parquet"))
         except ImportError:
+            # PyArrow is optional - Parquet export is skipped if not installed
+            # NumPy format is already saved above, so this is a nice-to-have feature
             pass
 
     print(f"Test data saved to {test_dir}")
