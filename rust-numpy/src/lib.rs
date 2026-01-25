@@ -123,6 +123,7 @@ pub mod char;
 mod char_tests;
 pub mod comparison_ufuncs;
 pub mod constants;
+pub mod cpu_features;
 pub mod datetime;
 pub mod dist;
 pub mod dtype;
@@ -138,8 +139,8 @@ pub mod math_ufuncs;
 pub mod matrix;
 pub mod memory;
 pub mod modules;
-pub mod performance_metrics;
 pub mod parallel;
+pub mod performance_metrics;
 pub mod polynomial;
 pub mod profiler;
 pub mod random;
@@ -147,7 +148,6 @@ pub mod rec;
 pub mod reductions;
 pub mod set_ops;
 pub mod simd;
-pub mod simd_intrinsics;
 pub mod simd_ops;
 pub mod slicing;
 pub mod sorting;
@@ -182,8 +182,14 @@ pub use dist::{cdist, pdist, squareform};
 pub use dtype::{Casting, Dtype, DtypeKind};
 pub use error::{NumPyError, Result};
 pub use linalg::norm;
-pub use performance_metrics::{Bottleneck, BottleneckType, MemoryTracker, OptimizationRecommendation, PerformanceMetrics, PerformanceReport};
-pub use profiler::{enable_profiling, disable_profiling, get_performance_report, init_profiler, is_profiling_enabled, print_profiler_summary, profile, profile_with_elements, Profiler};
+pub use performance_metrics::{
+    Bottleneck, BottleneckType, MemoryTracker, OptimizationRecommendation, PerformanceMetrics,
+    PerformanceReport,
+};
+pub use profiler::{
+    disable_profiling, enable_profiling, get_performance_report, init_profiler,
+    is_profiling_enabled, print_profiler_summary, profile, profile_with_elements, Profiler,
+};
 pub use rec::{array as rec_array, fromarrays, fromrecords, RecArray};
 pub use reductions::{
     all, all_bool, any, any_bool, argmax, argmin, cumprod, cumsum, max, mean, min, prod, sum,

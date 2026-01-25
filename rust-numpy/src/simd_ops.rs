@@ -1,10 +1,10 @@
 // SIMD-optimized operations for mathematical ufuncs
 //
 // This module provides SIMD-optimized implementations of common mathematical
-// operations using real architecture-specific intrinsics for maximum performance.
+// operations using runtime CPU feature detection for optimal performance.
 
 #[cfg(feature = "simd")]
-use crate::simd_intrinsics::*;
+use crate::cpu_features::{get_cpu_features, CpuFeatures};
 
 /// SIMD chunk size for different architectures
 #[cfg(feature = "simd")]
@@ -22,15 +22,25 @@ pub enum SimdChunkSize {
 
 #[cfg(feature = "simd")]
 impl SimdChunkSize {
+    /// Create new chunk size based on runtime CPU feature detection
     #[inline]
     pub fn new() -> Self {
+<<<<<<< HEAD
+        let features = get_cpu_features();
+=======
         let features = crate::simd_intrinsics::CpuFeatures::detect();
+>>>>>>> origin/main
         if features.has_avx512f {
             SimdChunkSize::Avx512
         } else if features.has_avx2 {
             SimdChunkSize::Avx2
         } else if features.has_sse41 {
             SimdChunkSize::Sse128
+<<<<<<< HEAD
+        } else if features.has_neon {
+            SimdChunkSize::Sse128 // NEON uses 128-bit vectors
+=======
+>>>>>>> origin/main
         } else {
             SimdChunkSize::Scalar
         }
@@ -60,11 +70,20 @@ impl SimdChunkSize {
 /// Process array using SIMD-optimized sin function
 #[cfg(feature = "simd")]
 pub fn simd_sin_f64(values: &[f64]) -> Vec<f64> {
+<<<<<<< HEAD
+    let features = get_cpu_features();
+
+    if features.has_avx2 {
+        simd_sin_f64_avx2(values)
+    } else if features.has_sse41 {
+        simd_sin_f64_sse(values)
+=======
     let features = crate::simd_intrinsics::CpuFeatures::detect();
     if features.has_avx2 {
         let mut result = vec![0.0; values.len()];
         crate::simd_intrinsics::simd_sin_f64_approx(values, &mut result);
         result
+>>>>>>> origin/main
     } else {
         // Fallback to scalar
         values.iter().copied().map(|x| x.sin()).collect()
@@ -74,11 +93,20 @@ pub fn simd_sin_f64(values: &[f64]) -> Vec<f64> {
 /// Process array using SIMD-optimized cos function
 #[cfg(feature = "simd")]
 pub fn simd_cos_f64(values: &[f64]) -> Vec<f64> {
+<<<<<<< HEAD
+    let features = get_cpu_features();
+
+    if features.has_avx2 {
+        simd_cos_f64_avx2(values)
+    } else if features.has_sse41 {
+        simd_cos_f64_sse(values)
+=======
     let features = crate::simd_intrinsics::CpuFeatures::detect();
     if features.has_avx2 {
         let mut result = vec![0.0; values.len()];
         crate::simd_intrinsics::simd_cos_f64_approx(values, &mut result);
         result
+>>>>>>> origin/main
     } else {
         // Fallback to scalar
         values.iter().copied().map(|x| x.cos()).collect()
@@ -88,11 +116,20 @@ pub fn simd_cos_f64(values: &[f64]) -> Vec<f64> {
 /// Process array using SIMD-optimized exp function
 #[cfg(feature = "simd")]
 pub fn simd_exp_f64(values: &[f64]) -> Vec<f64> {
+<<<<<<< HEAD
+    let features = get_cpu_features();
+
+    if features.has_avx2 {
+        simd_exp_f64_avx2(values)
+    } else if features.has_sse41 {
+        simd_exp_f64_sse(values)
+=======
     let features = crate::simd_intrinsics::CpuFeatures::detect();
     if features.has_avx2 {
         let mut result = vec![0.0; values.len()];
         crate::simd_intrinsics::simd_exp_f64_approx(values, &mut result);
         result
+>>>>>>> origin/main
     } else {
         // Fallback to scalar
         values.iter().copied().map(|x| x.exp()).collect()
@@ -102,11 +139,20 @@ pub fn simd_exp_f64(values: &[f64]) -> Vec<f64> {
 /// Process array using SIMD-optimized log function
 #[cfg(feature = "simd")]
 pub fn simd_log_f64(values: &[f64]) -> Vec<f64> {
+<<<<<<< HEAD
+    let features = get_cpu_features();
+
+    if features.has_avx2 {
+        simd_log_f64_avx2(values)
+    } else if features.has_sse41 {
+        simd_log_f64_sse(values)
+=======
     let features = crate::simd_intrinsics::CpuFeatures::detect();
     if features.has_avx2 {
         let mut result = vec![0.0; values.len()];
         crate::simd_intrinsics::simd_log_f64_approx(values, &mut result);
         result
+>>>>>>> origin/main
     } else {
         // Fallback to scalar
         values.iter().copied().map(|x| x.ln()).collect()
@@ -116,6 +162,14 @@ pub fn simd_log_f64(values: &[f64]) -> Vec<f64> {
 /// Process array using SIMD-optimized sqrt function
 #[cfg(feature = "simd")]
 pub fn simd_sqrt_f64(values: &[f64]) -> Vec<f64> {
+<<<<<<< HEAD
+    let features = get_cpu_features();
+
+    if features.has_avx2 {
+        simd_sqrt_f64_avx2(values)
+    } else if features.has_sse41 {
+        simd_sqrt_f64_sse(values)
+=======
     let features = crate::simd_intrinsics::CpuFeatures::detect();
     if features.has_avx2 {
         let mut result = vec![0.0; values.len()];
@@ -127,6 +181,7 @@ pub fn simd_sqrt_f64(values: &[f64]) -> Vec<f64> {
             result[i] = values[i].sqrt();
         }
         result
+>>>>>>> origin/main
     } else {
         // Fallback to scalar
         values.iter().copied().map(|x| x.sqrt()).collect()
@@ -136,11 +191,20 @@ pub fn simd_sqrt_f64(values: &[f64]) -> Vec<f64> {
 /// Process array using SIMD-optimized f64 addition
 #[cfg(feature = "simd")]
 pub fn simd_add_f64(a: &[f64], b: &[f64]) -> Vec<f64> {
+<<<<<<< HEAD
+    let features = get_cpu_features();
+
+    if features.has_avx2 {
+        simd_add_f64_avx2(a, b)
+    } else if features.has_sse41 {
+        simd_add_f64_sse(a, b)
+=======
     let features = crate::simd_intrinsics::CpuFeatures::detect();
     if features.has_avx2 {
         let mut result = vec![0.0; a.len()];
         crate::simd_intrinsics::simd_add_f64_avx2(a, b, &mut result);
         result
+>>>>>>> origin/main
     } else {
         // Fallback to scalar
         a.iter().zip(b.iter()).map(|(x, y)| x + y).collect()
@@ -150,11 +214,20 @@ pub fn simd_add_f64(a: &[f64], b: &[f64]) -> Vec<f64> {
 /// Process array using SIMD-optimized f32 addition
 #[cfg(feature = "simd")]
 pub fn simd_add_f32(a: &[f32], b: &[f32]) -> Vec<f32> {
+<<<<<<< HEAD
+    let features = get_cpu_features();
+
+    if features.has_avx2 {
+        simd_add_f32_avx2(a, b)
+    } else if features.has_sse41 {
+        simd_add_f32_sse(a, b)
+=======
     let features = crate::simd_intrinsics::CpuFeatures::detect();
     if features.has_avx2 {
         let mut result = vec![0.0; a.len()];
         crate::simd_intrinsics::simd_add_f32_avx2(a, b, &mut result);
         result
+>>>>>>> origin/main
     } else {
         // Fallback to scalar
         a.iter().zip(b.iter()).map(|(x, y)| x + y).collect()
@@ -164,6 +237,51 @@ pub fn simd_add_f32(a: &[f32], b: &[f32]) -> Vec<f32> {
 /// Process array using SIMD-optimized f64 subtraction
 #[cfg(feature = "simd")]
 pub fn simd_sub_f64(a: &[f64], b: &[f64]) -> Vec<f64> {
+<<<<<<< HEAD
+    let features = get_cpu_features();
+
+    if features.has_avx2 {
+        simd_sub_f64_avx2(a, b)
+    } else if features.has_sse41 {
+        simd_sub_f64_sse(a, b)
+    } else {
+        // Fallback to scalar
+        a.iter().zip(b.iter()).map(|(x, y)| x - y).collect()
+    }
+}
+
+/// Process array using SIMD-optimized f64 multiplication
+#[cfg(feature = "simd")]
+pub fn simd_mul_f64(a: &[f64], b: &[f64]) -> Vec<f64> {
+    let features = get_cpu_features();
+
+    if features.has_avx2 {
+        simd_mul_f64_avx2(a, b)
+    } else if features.has_sse41 {
+        simd_mul_f64_sse(a, b)
+    } else {
+        // Fallback to scalar
+        a.iter().zip(b.iter()).map(|(x, y)| x * y).collect()
+    }
+}
+
+/// Process array using SIMD-optimized f64 division
+#[cfg(feature = "simd")]
+pub fn simd_div_f64(a: &[f64], b: &[f64]) -> Vec<f64> {
+    let features = get_cpu_features();
+
+    if features.has_avx2 {
+        simd_div_f64_avx2(a, b)
+    } else if features.has_sse41 {
+        simd_div_f64_sse(a, b)
+    } else {
+        // Fallback to scalar
+        a.iter().zip(b.iter()).map(|(x, y)| x / y).collect()
+    }
+}
+
+// Scalar fallback implementations for architectures without SIMD support
+=======
     let features = crate::simd_intrinsics::CpuFeatures::detect();
     if features.has_avx2 {
         let mut result = vec![0.0; a.len()];
@@ -204,6 +322,7 @@ pub fn simd_div_f64(a: &[f64], b: &[f64]) -> Vec<f64> {
 }
 
 /// Scalar fallback for architectures without SIMD support
+>>>>>>> origin/main
 #[cfg(not(feature = "simd"))]
 pub fn simd_sin_f64(values: &[f64]) -> Vec<f64> {
     values.iter().copied().map(|x| x.sin()).collect()
@@ -254,6 +373,132 @@ pub fn simd_div_f64(a: &[f64], b: &[f64]) -> Vec<f64> {
     a.iter().zip(b.iter()).map(|(x, y)| x / y).collect()
 }
 
+<<<<<<< HEAD
+// Placeholder implementations for specific SIMD instruction sets
+// These would be implemented with actual intrinsics in a full implementation
+
+#[cfg(feature = "simd")]
+fn simd_sin_f64_avx2(values: &[f64]) -> Vec<f64> {
+    // Placeholder: would use AVX2 intrinsics
+    values.iter().copied().map(|x| x.sin()).collect()
+}
+
+#[cfg(feature = "simd")]
+fn simd_sin_f64_sse(values: &[f64]) -> Vec<f64> {
+    // Placeholder: would use SSE intrinsics
+    values.iter().copied().map(|x| x.sin()).collect()
+}
+
+#[cfg(feature = "simd")]
+fn simd_cos_f64_avx2(values: &[f64]) -> Vec<f64> {
+    // Placeholder: would use AVX2 intrinsics
+    values.iter().copied().map(|x| x.cos()).collect()
+}
+
+#[cfg(feature = "simd")]
+fn simd_cos_f64_sse(values: &[f64]) -> Vec<f64> {
+    // Placeholder: would use SSE intrinsics
+    values.iter().copied().map(|x| x.cos()).collect()
+}
+
+#[cfg(feature = "simd")]
+fn simd_exp_f64_avx2(values: &[f64]) -> Vec<f64> {
+    // Placeholder: would use AVX2 intrinsics
+    values.iter().copied().map(|x| x.exp()).collect()
+}
+
+#[cfg(feature = "simd")]
+fn simd_exp_f64_sse(values: &[f64]) -> Vec<f64> {
+    // Placeholder: would use SSE intrinsics
+    values.iter().copied().map(|x| x.exp()).collect()
+}
+
+#[cfg(feature = "simd")]
+fn simd_log_f64_avx2(values: &[f64]) -> Vec<f64> {
+    // Placeholder: would use AVX2 intrinsics
+    values.iter().copied().map(|x| x.ln()).collect()
+}
+
+#[cfg(feature = "simd")]
+fn simd_log_f64_sse(values: &[f64]) -> Vec<f64> {
+    // Placeholder: would use SSE intrinsics
+    values.iter().copied().map(|x| x.ln()).collect()
+}
+
+#[cfg(feature = "simd")]
+fn simd_sqrt_f64_avx2(values: &[f64]) -> Vec<f64> {
+    // Placeholder: would use AVX2 intrinsics
+    values.iter().copied().map(|x| x.sqrt()).collect()
+}
+
+#[cfg(feature = "simd")]
+fn simd_sqrt_f64_sse(values: &[f64]) -> Vec<f64> {
+    // Placeholder: would use SSE intrinsics
+    values.iter().copied().map(|x| x.sqrt()).collect()
+}
+
+#[cfg(feature = "simd")]
+fn simd_add_f64_avx2(a: &[f64], b: &[f64]) -> Vec<f64> {
+    // Placeholder: would use AVX2 intrinsics
+    a.iter().zip(b.iter()).map(|(x, y)| x + y).collect()
+}
+
+#[cfg(feature = "simd")]
+fn simd_add_f64_sse(a: &[f64], b: &[f64]) -> Vec<f64> {
+    // Placeholder: would use SSE intrinsics
+    a.iter().zip(b.iter()).map(|(x, y)| x + y).collect()
+}
+
+#[cfg(feature = "simd")]
+fn simd_add_f32_avx2(a: &[f32], b: &[f32]) -> Vec<f32> {
+    // Placeholder: would use AVX2 intrinsics
+    a.iter().zip(b.iter()).map(|(x, y)| x + y).collect()
+}
+
+#[cfg(feature = "simd")]
+fn simd_add_f32_sse(a: &[f32], b: &[f32]) -> Vec<f32> {
+    // Placeholder: would use SSE intrinsics
+    a.iter().zip(b.iter()).map(|(x, y)| x + y).collect()
+}
+
+#[cfg(feature = "simd")]
+fn simd_sub_f64_avx2(a: &[f64], b: &[f64]) -> Vec<f64> {
+    // Placeholder: would use AVX2 intrinsics
+    a.iter().zip(b.iter()).map(|(x, y)| x - y).collect()
+}
+
+#[cfg(feature = "simd")]
+fn simd_sub_f64_sse(a: &[f64], b: &[f64]) -> Vec<f64> {
+    // Placeholder: would use SSE intrinsics
+    a.iter().zip(b.iter()).map(|(x, y)| x - y).collect()
+}
+
+#[cfg(feature = "simd")]
+fn simd_mul_f64_avx2(a: &[f64], b: &[f64]) -> Vec<f64> {
+    // Placeholder: would use AVX2 intrinsics
+    a.iter().zip(b.iter()).map(|(x, y)| x * y).collect()
+}
+
+#[cfg(feature = "simd")]
+fn simd_mul_f64_sse(a: &[f64], b: &[f64]) -> Vec<f64> {
+    // Placeholder: would use SSE intrinsics
+    a.iter().zip(b.iter()).map(|(x, y)| x * y).collect()
+}
+
+#[cfg(feature = "simd")]
+fn simd_div_f64_avx2(a: &[f64], b: &[f64]) -> Vec<f64> {
+    // Placeholder: would use AVX2 intrinsics
+    a.iter().zip(b.iter()).map(|(x, y)| x / y).collect()
+}
+
+#[cfg(feature = "simd")]
+fn simd_div_f64_sse(a: &[f64], b: &[f64]) -> Vec<f64> {
+    // Placeholder: would use SSE intrinsics
+    a.iter().zip(b.iter()).map(|(x, y)| x / y).collect()
+}
+
+=======
+>>>>>>> origin/main
 /// Benchmark helper to compare SIMD vs scalar performance
 #[cfg(feature = "simd")]
 pub fn benchmark_simd_vs_scalar_f64(
@@ -362,6 +607,16 @@ mod tests {
     }
 
     #[test]
+<<<<<<< HEAD
+    fn test_cpu_features_integration() {
+        let features = get_cpu_features();
+        // Should not panic
+        let _width_f64 = features.best_vector_width_f64();
+        let _width_f32 = features.best_vector_width_f32();
+
+        // Test chunk size creation
+        let chunk_size = SimdChunkSize::new();
+=======
     fn test_cpu_features() {
         let features = crate::simd_intrinsics::CpuFeatures::detect();
         // Should not panic
@@ -373,6 +628,7 @@ mod tests {
     fn test_simd_chunk_size() {
         let chunk_size = SimdChunkSize::new();
         // Should not panic
+>>>>>>> origin/main
         let _size_f64 = chunk_size.chunk_size_f64();
         let _size_f32 = chunk_size.chunk_size_f32();
     }
