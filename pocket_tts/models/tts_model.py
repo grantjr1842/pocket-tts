@@ -482,6 +482,9 @@ class TTSModel(nn.Module):
         max_tokens: int = MAX_TOKEN_PER_CHUNK,
         frames_after_eos: int | None = None,
         copy_state: bool = True,
+        enable_queue_monitoring: bool = True,
+        queue_warning_threshold: int = 10,
+        queue_critical_threshold: int = 20,
     ):
         """Generate audio streaming chunks from text input.
 
@@ -504,6 +507,11 @@ class TTSModel(nn.Module):
             copy_state: Whether to create a deep copy of the model state before
                 generation. If True, preserves the original state for reuse.
                 If False, modifies the input state in-place. Defaults to True.
+            enable_queue_monitoring: Enable queue depth monitoring during streaming.
+                Logs warnings when queues exceed threshold. Defaults to True.
+            queue_warning_threshold: Queue depth threshold for warnings. Defaults to 10.
+            queue_critical_threshold: Queue depth threshold for critical alerts.
+                Defaults to 20.
 
         Yields:
             torch.Tensor: Audio chunks with shape [samples] at the model's
@@ -549,6 +557,9 @@ class TTSModel(nn.Module):
                     text_to_generate=chunk,
                     frames_after_eos=effective_frames,
                     copy_state=copy_state,
+                    enable_queue_monitoring=enable_queue_monitoring,
+                    queue_warning_threshold=queue_warning_threshold,
+                    queue_critical_threshold=queue_critical_threshold,
                 )
 
             # Insert pause if applicable
@@ -568,6 +579,9 @@ class TTSModel(nn.Module):
         text_to_generate: str,
         frames_after_eos: int,
         copy_state: bool,
+        enable_queue_monitoring: bool = True,
+        queue_warning_threshold: int = 10,
+        queue_critical_threshold: int = 20,
     ):
         if copy_state:
             model_state = copy.deepcopy(model_state)
@@ -581,6 +595,19 @@ class TTSModel(nn.Module):
 
         self._active_queues["latents"] = latents_queue
         self._active_queues["results"] = result_queue
+
+        # Initialize queue monitor if enabled
+        monitor = None
+        if enable_queue_monitoring:
+            from pocket_tts.streaming import QueueDepthMonitor
+
+            monitor = QueueDepthMonitor(
+                latents_queue=latents_queue,
+                result_queue=result_queue,
+                warning_threshold=queue_warning_threshold,
+                critical_threshold=queue_critical_threshold,
+            )
+            monitor.start()
 
         # Start decoder worker thread
         decoder_thread = threading.Thread(
@@ -605,6 +632,11 @@ class TTSModel(nn.Module):
         total_generated_samples = 0
         while True:
             result = result_queue.get()
+
+            # Update queue monitor
+            if monitor:
+                monitor.update()
+
             if result[0] == "chunk":
                 # Audio chunk available immediately for streaming/playback
                 audio_chunk = result[1]
@@ -626,6 +658,20 @@ class TTSModel(nn.Module):
 
         self._active_queues.pop("latents", None)
         self._active_queues.pop("results", None)
+
+        # Log queue statistics if monitoring was enabled
+        if monitor:
+            report = monitor.get_report()
+            logger.info(
+                "Queue statistics: max_latents=%d, max_result=%d, "
+                "avg_latents=%.1f, avg_result=%.1f, warnings=%d, criticals=%d",
+                report["max_latents_depth"],
+                report["max_result_depth"],
+                report["avg_latents_depth"],
+                report["avg_result_depth"],
+                report["warning_triggered"],
+                report["critical_triggered"],
+            )
 
         # Print timing information
         duration_generated_audio = int(
