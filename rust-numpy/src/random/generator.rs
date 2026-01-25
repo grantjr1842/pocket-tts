@@ -703,6 +703,165 @@ impl Generator {
             data.push(T::from(dist.sample(&mut self.bit_gen)));
         }
         Ok(Array::from_data(data, shape.to_vec()))
+
+    // --- Utility Methods ---
+
+    /// Shuffle an array in-place
+    ///
+    /// This method shuffles the contents of an array along the first axis.
+    /// For multi-dimensional arrays, it shuffles each sub-array independently.
+    pub fn shuffle<T>(&mut self, arr: &mut Array<T>) -> Result<(), NumPyError>
+    where
+        T: Clone + Default + 'static,
+    {
+        if arr.ndim() == 1 {
+            // For 1D arrays, shuffle the elements directly
+            let data = arr.data.as_slice_mut();
+            data.shuffle(&mut self.bit_gen);
+        } else {
+            // For multi-dimensional arrays, shuffle along the first axis
+            let shape = arr.shape().to_vec();
+            if shape.is_empty() {
+                return Ok(());
+            }
+
+            let first_axis_size = shape[0];
+            let element_size = shape[1..].iter().product();
+
+            let data = arr.data.as_slice_mut();
+
+            // Create indices for shuffling
+            let mut indices: Vec<usize> = (0..first_axis_size).collect();
+            indices.shuffle(&mut self.bit_gen);
+
+            // Reorder the data according to shuffled indices
+            let mut new_data = Vec::with_capacity(data.len());
+            for &idx in &indices {
+                let start = idx * element_size;
+                let end = start + element_size;
+                new_data.extend_from_slice(&data[start..end]);
+            }
+
+            // Replace the data
+            data.copy_from_slice(&new_data);
+        }
+
+        Ok(())
+    }
+
+    /// Generate a random permutation of integers
+    ///
+    /// Returns an array containing a random permutation of integers from 0 to n-1.
+    pub fn permutation(&mut self, n: usize) -> Result<Array<i64>, NumPyError> {
+        let mut indices: Vec<i64> = (0..n as i64).collect();
+        indices.shuffle(&mut self.bit_gen);
+        Ok(Array::from_data(indices, vec![n]))
+    }
+
+    /// Generate a random sample from an array
+    ///
+    /// Returns a random sample of size k from the given array without replacement.
+    pub fn choice<T>(&mut self, a: &[T], size: usize, replace: bool) -> Result<Array<T>, NumPyError>
+    where
+        T: Clone + Default + 'static,
+    {
+        if a.is_empty() {
+            return Err(NumPyError::invalid_value("Cannot choose from empty array"));
+        }
+
+        if !replace && size > a.len() {
+            return Err(NumPyError::invalid_value(
+                "Cannot take a larger sample than population when replace=False",
+            ));
+        }
+
+        let mut data = Vec::with_capacity(size);
+
+        if replace {
+            // Sampling with replacement
+            for _ in 0..size {
+                let idx = self.bit_gen.gen_range(0..a.len());
+                data.push(a[idx].clone());
+            }
+        } else {
+            // Sampling without replacement
+            let mut indices: Vec<usize> = (0..a.len()).collect();
+            indices.shuffle(&mut self.bit_gen);
+
+            for i in 0..size {
+                data.push(a[indices[i]].clone());
+            }
+        }
+
+        Ok(Array::from_data(data, vec![size]))
+    }
+
+    /// Generate a random sample from a range
+    ///
+    /// Returns a random sample of integers from the range [low, high).
+    pub fn integers(&mut self, low: i64, high: i64, size: usize) -> Result<Array<i64>, NumPyError> {
+        if low >= high {
+            return Err(NumPyError::invalid_value("low must be less than high"));
+        }
+
+        let mut data = Vec::with_capacity(size);
+        for _ in 0..size {
+            data.push(self.bit_gen.gen_range(low..high));
+        }
+
+        Ok(Array::from_data(data, vec![size]))
+    }
+
+    /// Generate random bytes
+    ///
+    /// Returns an array of random bytes.
+    pub fn bytes(&mut self, length: usize) -> Result<Array<u8>, NumPyError> {
+        let mut data = vec![0u8; length];
+        self.bit_gen.fill_bytes(&mut data);
+        Ok(Array::from_data(data, vec![length]))
+    }
+
+    /// Generate random floating point numbers in [0.0, 1.0)
+    ///
+    /// Returns an array of random floats in the half-open interval [0.0, 1.0).
+    pub fn random_floats(&mut self, size: usize) -> Result<Array<f64>, NumPyError> {
+        let mut data = Vec::with_capacity(size);
+        for _ in 0..size {
+            data.push(self.bit_gen.gen::<f64>());
+        }
+        Ok(Array::from_data(data, vec![size]))
+    }
+
+    /// Generate random floating point numbers in [low, high)
+    ///
+    /// Returns an array of random floats in the specified range.
+    pub fn random_floats_range(
+        &mut self,
+        low: f64,
+        high: f64,
+        size: usize,
+    ) -> Result<Array<f64>, NumPyError> {
+        if low >= high {
+            return Err(NumPyError::invalid_value("low must be less than high"));
+        }
+
+        let mut data = Vec::with_capacity(size);
+        for _ in 0..size {
+            let val: f64 = self.bit_gen.gen();
+            data.push(low + val * (high - low));
+        }
+        Ok(Array::from_data(data, vec![size]))
+    }
+
+    /// Generate random boolean values
+    ///
+    /// Returns an array of random boolean values.
+    pub fn random_bools(&mut self, size: usize) -> Result<Array<bool>, NumPyError> {
+        let mut data = Vec::with_capacity(size);
+        for _ in 0..size {
+            data.push(self.bit_gen.gen::<bool>());
+        }
+        Ok(Array::from_data(data, vec![size]))
     }
 }
 
@@ -720,3 +879,6 @@ impl RngCore for Generator {
         self.bit_gen.try_fill_bytes(dest)
     }
 }
+
+#[cfg(test)]
+mod tests;
