@@ -1,6 +1,7 @@
 Goal: Consolidate rust-numpy parity/gap docs into a single NumPy 2.4 report and add an enum parity audit (NumPy enums vs rust-numpy enums).
 
 Changes:
+
 - [NEW] rust-numpy/PARITY_NUMPY_2_4.md — consolidated parity/gap report (summary, FFI/export gap, checklist, roadmap, enum parity section).
 - [NEW] rust-numpy/ENUM_PARITY_NUMPY_2_4.csv — NumPy 2.4 enum list with rust-numpy coverage status.
 - [NEW] rust-numpy/scripts/enum_audit.py — generate NumPy enum inventory and compare against rust-numpy enums.
@@ -14,6 +15,7 @@ Changes:
 - [DELETE] rust-numpy/PARITY_BASELINE_NUMPY_2_4.md — summary moved into consolidated report.
 
 Verification:
+
 - cd rust-numpy
 - cargo fmt --check
 - cargo clippy -- -D warnings

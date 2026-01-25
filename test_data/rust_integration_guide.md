@@ -625,30 +625,30 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v2
+      - uses: actions/checkout@v2
 
-    - name: Install Rust
-      uses: actions-rs/toolchain@v1
-      with:
-        toolchain: stable
+      - name: Install Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
 
-    - name: Cache dependencies
-      uses: actions/cache@v2
-      with:
-        path: ~/.cargo/registry
-        key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+      - name: Cache dependencies
+        uses: actions/cache@v2
+        with:
+          path: ~/.cargo/registry
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
 
-    - name: Run tests
-      run: cargo test --all
+      - name: Run tests
+        run: cargo test --all
 
-    - name: Run benchmarks
-      run: cargo bench
+      - name: Run benchmarks
+        run: cargo bench
 
-    - name: Validate NumPy compatibility
-      run: |
-        python test_data/validation_script.py
-        # Check that your Rust implementation passes the same tests
-        cargo test validate_numpy_compatibility
+      - name: Validate NumPy compatibility
+        run: |
+          python test_data/validation_script.py
+          # Check that your Rust implementation passes the same tests
+          cargo test validate_numpy_compatibility
 ```
 
 ## Best Practices

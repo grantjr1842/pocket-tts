@@ -3,16 +3,19 @@
 Comprehensive test suite ensuring TTS generation quality and API reliability.
 
 ## OVERVIEW
+
 Test suite covering Python API, CLI integration, documentation examples, and WebSocket communication.
 
 ## TEST PATTERNS
 
 **Cache Management**: Clear voice prompt cache after each test to prevent state pollution:
+
 ```python
 model._cached_get_state_for_audio_prompt.cache_clear()
 ```
 
 **Audio Validation**: Verify output files via structural checks:
+
 - File existence: `assert output_file.exists()`
 - Non-zero size: `assert output_file.stat().st_size > 0`
 - Valid audio: `audio, sample_rate = audio_read(str(output_file))`

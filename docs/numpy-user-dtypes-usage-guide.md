@@ -71,6 +71,7 @@ result_dtype = np.find_common_type([np.int16, np.uint16])
 #### 3. Extensible Architecture
 
 The new system allows:
+
 - Custom dtype classes
 - User-defined operations
 - Seamless integration with NumPy functions
@@ -733,6 +734,7 @@ def analyze_memory_usage():
 **Problem**: `ImportError: cannot import name CustomDtype`
 
 **Solution**: Ensure proper build and installation:
+
 ```bash
 # Rebuild extensions
 python setup.py build_ext --inplace
@@ -746,6 +748,7 @@ python -c "from your_module import CustomDtype; print('OK')"
 **Problem**: Custom dtype not recognized by NumPy
 
 **Solution**: Register dtype with NumPy:
+
 ```python
 import numpy as np
 
@@ -761,6 +764,7 @@ print(CustomDtype in np.core._multiarray_umath._registered_dtypes)
 **Problem**: `TypeError: Cannot cast from dtype to dtype`
 
 **Solution**: Implement proper casting methods:
+
 ```python
 def can_cast_from(self, other):
     """Implement casting compatibility check"""
@@ -780,6 +784,7 @@ def cast_from(self, other, array):
 **Problem**: Operations between different dtypes fail
 
 **Solution**: Implement `__common_dtype__`:
+
 ```python
 @classmethod
 def __common_dtype__(cls, other):
@@ -796,6 +801,7 @@ def __common_dtype__(cls, other):
 **Problem**: Custom ufuncs not working
 
 **Solution**: Implement `__array_ufunc__`:
+
 ```python
 def __array_ufunc__(self, ufunc, method, *inputs, **kwargs):
     """Handle universal function calls"""

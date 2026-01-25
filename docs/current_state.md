@@ -15,19 +15,23 @@ It is intentionally verbose so the state can be recreated without guesswork.
 ## 1) Base System Requirements
 
 ### Operating system
+
 - OS: Ubuntu 24.04.3 LTS (Noble Numbat)
 - Kernel: `6.6.114.1-microsoft-standard-WSL2`
 - Architecture: `x86_64`
 - Environment: WSL2
 
 ### Core tools
+
 - Git: `git version 2.43.0`
 - Pixi: `pixi 0.62.2`
 - Python (pixi environment): `Python 3.10.19`
 - uv (pixi environment): `uv 0.9.25`
 
 ### Network access
+
 Required for model/tokenizer/voice downloads:
+
 - `https://huggingface.co`
 - `https://download.pytorch.org/whl/cpu`
 - `https://pypi.org/simple`
@@ -45,6 +49,7 @@ upstream no_push (push)
 ```
 
 How this was enforced:
+
 ```bash
 git remote set-url --push upstream no_push
 ```
@@ -55,14 +60,18 @@ The current state includes **three categories** of changes: removed CI workflows
 added pixi configuration, and `.gitignore` updates.
 
 ### 3.1 Deleted GitHub Actions workflows
+
 These were removed from the repository:
+
 - `.github/workflows/publish-package.yml`
 - `.github/workflows/run-tests.yml`
 
 **Result:** There are no GitHub Actions workflows in this repo now.
 
 ### 3.2 Added Pixi environment files
+
 Two new files exist and are committed:
+
 - `pixi.toml`
 - `pixi.lock`
 
@@ -71,7 +80,9 @@ lockfile for the environment. It is required for reproducibility and should
 not be manually edited.
 
 ### 3.3 Updated `.gitignore`
+
 Added ignore for pixi’s local environment directory:
+
 - `.pixi/`
 
 ## 4) Pixi Manifest (Exact Content)
@@ -111,6 +122,7 @@ tests = "pytest -n 3 -v"
 ```
 
 ### Why `platforms = ["linux-64"]`
+
 Attempting to resolve multi-platform dependencies failed because
 CPU-only torch wheels are not available for `osx-64` at the
 required versions. The environment is therefore pinned to linux-64.
@@ -120,6 +132,7 @@ required versions. The environment is therefore pinned to linux-64.
 Defined in `pyproject.toml`:
 
 ### Runtime dependencies
+
 - numpy>=2
 - torch>=2.5.0 (CPU index)
 - pydantic>=2
@@ -137,6 +150,7 @@ Defined in `pyproject.toml`:
 - requests>=2.20.0
 
 ### Dev dependencies (mirrored in pixi)
+
 - coverage>=7.6.12
 - line-profiler>=5.0.0
 - pytest>=9.0.2
@@ -151,6 +165,7 @@ pixi install
 ```
 
 This produces:
+
 - `.pixi/` (local environment directory, ignored by git)
 - `pixi.lock` (committed)
 
@@ -166,6 +181,7 @@ On first run, the following artifacts were fetched via Hugging Face:
   - `hf://kyutai/pocket-tts-without-voice-cloning/embeddings/alba.safetensors@d4fdd22ae8c8e1cb3634e150ebeff1dab2d16df3`
 
 Downloaded caches live in:
+
 - `~/.cache/huggingface/hub` (HF Hub)
 - `~/.cache/pocket_tts` (HTTP downloads)
 
@@ -178,6 +194,7 @@ pixi run pocket-tts generate --text "Hello from pixi." --output-path ./tts_outpu
 ```
 
 Result:
+
 - `./tts_output.wav` created (ignored by git because `*.wav` is in `.gitignore`).
 
 ## 9) Verified Server Run (Local)
@@ -189,17 +206,20 @@ pixi run pocket-tts serve --host 127.0.0.1 --port 8000
 ```
 
 Health check:
+
 ```bash
 curl http://127.0.0.1:8000/health
 # => {"status":"healthy"}
 ```
 
 Example TTS request:
+
 ```bash
 curl -o example_tts.wav -F "text=Hello from the local server." http://127.0.0.1:8000/tts
 ```
 
 Result:
+
 - `./example_tts.wav` created (ignored by git because `*.wav` is in `.gitignore`).
 
 ## 10) Environment Variables (Defaults)
@@ -216,6 +236,7 @@ All defaults were used.
 ## 11) Local Artifacts Created (Ignored)
 
 These files were created and exist locally but are ignored by git:
+
 - `tts_output.wav`
 - `example_tts.wav`
 - `.pixi/` (pixi environment directory)

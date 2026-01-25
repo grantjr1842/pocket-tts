@@ -158,7 +158,7 @@ def main():
         heartbeat.start()
 
     try:
-        print(f"Starting Ralph dashboard monitoring...")
+        print("Starting Ralph dashboard monitoring...")
         print(f"Log directory: {log_dir}")
         print(f"Output files: {out_md}, {out_html}")
         print(f"Polling interval: {args.interval}s")

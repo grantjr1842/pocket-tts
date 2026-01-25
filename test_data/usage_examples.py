@@ -6,7 +6,6 @@ Demonstrates how to use the generated test examples for various purposes
 
 import numpy as np
 import json
-import os
 from pathlib import Path
 
 
@@ -241,7 +240,7 @@ class NumPyTestDataUsage:
 
         # Step 3: Expected output specification
         expected_output = test_case["output"]
-        print(f"Expected output specification:")
+        print("Expected output specification:")
         print(f"  Shape: {expected_output['shape']}")
         print(f"  Dtype: {expected_output['dtype']}")
         print(f"  Data preview: {expected_output['data'][:6]}...")

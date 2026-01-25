@@ -5,6 +5,7 @@ This guide shows you practical ways to use the comprehensive NumPy test examples
 ## Quick Start
 
 ### 1. Basic Validation
+
 ```python
 import numpy as np
 import json
@@ -23,6 +24,7 @@ print("✅ Array creation test passed!")
 ```
 
 ### 2. Load Generated Test Arrays
+
 ```python
 import numpy as np
 
@@ -39,6 +41,7 @@ print(f"Square root results: {sqrt_result}")
 ## Detailed Usage Patterns
 
 ### Pattern 1: Function Validation
+
 Use the JSON test cases to validate your implementation:
 
 ```python
@@ -65,6 +68,7 @@ validate_numpy_function('test_data/test_cases_arithmetic.json', 'add')
 ```
 
 ### Pattern 2: Cross-Language Testing
+
 Use CSV files for testing in other languages (Rust, C++, etc.):
 
 ```python
@@ -88,6 +92,7 @@ assert_eq!(result.shape(), [5]);
 ```
 
 ### Pattern 3: Performance Benchmarking
+
 Use the generated arrays to benchmark performance:
 
 ```python
@@ -116,6 +121,7 @@ for size in sizes:
 ```
 
 ### Pattern 4: Edge Case Testing
+
 Test special values and edge cases:
 
 ```python
@@ -142,6 +148,7 @@ test_edge_cases()
 ```
 
 ### Pattern 5: Rust Integration Workflow
+
 Simulate how Rust would use the test data:
 
 ```python
@@ -173,6 +180,7 @@ rust_validation_simulation()
 ## File-by-File Guide
 
 ### JSON Test Case Files
+
 Each file contains test cases for a specific category:
 
 - `test_cases_array_creation.json` - Array creation functions
@@ -185,6 +193,7 @@ Each file contains test cases for a specific category:
 - `test_cases_edge_cases.json` - Edge cases and special values
 
 ### Generated Array Files
+
 In the `generated/` directory:
 
 - **NumPy format (.npy)** - Load with `np.load()`
@@ -192,6 +201,7 @@ In the `generated/` directory:
 - **Naming convention**: `array_(shape)_(dtype).format`
 
 ### Example Test Case Structure
+
 ```json
 {
   "function": "add",
@@ -210,6 +220,7 @@ In the `generated/` directory:
 ## Integration Examples
 
 ### For Rust NumPy Implementation
+
 ```rust
 // Rust pseudocode showing how to use test data
 use serde_json;
@@ -238,6 +249,7 @@ fn validate_array_creation() -> Result<(), Box<dyn std::error::Error>> {
 ```
 
 ### For Continuous Integration
+
 ```yaml
 # GitHub Actions example
 - name: Validate NumPy Implementation
@@ -254,6 +266,7 @@ fn validate_array_creation() -> Result<(), Box<dyn std::error::Error>> {
 ```
 
 ### For Development Testing
+
 ```python
 # Quick development validation
 def quick_validate():
@@ -300,12 +313,14 @@ quick_validate()
 ## Troubleshooting
 
 ### Common Issues
+
 - **Shape mismatches**: Check array dimensions carefully
 - **Type differences**: Ensure dtypes match exactly
 - **Floating-point precision**: Use `np.allclose()` for float comparisons
 - **File paths**: Use absolute paths or ensure correct working directory
 
 ### Debug Tips
+
 ```python
 # Detailed test debugging
 def debug_test_case(test_case):
