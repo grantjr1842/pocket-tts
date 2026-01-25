@@ -141,7 +141,7 @@ pub trait DtypeLike {
 /// Implement DtypeLike for common types
 impl DtypeLike for Dtype {
     fn to_dtype(&self) -> Dtype {
-        *self
+        self.clone()
     }
 }
 
@@ -223,5 +223,73 @@ pub mod prelude {
     };
 }
 
+/// Additional type aliases matching NumPy's typing module
+/// These provide compatibility with NumPy's type annotations
+pub mod aliases {
+    use super::*;
+    use crate::dtype::Dtype;
+
+    /// Shape-like type for array shapes
+    /// Represents the shape parameter in NumPy arrays
+    pub type ShapeLike = Vec<usize>;
+
+    /// Index-like type for array indexing
+    /// Represents valid index types for NumPy arrays
+    pub type SupportsIndex = isize;
+
+    /// Generic scalar type
+    /// Represents any scalar value compatible with NumPy
+    pub type Scalar = crate::scalar::Scalar;
+
+    /// Number type alias
+    /// Represents NumPy number types
+    pub type Number = crate::scalar::Number;
+
+    /// Integer type alias
+    /// Represents NumPy integer types
+    pub type Integer = crate::scalar::Integer;
+
+    /// Floating type alias
+    /// Represents NumPy floating types
+    pub type Floating = crate::scalar::Floating;
+
+    /// Complex floating type alias
+    /// Represents NumPy complex floating types
+    pub type ComplexFloating = crate::scalar::ComplexFloating;
+
+    /// Generic type alias
+    /// Represents generic NumPy types
+    pub type Generic = crate::scalar::Generic;
+
+    /// Boolean type alias
+    /// Represents NumPy boolean type
+    pub type Boolean = bool;
+
+    /// Object type alias
+    /// Represents NumPy object type
+    pub type Object = crate::object::Object;
+
+    /// String type alias
+    /// Represents NumPy string type
+    pub type String_ = crate::string::String;
+
+    /// Unicode string type alias
+    /// Represents NumPy unicode string type
+    pub type Unicode = crate::string::Unicode;
+
+    /// Bytes type alias
+    /// Represents NumPy bytes type
+    pub type Bytes = crate::bytes::Bytes;
+
+    /// Void type alias
+    /// Represents NumPy void type
+    pub type Void = crate::void::Void;
+}
+
+/// Re-export additional aliases
+pub use aliases::*;
+
 #[cfg(test)]
 mod tests;
+#[cfg(test)]
+mod typing_tests;
