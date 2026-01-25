@@ -119,6 +119,7 @@ pub mod array_manipulation;
 pub mod bitwise;
 pub mod broadcasting;
 pub mod char;
+pub mod complex_simd;
 #[cfg(test)]
 mod char_tests;
 pub mod comparison_ufuncs;
