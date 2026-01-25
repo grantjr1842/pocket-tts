@@ -109,6 +109,7 @@ class TTSModel(nn.Module):
         lsd_decode_steps,
         noise_clamp: float | None,
         eos_threshold,
+        profiler=None,
     ) -> Self:
         tts_model = cls._from_pydantic_config(
             config, temp, lsd_decode_steps, noise_clamp, eos_threshold
@@ -122,10 +123,14 @@ class TTSModel(nn.Module):
                     "If you specify flow_lm.weights_path you should specify mimi.weights_path"
                 )
             logger.info(f"Loading FlowLM weights from {config.flow_lm.weights_path}")
+            if profiler:
+                profiler.record_stage("flowlm_weights_start")
             state_dict_flowlm = get_flow_lm_state_dict(
                 download_if_necessary(config.flow_lm.weights_path)
             )
             tts_model.flow_lm.load_state_dict(state_dict_flowlm, strict=True)
+            if profiler:
+                profiler.record_stage("flowlm_weights_loaded")
 
         # safetensors.torch.save_file(tts_model.state_dict(), "7442637a.safetensors")
         # Create mimi config directly from the provided config using model_dump
@@ -163,10 +168,14 @@ class TTSModel(nn.Module):
                     "If you specify mimi.weights_path you should specify flow_lm.weights_path"
                 )
             logger.info(f"Loading Mimi weights from {config.mimi.weights_path}")
+            if profiler:
+                profiler.record_stage("mimi_weights_start")
             mimi_state = get_mimi_state_dict(
                 download_if_necessary(config.mimi.weights_path)
             )
             tts_model.mimi.load_state_dict(mimi_state, strict=True)
+            if profiler:
+                profiler.record_stage("mimi_weights_loaded")
 
         tts_model.mimi.eval()
         # tts_model.to(dtype=torch.float32)
@@ -176,6 +185,8 @@ class TTSModel(nn.Module):
         # safetensors.torch.save_file(tts_model.state_dict(), "tts_b6369a24.safetensors")
         if config.weights_path is not None:
             logger.info(f"Loading TTSModel weights from {config.weights_path}")
+            if profiler:
+                profiler.record_stage("tts_weights_start")
             try:
                 weights_file = download_if_necessary(config.weights_path)
             except Exception:
@@ -186,6 +197,8 @@ class TTSModel(nn.Module):
 
             state_dict = safetensors.torch.load_file(weights_file)
             tts_model.load_state_dict(state_dict, strict=True)
+            if profiler:
+                profiler.record_stage("tts_weights_loaded")
 
         if config.flow_lm.weights_path is None and config.weights_path is None:
             logger.warning(
@@ -204,6 +217,8 @@ class TTSModel(nn.Module):
         eos_threshold: float = DEFAULT_EOS_THRESHOLD,
         compile: bool = False,
         quantize: str | None = None,
+        use_cache: bool = True,
+        profile_loading: bool = False,
     ) -> Self:
         """Load a pre-trained TTS model with specified configuration.
 
@@ -222,6 +237,12 @@ class TTSModel(nn.Module):
                 is applied. Helps prevent extreme values in generation.
             eos_threshold: Threshold for end-of-sequence detection. Higher values
                 make the model more likely to continue generating.
+            use_cache: Whether to check the in-memory model cache before loading.
+                If True and a matching model is cached, the cached instance is returned.
+                Default is True.
+            profile_loading: If True, log detailed timing information for each
+                stage of model loading. Useful for performance analysis.
+                Default is False.
 
         Returns:
             TTSModel: Fully initialized model with loaded weights on cpu, ready for
@@ -232,10 +253,52 @@ class TTSModel(nn.Module):
                 are not found.
             ValueError: If the configuration is invalid or incompatible.
         """
+        # Normalize parameters
+        temp_norm = float(temp)
+        noise_clamp_norm = float(noise_clamp) if noise_clamp is not None else None
+        eos_threshold_norm = float(eos_threshold)
+
+        # Check cache first
+        if use_cache:
+            from pocket_tts.utils.model_cache import get_global_cache
+
+            cache = get_global_cache()
+            cached_model = cache.get(
+                variant,
+                temp_norm,
+                lsd_decode_steps,
+                noise_clamp_norm,
+                eos_threshold_norm,
+            )
+            if cached_model is not None:
+                logger.info("Returning cached model")
+                return cached_model
+
+        # Set up profiler if requested
+        if profile_loading:
+            from pocket_tts.utils.profiling import LoadingProfiler
+
+            profiler = LoadingProfiler()
+            profiler.start()
+        else:
+            profiler = None
+
         config = load_config(Path(__file__).parents[1] / f"config/{variant}.yaml")
+
+        if profiler:
+            profiler.record_stage("config_loaded")
+
         tts_model = TTSModel._from_pydantic_config_with_weights(
-            config, temp, lsd_decode_steps, noise_clamp, eos_threshold
+            config,
+            temp_norm,
+            lsd_decode_steps,
+            noise_clamp_norm,
+            eos_threshold_norm,
+            profiler,
         )
+
+        if profiler:
+            profiler.record_stage("model_loaded")
 
         if quantize:
             from pocket_tts.utils.quantization import quantize_model
@@ -247,6 +310,20 @@ class TTSModel(nn.Module):
             logger.info("Compiling model with torch.compile...")
             tts_model.flow_lm = torch.compile(tts_model.flow_lm)
             tts_model.mimi = torch.compile(tts_model.mimi)
+
+        # Cache the model
+        if use_cache:
+            from pocket_tts.utils.model_cache import get_global_cache
+
+            cache = get_global_cache()
+            cache.put(
+                variant,
+                temp_norm,
+                lsd_decode_steps,
+                noise_clamp_norm,
+                eos_threshold_norm,
+                tts_model,
+            )
 
         return tts_model
 
