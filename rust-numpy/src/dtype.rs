@@ -2,7 +2,7 @@
 use std::fmt;
 
 /// Byte order for endianness support
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum ByteOrder {
     Little, // '<' - little-endian
     Big,    // '>' - big-endian
@@ -26,7 +26,7 @@ pub enum Casting {
 }
 
 /// Comprehensive dtype system matching NumPy's type system
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum Dtype {
     // Signed integer types
     Int8 { byteorder: Option<ByteOrder> },
@@ -79,7 +79,7 @@ pub enum Dtype {
 }
 
 /// Units for datetime64
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum DatetimeUnit {
     Y,
     M,
@@ -117,7 +117,7 @@ impl DatetimeUnit {
 }
 
 /// Units for timedelta64
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum TimedeltaUnit {
     Y,
     M,
@@ -135,7 +135,7 @@ pub enum TimedeltaUnit {
 }
 
 /// Character codes for NumPy dtype string representation
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum DTypeChar {
     Bool,
     Int8,
@@ -160,7 +160,7 @@ pub enum DTypeChar {
 }
 
 /// Field definition for structured dtypes with enhanced NumPy compatibility
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct StructField {
     pub name: String,
     pub dtype: Dtype,
@@ -170,7 +170,7 @@ pub struct StructField {
 }
 
 /// Kind of dtype for type checking and promotion
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum DtypeKind {
     Integer,
     Unsigned,
