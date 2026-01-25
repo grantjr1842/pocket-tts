@@ -85,7 +85,17 @@ class StatefulModule(ABC, nn.Module):
         raise NotImplementedError
 
     def increment_step(self, state: dict, increment: int = 1):
-        pass
+        """Increment the step counter for this module's state.
+
+        This default implementation does nothing. Subclasses should override
+        this method if they need to track step progression (e.g., for
+        streaming attention offset management).
+
+        Args:
+            state: The state dictionary for this module
+            increment: Number of steps to increment by
+        """
+        # Default: no-op for modules that don't need step tracking
 
     # Remove type hints to prevent beartype wrapping
     def get_state(
