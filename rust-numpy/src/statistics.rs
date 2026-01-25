@@ -1218,3 +1218,115 @@ impl FromF64 for usize {
         }
     }
 }
+
+// NumPy reduction functions
+
+/// Return the maximum of array elements along a given axis (alias for max)
+pub fn amax<T>(
+    a: &Array<T>,
+    axis: Option<&[isize]>,
+    _out: Option<&mut Array<T>>,
+    keepdims: bool,
+) -> Result<Array<T>, NumPyError>
+where
+    T: Clone + Default + PartialOrd + 'static,
+{
+    max_reduce(a, axis, keepdims)
+}
+
+/// Return the minimum of array elements along a given axis (alias for min)
+pub fn amin<T>(
+    a: &Array<T>,
+    axis: Option<&[isize]>,
+    _out: Option<&mut Array<T>>,
+    keepdims: bool,
+) -> Result<Array<T>, NumPyError>
+where
+    T: Clone + Default + PartialOrd + 'static,
+{
+    min_reduce(a, axis, keepdims)
+}
+
+/// Return the maximum of array elements along a given axis
+pub fn max_reduce<T>(
+    a: &Array<T>,
+    axis: Option<&[isize]>,
+    keepdims: bool,
+) -> Result<Array<T>, NumPyError>
+where
+    T: Clone + Default + PartialOrd + 'static,
+{
+    reduce_with_op(a, axis, keepdims, |a, b| if a > b { a } else { b })
+}
+
+/// Return the minimum of array elements along a given axis
+pub fn min_reduce<T>(
+    a: &Array<T>,
+    axis: Option<&[isize]>,
+    keepdims: bool,
+) -> Result<Array<T>, NumPyError>
+where
+    T: Clone + Default + PartialOrd + 'static,
+{
+    reduce_with_op(a, axis, keepdims, |a, b| if a < b { a } else { b })
+}
+
+/// Generic reduction with binary operation
+fn reduce_with_op<T, F>(
+    a: &Array<T>,
+    axis: Option<&[isize]>,
+    keepdims: bool,
+    op: F,
+) -> Result<Array<T>, NumPyError>
+where
+    T: Clone + Default + 'static,
+    F: for<'a> Fn(&'a T, &'a T) -> &'a T,
+{
+    match axis {
+        Some(axes) => {
+            // For simplicity, implement only full array reduction for now
+            if axes.is_empty() {
+                reduce_full(a, &op)
+            } else {
+                Err(NumPyError::not_implemented(
+                    "axis reduction not yet implemented",
+                ))
+            }
+        }
+        None => reduce_full(a, &op),
+    }
+}
+
+/// Reduce entire array to single value
+fn reduce_full<T, F>(a: &Array<T>, op: &F) -> Result<Array<T>, NumPyError>
+where
+    T: Clone + Default + 'static,
+    F: for<'a> Fn(&'a T, &'a T) -> &'a T,
+{
+    let data = a.data();
+    if data.is_empty() {
+        return Err(NumPyError::invalid_value("cannot reduce empty array"));
+    }
+
+    let result = data.iter().skip(1).fold(&data[0], |acc, x| op(acc, x));
+    Ok(Array::from_vec(vec![result.clone()]))
+}
+
+/// Copy values from one array to another with broadcasting
+pub fn copyto<T>(dst: &mut Array<T>, src: &Array<T>) -> Result<(), NumPyError>
+where
+    T: Clone + Default + 'static,
+{
+    // Simple implementation - requires same shape
+    if dst.shape() != src.shape() {
+        return Err(NumPyError::shape_mismatch(
+            dst.shape().to_vec(),
+            src.shape().to_vec(),
+        ));
+    }
+
+    for (i, val) in src.data().iter().enumerate() {
+        dst.set(i, val.clone()).unwrap();
+    }
+    Ok(())
+}

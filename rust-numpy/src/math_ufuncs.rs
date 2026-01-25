@@ -3554,3 +3554,60 @@ where
 {
     absolute(x)
 }
+
+// NumPy-compatible function aliases
+/// Alias for arcsin - NumPy uses asin
+pub fn asin<T>(x: &Array<T>) -> Result<Array<T>>
+where
+    T: Clone + Default + FloatConst + crate::math_ufuncs::TrigOps<T> + 'static,
+{
+    arcsin(x)
+}
+
+/// Alias for arccos - NumPy uses acos
+pub fn acos<T>(x: &Array<T>) -> Result<Array<T>>
+where
+    T: Clone + Default + FloatConst + crate::math_ufuncs::TrigOps<T> + 'static,
+{
+    arccos(x)
+}
+
+/// Alias for arctan - NumPy uses atan
+pub fn atan<T>(x: &Array<T>) -> Result<Array<T>>
+where
+    T: Clone + Default + FloatConst + crate::math_ufuncs::TrigOps<T> + 'static,
+{
+    arctan(x)
+}
+
+/// Alias for arctanh - NumPy uses atanh
+pub fn atanh<T>(x: &Array<T>) -> Result<Array<T>>
+where
+    T: Clone + Default + FloatConst + crate::math_ufuncs::HyperbolicOps<T> + 'static,
+{
+    arctanh(x)
+}
+
+/// Alias for arcsinh - NumPy uses asinh
+pub fn asinh<T>(x: &Array<T>) -> Result<Array<T>>
+where
+    T: Clone + Default + FloatConst + crate::math_ufuncs::HyperbolicOps<T> + 'static,
+{
+    arcsinh(x)
+}
+
+/// Alias for arccosh - NumPy uses acosh
+pub fn acosh<T>(x: &Array<T>) -> Result<Array<T>>
+where
+    T: Clone + Default + FloatConst + crate::math_ufuncs::HyperbolicOps<T> + 'static,
+{
+    arccosh(x)
+}
+
+/// Alias for arctan2 - NumPy uses atan2
+pub fn atan2<T>(x1: &Array<T>, x2: &Array<T>) -> Result<Array<T>>
+where
+    T: Clone + Default + FloatConst + crate::math_ufuncs::TrigOps<T> + 'static,
+{
+    arctan2(x1, x2)
+}
