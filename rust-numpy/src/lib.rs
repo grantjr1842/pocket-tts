@@ -134,6 +134,7 @@ pub mod fft;
 mod fft_tests;
 pub mod iterator;
 pub mod linalg;
+pub mod layout_optimizer;
 pub mod math_ufuncs;
 pub mod matrix;
 pub mod memory;
