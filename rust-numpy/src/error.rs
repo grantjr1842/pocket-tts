@@ -48,6 +48,9 @@ pub enum NumPyError {
     #[error("Linear algebra error: {operation} - {message}")]
     LinAlgError { operation: String, message: String },
 
+    #[error("Internal error: {message}")]
+    InternalError { message: String },
+
     #[error("FFT error: {message}")]
     FftError { message: String },
 
@@ -131,6 +134,12 @@ impl NumPyError {
     pub fn not_implemented(operation: impl Into<String>) -> Self {
         Self::NotImplemented {
             operation: operation.into(),
+        }
+    }
+
+    pub fn internal_error(message: impl Into<String>) -> Self {
+        Self::InternalError {
+            message: message.into(),
         }
     }
 
