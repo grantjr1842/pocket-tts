@@ -1,2 +1,223 @@
 pub mod bitwidth;
 pub use bitwidth::*;
+
+use crate::array::Array;
+use crate::dtype::Dtype;
+
+/// NDArray type alias for runtime type annotations
+///
+/// This provides NumPy-compatible type annotations for arrays with specified dtypes.
+/// It enables annotating arrays with given dtype and unspecified shape, similar to
+/// NumPy's typing.NDArray in Python.
+///
+/// # Examples
+///
+/// ```rust
+/// use rust_numpy::typing::*;
+///
+/// // Type annotation for float64 array
+/// let arr: NDArray<f64> = array![1.0, 2.0, 3.0];
+///
+/// // Type annotation for integer array
+/// let int_arr: NDArray<i32> = array![1, 2, 3];
+/// ```
+pub type NDArray<T> = Array<T>;
+
+/// Common NDArray type aliases for specific dtypes
+pub mod ndarray_types {
+    use super::*;
+
+    /// 8-bit signed integer array
+    pub type Int8Array = NDArray<i8>;
+
+    /// 16-bit signed integer array
+    pub type Int16Array = NDArray<i16>;
+
+    /// 32-bit signed integer array
+    pub type Int32Array = NDArray<i32>;
+
+    /// 64-bit signed integer array
+    pub type Int64Array = NDArray<i64>;
+
+    /// 8-bit unsigned integer array
+    pub type UInt8Array = NDArray<u8>;
+
+    /// 16-bit unsigned integer array
+    pub type UInt16Array = NDArray<u16>;
+
+    /// 32-bit unsigned integer array
+    pub type UInt32Array = NDArray<u32>;
+
+    /// 64-bit unsigned integer array
+    pub type UInt64Array = NDArray<u64>;
+
+    /// 32-bit float array
+    pub type Float32Array = NDArray<f32>;
+
+    /// 64-bit float array
+    pub type Float64Array = NDArray<f64>;
+
+    /// 64-bit complex array
+    pub type Complex64Array = NDArray<num_complex::Complex<f32>>;
+
+    /// 128-bit complex array
+    pub type Complex128Array = NDArray<num_complex::Complex<f64>>;
+
+    /// Boolean array
+    pub type BoolArray = NDArray<bool>;
+}
+
+/// Export common NDArray types
+pub use ndarray_types::*;
+
+/// ArrayLike type alias for array-convertible objects
+///
+/// This represents objects that can be converted to arrays, similar to
+/// NumPy's typing.ArrayLike in Python. It includes various types that
+/// can be used as input for array creation functions.
+///
+/// # Examples
+///
+/// ```rust
+/// use rust_numpy::typing::*;
+///
+/// fn process_data<T: Clone + Default + 'static>(data: ArrayLike<T>) -> Array<T> {
+///     asarray(data)
+/// }
+/// ```
+pub trait ArrayLike<T: Clone + Default + 'static> {
+    fn to_array(&self) -> Result<Array<T>, crate::error::NumPyError>;
+}
+
+/// Implement ArrayLike for common types
+impl<T: Clone + Default + 'static> ArrayLike<T> for Array<T> {
+    fn to_array(&self) -> Result<Array<T>, crate::error::NumPyError> {
+        Ok(self.clone())
+    }
+}
+
+impl<T: Clone + Default + 'static> ArrayLike<T> for Vec<T> {
+    fn to_array(&self) -> Result<Array<T>, crate::error::NumPyError> {
+        Ok(Array::from_data(self.clone(), vec![self.len()]))
+    }
+}
+
+impl<T: Clone + Default + 'static, const N: usize> ArrayLike<T> for [T; N] {
+    fn to_array(&self) -> Result<Array<T>, crate::error::NumPyError> {
+        Ok(Array::from_data(self.to_vec(), vec![N]))
+    }
+}
+
+impl<T: Clone + Default + 'static> ArrayLike<T> for &[T] {
+    fn to_array(&self) -> Result<Array<T>, crate::error::NumPyError> {
+        Ok(Array::from_data(self.to_vec(), vec![self.len()]))
+    }
+}
+
+/// DtypeLike type alias for dtype-convertible objects
+///
+/// This represents objects that can be converted to dtypes, similar to
+/// NumPy's typing.DtypeLike in Python. It includes various ways to specify
+/// data types in NumPy operations.
+///
+/// # Examples
+///
+/// ```rust
+/// use rust_numpy::typing::*;
+/// use rust_numpy::Dtype;
+///
+/// fn create_array_with_dtype<T: DtypeLike>(dtype_like: T) -> Dtype {
+///     dtype_like.to_dtype()
+/// }
+/// ```
+pub trait DtypeLike {
+    fn to_dtype(&self) -> Dtype;
+}
+
+/// Implement DtypeLike for common types
+impl DtypeLike for Dtype {
+    fn to_dtype(&self) -> Dtype {
+        *self
+    }
+}
+
+impl DtypeLike for &str {
+    fn to_dtype(&self) -> Dtype {
+        Dtype::from_str(self).unwrap_or_else(|_| Dtype::Float64)
+    }
+}
+
+impl DtypeLike for String {
+    fn to_dtype(&self) -> Dtype {
+        Dtype::from_str(self).unwrap_or_else(|_| Dtype::Float64)
+    }
+}
+
+// Implement for primitive types
+impl DtypeLike for i8 {
+    fn to_dtype(&self) -> Dtype {
+        Dtype::Int8 { byteorder: None }
+    }
+}
+impl DtypeLike for i16 {
+    fn to_dtype(&self) -> Dtype {
+        Dtype::Int16 { byteorder: None }
+    }
+}
+impl DtypeLike for i32 {
+    fn to_dtype(&self) -> Dtype {
+        Dtype::Int32 { byteorder: None }
+    }
+}
+impl DtypeLike for i64 {
+    fn to_dtype(&self) -> Dtype {
+        Dtype::Int64 { byteorder: None }
+    }
+}
+impl DtypeLike for u8 {
+    fn to_dtype(&self) -> Dtype {
+        Dtype::UInt8 { byteorder: None }
+    }
+}
+impl DtypeLike for u16 {
+    fn to_dtype(&self) -> Dtype {
+        Dtype::UInt16 { byteorder: None }
+    }
+}
+impl DtypeLike for u32 {
+    fn to_dtype(&self) -> Dtype {
+        Dtype::UInt32 { byteorder: None }
+    }
+}
+impl DtypeLike for u64 {
+    fn to_dtype(&self) -> Dtype {
+        Dtype::UInt64 { byteorder: None }
+    }
+}
+impl DtypeLike for f32 {
+    fn to_dtype(&self) -> Dtype {
+        Dtype::Float32 { byteorder: None }
+    }
+}
+impl DtypeLike for f64 {
+    fn to_dtype(&self) -> Dtype {
+        Dtype::Float64 { byteorder: None }
+    }
+}
+impl DtypeLike for bool {
+    fn to_dtype(&self) -> Dtype {
+        Dtype::Bool
+    }
+}
+
+/// Re-export commonly used typing aliases for convenience
+pub mod prelude {
+    pub use super::{
+        ArrayLike, BoolArray, Complex128Array, Complex64Array, DtypeLike, Float32Array,
+        Float64Array, Int16Array, Int32Array, Int64Array, Int8Array, NDArray, UInt16Array,
+        UInt32Array, UInt64Array, UInt8Array,
+    };
+}
+
+#[cfg(test)]
+mod tests;
