@@ -78,6 +78,120 @@ pocket-tts generate --temperature 1.0
 pocket-tts generate --eos-threshold -3.0
 ```
 
+### Advanced Examples
+
+#### Batch Processing
+
+Generate multiple audio files from a text file (one line per audio):
+
+```bash
+# Create a file with multiple texts
+cat > texts.txt << EOF
+First sentence to generate.
+Second sentence to generate.
+Third sentence to generate.
+EOF
+
+# Generate each line as a separate file
+i=1
+while read -r text; do
+  pocket-tts generate --text "$text" --output-path "output_$i.wav"
+  i=$((i+1))
+done < texts.txt
+```
+
+#### Streaming Long Text
+
+For very long texts, use streaming to handle generation efficiently:
+
+```python
+from pocket_tts import TTSModel
+import scipy.io.wavfile
+import torch
+
+model = TTSModel.load_model()
+voice_state = model.get_state_for_audio_prompt("alba")
+
+long_text = """Your very long text here...
+This can be thousands of characters.
+The streaming API will handle it efficiently."""
+
+# Stream generation
+all_chunks = []
+for chunk in model.generate_audio_stream(voice_state, long_text):
+    all_chunks.append(chunk)
+    # Process chunk immediately if needed
+
+# Combine chunks
+full_audio = torch.cat(all_chunks, dim=0)
+scipy.io.wavfile.write("output.wav", model.sample_rate, full_audio.numpy())
+```
+
+#### Voice Conversion
+
+Convert text to speech using different voices:
+
+```bash
+# Generate the same text with different voices
+for voice in alba marius javert jean fantine; do
+  pocket-tts generate \
+    --text "Hello, this is a test of voice conversion." \
+    --voice "$voice" \
+    --output-path "output_${voice}.wav"
+done
+```
+
+#### Optimized Generation
+
+Use compilation for faster repeated generations:
+
+```bash
+# First generation will be slower (compilation)
+pocket-tts generate --compile --text "First generation"
+
+# Subsequent generations will be faster
+pocket-tts generate --compile --text "Second generation"
+```
+
+#### High-Quality Generation
+
+For best audio quality (slower generation):
+
+```bash
+# High quality settings
+pocket-tts generate \
+  --temperature 0.8 \
+  --lsd-decode-steps 8 \
+  --noise-clamp none \
+  --text "This will be high quality audio."
+```
+
+#### Fast Generation
+
+For quick generation (lower quality):
+
+```bash
+# Fast settings
+pocket-tts generate \
+  --temperature 0.7 \
+  --lsd-decode-steps 1 \
+  --noise-clamp 1.0 \
+  --text "This will be fast."
+```
+
+#### Custom Voice from File
+
+Clone a voice from a custom audio file:
+
+```bash
+# Record or prepare your voice sample
+# Then use it for generation
+pocket-tts generate \
+  --voice "./my_voice_sample.wav" \
+  --text "This will use my custom voice." \
+  --output-path "custom_voice_output.wav"
+```
+
 ## Output Format
 
 The generate command always outputs WAV files in the following format:
