@@ -9,11 +9,8 @@ This script profiles the application to find:
 4. SIMD optimization candidates
 """
 
-import cProfile
-import pstats
 import time
-from io import StringIO
-from typing import Dict, List, Tuple
+from typing import Tuple
 import numpy as np
 
 # Import the modules we want to profile
@@ -22,18 +19,12 @@ from pocket_tts.numpy_rs import (
     arange,
     linspace,
     concatenate,
-    clip,
     compute_min,
     compute_std,
     compute_var,
     dot_vec,
-    eye,
-    hstack,
-    vstack,
     ones_vec,
     zeros_vec,
-    reshape_vec,
-    transpose_2d,
 )
 
 
@@ -221,12 +212,12 @@ def profile_lazy_loading():
 
     # First call
     start_time = time.perf_counter()
-    result1 = numpy_rs.compute_min(test_data)
+    _result1 = numpy_rs.compute_min(test_data)
     first_call_time = time.perf_counter() - start_time
 
     # Subsequent call
     start_time = time.perf_counter()
-    result2 = numpy_rs.compute_min(test_data)
+    _result2 = numpy_rs.compute_min(test_data)
     subsequent_call_time = time.perf_counter() - start_time
 
     print(f"First call time: {first_call_time:.6f}s")
