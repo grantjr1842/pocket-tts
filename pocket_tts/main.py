@@ -27,6 +27,7 @@ from pocket_tts.default_parameters import (
     MAX_TOKEN_PER_CHUNK,
 )
 from pocket_tts.models.tts_model import TTSModel
+from pocket_tts.monitoring import monitor
 from pocket_tts.utils.logging_utils import enable_logging
 from pocket_tts.utils.utils import PREDEFINED_VOICES, size_of_dict
 
@@ -198,11 +199,18 @@ def serve(
     host: Annotated[str, typer.Option(help="Host to bind to")] = "localhost",
     port: Annotated[int, typer.Option(help="Port to bind to")] = 8000,
     reload: Annotated[bool, typer.Option(help="Enable auto-reload")] = False,
+    compile: Annotated[
+        bool, typer.Option(help="Compile model with torch.compile")
+    ] = False,
+    quantize: Annotated[
+        str, typer.Option(help="Quantization mode (all, flow-lm, mimi)")
+    ] = None,
 ):
     """Start the FastAPI server."""
 
     global tts_model, global_model_state
-    tts_model = TTSModel.load_model(DEFAULT_VARIANT)
+    global tts_model, global_model_state
+    tts_model = TTSModel.load_model(DEFAULT_VARIANT, compile=compile, quantize=quantize)
 
     # Pre-load the voice prompt
     global_model_state = tts_model.get_state_for_audio_prompt(voice)
@@ -252,6 +260,12 @@ def generate(
     max_tokens: Annotated[
         int, typer.Option(help="Maximum number of tokens per chunk.")
     ] = MAX_TOKEN_PER_CHUNK,
+    compile: Annotated[
+        bool, typer.Option(help="Compile model with torch.compile")
+    ] = False,
+    quantize: Annotated[
+        str, typer.Option(help="Quantization mode (all, flow-lm, mimi)")
+    ] = None,
 ):
     """Generate speech using Kyutai Pocket TTS."""
     if "cuda" in device:
@@ -261,22 +275,30 @@ def generate(
     log_level = logging.ERROR if quiet else logging.INFO
     with enable_logging("pocket_tts", log_level):
         tts_model = TTSModel.load_model(
-            variant, temperature, lsd_decode_steps, noise_clamp, eos_threshold
+            variant,
+            temperature,
+            lsd_decode_steps,
+            noise_clamp,
+            eos_threshold,
+            compile=compile,
+            quantize=quantize,
         )
         tts_model.to(device)
 
         model_state_for_voice = tts_model.get_state_for_audio_prompt(voice)
         # Stream audio generation directly to file or stdout
-        audio_chunks = tts_model.generate_audio_stream(
-            model_state=model_state_for_voice,
-            text_to_generate=text,
-            frames_after_eos=frames_after_eos,
-            max_tokens=max_tokens,
-        )
+        with monitor.measure("init_generation", text_length=len(text)):
+            audio_chunks = tts_model.generate_audio_stream(
+                model_state=model_state_for_voice,
+                text_to_generate=text,
+                frames_after_eos=frames_after_eos,
+                max_tokens=max_tokens,
+            )
 
-        stream_audio_chunks(
-            output_path, audio_chunks, tts_model.config.mimi.sample_rate
-        )
+        with monitor.measure("stream_generation"):
+            stream_audio_chunks(
+                output_path, audio_chunks, tts_model.config.mimi.sample_rate
+            )
 
         # Only print the result message if not writing to stdout
         if output_path != "-":

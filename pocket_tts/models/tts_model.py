@@ -32,6 +32,7 @@ from pocket_tts.modules.dummy_quantizer import DummyQuantizer
 from pocket_tts.modules.seanet import SEANetDecoder, SEANetEncoder
 from pocket_tts.modules.stateful_module import increment_steps, init_states
 from pocket_tts.utils.config import Config, load_config
+from pocket_tts.utils.pause_handler import parse_pause_tags
 from pocket_tts.utils.utils import (
     PREDEFINED_VOICES,
     display_execution_time,
@@ -190,6 +191,8 @@ class TTSModel(nn.Module):
         lsd_decode_steps: int = DEFAULT_LSD_DECODE_STEPS,
         noise_clamp: float | int | None = DEFAULT_NOISE_CLAMP,
         eos_threshold: float = DEFAULT_EOS_THRESHOLD,
+        compile: bool = False,
+        quantize: str | None = None,
     ) -> Self:
         """Load a pre-trained TTS model with specified configuration.
 
@@ -222,6 +225,18 @@ class TTSModel(nn.Module):
         tts_model = TTSModel._from_pydantic_config_with_weights(
             config, temp, lsd_decode_steps, noise_clamp, eos_threshold
         )
+
+        if quantize:
+            from pocket_tts.utils.quantization import quantize_model
+
+            logger.info(f"Applying quantization to: {quantize}")
+            quantize_model(tts_model, quantize)
+
+        if compile:
+            logger.info("Compiling model with torch.compile...")
+            tts_model.flow_lm = torch.compile(tts_model.flow_lm)
+            tts_model.mimi = torch.compile(tts_model.mimi)
+
         return tts_model
 
     def _run_flow_lm_and_increment_step(
@@ -498,24 +513,40 @@ class TTSModel(nn.Module):
         # by using teacher forcing, but it would be a bit slower.
         # TODO: add the teacher forcing method for long texts where we use the audio of one chunk
         # as conditioning for the next chunk.
-        chunks = split_into_best_sentences(
-            self.flow_lm.conditioner.tokenizer, text_to_generate, max_tokens
-        )
+        # Parse pause tags first
+        chunks_with_pauses, pauses = parse_pause_tags(text_to_generate)
+        pause_map = {p.position: p.duration_ms for p in pauses}
 
-        for chunk in chunks:
-            text_to_generate, frames_after_eos_guess = prepare_text_prompt(chunk)
-            frames_after_eos_guess += 2
-            effective_frames = (
-                frames_after_eos
-                if frames_after_eos is not None
-                else frames_after_eos_guess
+        for i, raw_chunk in enumerate(chunks_with_pauses):
+            # Split sub-sentences if needed for model constraints
+            chunks = split_into_best_sentences(
+                self.flow_lm.conditioner.tokenizer, raw_chunk, max_tokens
             )
-            yield from self._generate_audio_stream_short_text(
-                model_state=model_state,
-                text_to_generate=chunk,
-                frames_after_eos=effective_frames,
-                copy_state=copy_state,
-            )
+
+            for chunk in chunks:
+                text_to_generate, frames_after_eos_guess = prepare_text_prompt(chunk)
+                frames_after_eos_guess += 2
+                effective_frames = (
+                    frames_after_eos
+                    if frames_after_eos is not None
+                    else frames_after_eos_guess
+                )
+                yield from self._generate_audio_stream_short_text(
+                    model_state=model_state,
+                    text_to_generate=chunk,
+                    frames_after_eos=effective_frames,
+                    copy_state=copy_state,
+                )
+
+            # Insert pause if applicable
+            if i in pause_map:
+                pause_ms = pause_map[i]
+                sample_rate = self.config.mimi.sample_rate
+                samples = int((pause_ms / 1000.0) * sample_rate)
+                if samples > 0:
+                    logger.info(f"Inserting pause: {pause_ms}ms ({samples} samples)")
+                    # Yield silence tensor
+                    yield torch.zeros(samples, device="cpu", dtype=torch.float32)
 
     @torch.no_grad
     def _generate_audio_stream_short_text(
