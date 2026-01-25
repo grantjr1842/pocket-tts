@@ -103,15 +103,6 @@ mod tests {
     }
 
     #[test]
-    fn test_char_strip_chars() {
-        let a = create_string_array(vec!["xxhelloxx", "yyworldyy", "zztestzz"]);
-        let result = strip_chars(&a, "xyz").unwrap();
-        assert_eq!(result.get(0).unwrap(), &"hello".to_string());
-        assert_eq!(result.get(1).unwrap(), &"world".to_string());
-        assert_eq!(result.get(2).unwrap(), &"test".to_string());
-    }
-
-    #[test]
     fn test_char_center() {
         let a = create_string_array(vec!["a", "abc"]);
         let result = center(&a, 5, None).unwrap();

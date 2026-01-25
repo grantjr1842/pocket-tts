@@ -95,60 +95,42 @@ pub fn upper(a: &crate::Array<String>) -> Result<crate::Array<String>, NumPyErro
 }
 
 pub fn strip(a: &crate::Array<String>) -> Result<crate::Array<String>, NumPyError> {
-    strip_chars(a, " \t\n\r")
+    let mut result = Vec::with_capacity(a.size());
+
+    for idx in 0..a.size() {
+        if let Some(s) = get_string(a, idx) {
+            result.push(s.trim_matches(|c: char| c.is_whitespace()).to_string());
+        } else {
+            return Err(NumPyError::dtype_error("Not a string array"));
+        }
+    }
+
+    Ok(crate::Array::from_vec(result))
 }
 
 pub fn lstrip(a: &crate::Array<String>) -> Result<crate::Array<String>, NumPyError> {
-    lstrip_chars(a, " \t\n\r")
+    let mut result = Vec::with_capacity(a.size());
+
+    for idx in 0..a.size() {
+        if let Some(s) = get_string(a, idx) {
+            result.push(
+                s.trim_start_matches(|c: char| c.is_whitespace())
+                    .to_string(),
+            );
+        } else {
+            return Err(NumPyError::dtype_error("Not a string array"));
+        }
+    }
+
+    Ok(crate::Array::from_vec(result))
 }
 
 pub fn rstrip(a: &crate::Array<String>) -> Result<crate::Array<String>, NumPyError> {
-    rstrip_chars(a, " \t\n\r")
-}
-
-pub fn strip_chars(
-    a: &crate::Array<String>,
-    chars: &str,
-) -> Result<crate::Array<String>, NumPyError> {
     let mut result = Vec::with_capacity(a.size());
 
     for idx in 0..a.size() {
         if let Some(s) = get_string(a, idx) {
-            result.push(s.trim_matches(|c| chars.contains(c)).to_string());
-        } else {
-            return Err(NumPyError::dtype_error("Not a string array"));
-        }
-    }
-
-    Ok(crate::Array::from_vec(result))
-}
-
-pub fn lstrip_chars(
-    a: &crate::Array<String>,
-    chars: &str,
-) -> Result<crate::Array<String>, NumPyError> {
-    let mut result = Vec::with_capacity(a.size());
-
-    for idx in 0..a.size() {
-        if let Some(s) = get_string(a, idx) {
-            result.push(s.trim_start_matches(|c| chars.contains(c)).to_string());
-        } else {
-            return Err(NumPyError::dtype_error("Not a string array"));
-        }
-    }
-
-    Ok(crate::Array::from_vec(result))
-}
-
-pub fn rstrip_chars(
-    a: &crate::Array<String>,
-    chars: &str,
-) -> Result<crate::Array<String>, NumPyError> {
-    let mut result = Vec::with_capacity(a.size());
-
-    for idx in 0..a.size() {
-        if let Some(s) = get_string(a, idx) {
-            result.push(s.trim_end_matches(|c| chars.contains(c)).to_string());
+            result.push(s.trim_end_matches(|c: char| c.is_whitespace()).to_string());
         } else {
             return Err(NumPyError::dtype_error("Not a string array"));
         }
@@ -959,7 +941,7 @@ pub fn translate(
 }
 
 /// String formatting (modulo operator)
-pub fn mod_(
+pub fn r#mod(
     a: &crate::Array<String>,
     values: &crate::Array<String>,
 ) -> Result<crate::Array<String>, NumPyError> {
@@ -1076,8 +1058,8 @@ pub mod exports {
         add, array, asarray, capitalize, center, chararray, compare_chararrays, count, decode,
         encode, endswith, equal, expandtabs, find, greater, greater_equal, index, isalnum, isalpha,
         isdecimal, isdigit, islower, isnumeric, isspace, istitle, isupper, join, less, less_equal,
-        ljust, lower, lstrip, lstrip_chars, mod_, multiply, not_equal, partition, replace, rfind,
-        rindex, rjust, rpartition, rsplit, rstrip, rstrip_chars, split, splitlines, startswith,
-        str_len, strip, strip_chars, swapcase, title, translate, upper, zfill,
+        ljust, lower, lstrip, multiply, not_equal, partition, r#mod, replace, rfind, rindex, rjust,
+        rpartition, rsplit, rstrip, split, splitlines, startswith, str_len, strip, swapcase, title,
+        translate, upper, zfill,
     };
 }

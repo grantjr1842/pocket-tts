@@ -31,7 +31,6 @@
 #![allow(suspicious_double_ref_op)]
 #![allow(clippy::inherent_to_string_shadow_display)]
 #![allow(dead_code)]
-
 // Additional allows for numerical library patterns and FFI
 #![allow(clippy::missing_errors_doc)] // 528 warnings - error cases are obvious in API
 #![allow(clippy::missing_panics_doc)] // 57 warnings - panic cases are rare/documented
@@ -164,8 +163,8 @@ pub use bitwise::*;
 pub use char::exports::{
     add as char_add, capitalize, center, count as char_count, endswith, expandtabs, find,
     index as char_index, isalnum, isalpha, isdigit, isnumeric, isspace, join, lower, lstrip,
-    lstrip_chars, multiply as char_multiply, replace, rfind, rindex, rstrip, rstrip_chars,
-    split as char_split, startswith, strip, strip_chars, upper, zfill,
+    multiply as char_multiply, replace, rfind, rindex, rstrip, split as char_split, startswith,
+    strip, upper, zfill,
 };
 pub use dtype::{Casting, Dtype, DtypeKind};
 pub use error::{NumPyError, Result};
