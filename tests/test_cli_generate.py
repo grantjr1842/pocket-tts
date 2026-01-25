@@ -5,7 +5,7 @@ import os
 import pytest
 from typer.testing import CliRunner
 
-from pocket_tts.data.audio import audio_read
+from pocket_tts.data.audio import load_wav
 from pocket_tts.default_parameters import DEFAULT_VARIANT
 from pocket_tts.main import cli_app
 
@@ -38,7 +38,7 @@ def test_generate_basic_usage(tmp_path):
     assert output_file.stat().st_size > 0
 
     # Verify it's a valid audio file
-    audio, sample_rate = audio_read(str(output_file))
+    audio, sample_rate = load_wav(str(output_file))
     assert audio.shape[0] == 1  # Mono channel
     assert audio.shape[1] > 0  # Has audio samples
     assert sample_rate == 24000  # Expected sample rate
@@ -66,7 +66,7 @@ def test_generate_with_custom_voice(tmp_path):
     assert output_file.exists()
 
     # Verify audio content
-    audio, sample_rate = audio_read(str(output_file))
+    audio, sample_rate = load_wav(str(output_file))
     assert audio.shape[0] == 1  # Mono channel
     assert audio.shape[1] > 0  # Has audio samples
     assert sample_rate == 24000
@@ -100,7 +100,7 @@ def test_generate_with_custom_parameters(tmp_path):
     assert result.exit_code == 0
     assert output_file.exists()
 
-    audio, sample_rate = audio_read(str(output_file))
+    audio, sample_rate = load_wav(str(output_file))
     assert audio.shape[0] == 1  # Mono channel
     assert audio.shape[1] > 0  # Has audio samples
     assert sample_rate == 24000
@@ -135,7 +135,7 @@ def test_generate_default_text(tmp_path):
     assert result.exit_code == 0
     assert output_file.exists()
 
-    audio, sample_rate = audio_read(str(output_file))
+    audio, sample_rate = load_wav(str(output_file))
     assert audio.shape[0] == 1  # Mono channel
     assert audio.shape[1] > 0  # Has audio samples
     assert sample_rate == 24000
@@ -153,7 +153,7 @@ def test_generate_long_text(tmp_path):
     assert result.exit_code == 0
     assert output_file.exists()
 
-    audio, sample_rate = audio_read(str(output_file))
+    audio, sample_rate = load_wav(str(output_file))
     assert audio.shape[0] == 1  # Mono channel
     assert audio.shape[1] > 0  # Has audio samples
     assert sample_rate == 24000
@@ -180,7 +180,7 @@ def test_generate_multiple_runs(tmp_path):
         assert result.exit_code == 0
         assert output_file.exists()
 
-        audio, sample_rate = audio_read(str(output_file))
+        audio, sample_rate = load_wav(str(output_file))
         assert audio.shape[0] == 1  # Mono channel
         assert audio.shape[1] > 0  # Has audio samples
         assert sample_rate == 24000
