@@ -318,10 +318,57 @@ pub use utils::{
 };
 
 // Typing and annotations
-pub mod typing_exports {
-    pub use crate::typing::*;
-}
-pub use typing::*;
+pub mod typing;
+pub use typing::{
+    dtype,
+    nbit_128,
+    nbit_16,
+    nbit_256,
+    nbit_32,
+    nbit_64,
+    // Legacy type aliases
+    nbit_8,
+    Complex128,
+    Complex128Bit,
+    Complex256,
+    Complex256Bit,
+    Complex32,
+    Complex32Bit,
+    Complex64,
+    Complex64Bit,
+    ComplexType,
+    // Dtype getter functionality
+    DtypeGetter,
+    Float16,
+    Float16Bit,
+    Float32,
+    Float32Bit,
+    Float64,
+    Float64Bit,
+    FloatType,
+    Int16,
+    Int16Bit,
+    Int32,
+    Int32Bit,
+    Int64,
+    Int64Bit,
+    // NumPy-compatible type aliases
+    Int8,
+    Int8Bit,
+    // Bit-width types
+    NBitBase,
+    SignedInt,
+    ToDtype,
+    UInt16,
+    UInt16Bit,
+    UInt32,
+    UInt32Bit,
+    UInt64,
+    UInt64Bit,
+    UInt8,
+    UInt8Bit,
+    UnsignedInt,
+};
 
 /// Version information
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");

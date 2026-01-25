@@ -1,5 +1,9 @@
 pub mod bitwidth;
+#[cfg(test)]
+mod bitwidth_tests;
+pub mod dtype_getter;
 pub use bitwidth::*;
+pub use dtype_getter::*;
 
 use crate::array::Array;
 use crate::dtype::Dtype;
