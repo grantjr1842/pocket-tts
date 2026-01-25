@@ -3,12 +3,53 @@ use crate::error::{NumPyError, Result};
 use num_complex::Complex64;
 use rustfft::FftPlanner;
 
+/// FFT normalization modes that match NumPy's `norm` parameter behavior.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum FFTNorm {
+    /// Apply normalization only on the inverse transform (default)
+    Backward,
+    /// Normalize by `1/sqrt(n)` on both transforms
+    Ortho,
+    /// Apply normalization only on the forward transform
+    Forward,
+}
+
+impl FFTNorm {
+    /// Convert string representation to FFTNorm enum
+    pub fn from_str(s: &str) -> Option<Self> {
+        match s {
+            "backward" => Some(FFTNorm::Backward),
+            "ortho" => Some(FFTNorm::Ortho),
+            "forward" => Some(FFTNorm::Forward),
+            _ => None,
+        }
+    }
+
+    /// Get the forward normalization scale factor for this mode
+    fn forward_scale(&self, n: usize) -> f64 {
+        match self {
+            FFTNorm::Backward => 1.0,
+            FFTNorm::Ortho => (n as f64).sqrt(),
+            FFTNorm::Forward => n as f64,
+        }
+    }
+
+    /// Get the inverse normalization scale factor for this mode
+    fn inverse_scale(&self, n: usize) -> f64 {
+        match self {
+            FFTNorm::Backward => n as f64,
+            FFTNorm::Ortho => (n as f64).sqrt(),
+            FFTNorm::Forward => 1.0,
+        }
+    }
+}
+
 /// Compute the 1-dimensional discrete Fourier Transform.
 pub fn fft<T>(
     input: &Array<T>,
     n: Option<usize>,
     axis: isize,
-    norm: Option<&str>,
+    norm: Option<FFTNorm>,
 ) -> Result<Array<Complex64>>
 where
     T: Clone + Into<Complex64> + Default + 'static,
@@ -25,7 +66,7 @@ pub fn ifft<T>(
     input: &Array<T>,
     n: Option<usize>,
     axis: isize,
-    norm: Option<&str>,
+    norm: Option<FFTNorm>,
 ) -> Result<Array<Complex64>>
 where
     T: Clone + Into<Complex64> + Default + 'static,
@@ -164,7 +205,7 @@ pub fn rfft<T>(
     input: &Array<T>,
     n: Option<usize>,
     axis: isize,
-    norm: Option<&str>,
+    norm: Option<FFTNorm>,
 ) -> Result<Array<Complex64>>
 where
     T: Clone + Into<f64> + Default + 'static,
@@ -181,7 +222,7 @@ pub fn irfft<T>(
     input: &Array<T>,
     n: Option<usize>,
     axis: isize,
-    norm: Option<&str>,
+    norm: Option<FFTNorm>,
 ) -> Result<Array<f64>>
 where
     T: Clone + Into<Complex64> + Default + 'static,
@@ -199,7 +240,7 @@ fn irfft_axis(
     input: &Array<Complex64>,
     n: usize,
     axis: usize,
-    norm: Option<&str>,
+    norm: Option<FFTNorm>,
 ) -> Result<Array<f64>> {
     let complex_res = irfft_axis_complex(input, n, axis, norm)?;
     let data: Vec<f64> = complex_res.iter().map(|x| x.re).collect();
@@ -211,7 +252,7 @@ pub fn fftn<T>(
     input: &Array<T>,
     s: Option<&[usize]>,
     axes: Option<&[usize]>,
-    norm: Option<&str>,
+    norm: Option<FFTNorm>,
 ) -> Result<Array<Complex64>>
 where
     T: Clone + Into<Complex64> + Default + 'static,
@@ -247,7 +288,7 @@ pub fn ifftn<T>(
     input: &Array<T>,
     s: Option<&[usize]>,
     axes: Option<&[usize]>,
-    norm: Option<&str>,
+    norm: Option<FFTNorm>,
 ) -> Result<Array<Complex64>>
 where
     T: Clone + Into<Complex64> + Default + 'static,
@@ -282,7 +323,7 @@ fn fft_axis(
     input: &Array<Complex64>,
     n: usize,
     axis: usize,
-    norm: Option<&str>,
+    norm: Option<FFTNorm>,
 ) -> Result<Array<Complex64>> {
     let ndim = input.ndim();
     if axis >= ndim {
@@ -338,21 +379,10 @@ fn fft_axis(
         fft.process(&mut line);
 
         // Normalization
-        if let Some(norm_str) = norm {
-            match norm_str {
-                "ortho" => {
-                    let scale = (n as f64).sqrt();
-                    for x in line.iter_mut() {
-                        *x /= scale;
-                    }
-                }
-                "forward" => {
-                    let scale = n as f64;
-                    for x in line.iter_mut() {
-                        *x /= scale;
-                    }
-                }
-                _ => {}
+        if let Some(norm_mode) = norm {
+            let scale = norm_mode.forward_scale(n);
+            for x in line.iter_mut() {
+                *x /= scale;
             }
         }
 
@@ -369,7 +399,7 @@ fn ifft_axis(
     input: &Array<Complex64>,
     n: usize,
     axis: usize,
-    norm: Option<&str>,
+    norm: Option<FFTNorm>,
 ) -> Result<Array<Complex64>> {
     let ndim = input.ndim();
     if axis >= ndim {
@@ -419,14 +449,11 @@ fn ifft_axis(
 
         fft.process(&mut line);
 
-        let mut scale = n as f64;
-        if let Some(norm_str) = norm {
-            match norm_str {
-                "ortho" => scale = (n as f64).sqrt(),
-                "forward" => scale = 1.0,
-                _ => {}
-            }
-        }
+        let scale = if let Some(norm_mode) = norm {
+            norm_mode.inverse_scale(n)
+        } else {
+            n as f64
+        };
 
         for k in 0..n {
             indices[axis] = k;
@@ -441,7 +468,7 @@ pub fn rfftn<T>(
     input: &Array<T>,
     s: Option<&[usize]>,
     axes: Option<&[usize]>,
-    norm: Option<&str>,
+    norm: Option<FFTNorm>,
 ) -> Result<Array<Complex64>>
 where
     T: Clone + Into<f64> + Default + 'static,
@@ -472,7 +499,7 @@ pub fn irfftn<T>(
     input: &Array<T>,
     s: Option<&[usize]>,
     axes: Option<&[usize]>,
-    norm: Option<&str>,
+    norm: Option<FFTNorm>,
 ) -> Result<Array<f64>>
 where
     T: Clone + Into<Complex64> + Default + 'static,
@@ -515,7 +542,7 @@ fn rfft_axis(
     input: &Array<Complex64>,
     n: usize,
     axis: usize,
-    norm: Option<&str>,
+    norm: Option<FFTNorm>,
 ) -> Result<Array<Complex64>> {
     let ndim = input.ndim();
     if axis >= ndim {
@@ -561,16 +588,10 @@ fn rfft_axis(
 
         line.truncate(n_out);
 
-        if let Some(norm_str) = norm {
-            let scale = match norm_str {
-                "ortho" => Some((n as f64).sqrt()),
-                "forward" => Some(n as f64),
-                _ => None,
-            };
-            if let Some(s) = scale {
-                for x in line.iter_mut() {
-                    *x /= s;
-                }
+        if let Some(norm_mode) = norm {
+            let scale = norm_mode.forward_scale(n);
+            for x in line.iter_mut() {
+                *x /= scale;
             }
         }
 
@@ -586,7 +607,7 @@ fn irfft_axis_complex(
     input: &Array<Complex64>,
     n: usize,
     axis: usize,
-    norm: Option<&str>,
+    norm: Option<FFTNorm>,
 ) -> Result<Array<Complex64>> {
     let ndim = input.ndim();
     if axis >= ndim {
@@ -637,14 +658,11 @@ fn irfft_axis_complex(
 
         fft.process(&mut full_data);
 
-        let mut scale = n as f64;
-        if let Some(norm_str) = norm {
-            match norm_str {
-                "ortho" => scale = (n as f64).sqrt(),
-                "forward" => scale = 1.0,
-                _ => {}
-            }
-        }
+        let scale = if let Some(norm_mode) = norm {
+            norm_mode.inverse_scale(n)
+        } else {
+            n as f64
+        };
 
         for k in 0..n {
             indices[axis] = k;
@@ -675,7 +693,7 @@ pub fn fft2<T>(
     input: &Array<T>,
     s: Option<&[usize]>,
     axes: Option<&[usize]>,
-    norm: Option<&str>,
+    norm: Option<FFTNorm>,
 ) -> Result<Array<Complex64>>
 where
     T: Clone + Into<Complex64> + Default + 'static,
@@ -695,7 +713,7 @@ pub fn ifft2<T>(
     input: &Array<T>,
     s: Option<&[usize]>,
     axes: Option<&[usize]>,
-    norm: Option<&str>,
+    norm: Option<FFTNorm>,
 ) -> Result<Array<Complex64>>
 where
     T: Clone + Into<Complex64> + Default + 'static,
@@ -711,7 +729,7 @@ pub fn rfft2<T>(
     input: &Array<T>,
     s: Option<&[usize]>,
     axes: Option<&[usize]>,
-    norm: Option<&str>,
+    norm: Option<FFTNorm>,
 ) -> Result<Array<Complex64>>
 where
     T: Clone + Into<f64> + Default + 'static,
@@ -727,7 +745,7 @@ pub fn irfft2<T>(
     input: &Array<T>,
     s: Option<&[usize]>,
     axes: Option<&[usize]>,
-    norm: Option<&str>,
+    norm: Option<FFTNorm>,
 ) -> Result<Array<f64>>
 where
     T: Clone + Into<Complex64> + Default + 'static,
@@ -757,7 +775,7 @@ pub fn hfft<T>(
     input: &Array<T>,
     n: Option<usize>,
     axis: isize,
-    norm: Option<&str>,
+    norm: Option<FFTNorm>,
 ) -> Result<Array<f64>>
 where
     T: Clone + Into<Complex64> + Default + 'static,
@@ -775,7 +793,7 @@ fn hfft_axis(
     input: &Array<Complex64>,
     n: usize,
     axis: usize,
-    norm: Option<&str>,
+    norm: Option<FFTNorm>,
 ) -> Result<Array<f64>> {
     let ndim = input.ndim();
     if axis >= ndim {
@@ -826,14 +844,11 @@ fn hfft_axis(
 
         fft.process(&mut full_data);
 
-        let mut scale = 1.0;
-        if let Some(norm_str) = norm {
-            match norm_str {
-                "ortho" => scale = (n as f64).sqrt(),
-                "forward" => scale = n as f64,
-                _ => {}
-            }
-        }
+        let scale = if let Some(norm_mode) = norm {
+            norm_mode.forward_scale(n)
+        } else {
+            1.0
+        };
 
         for k in 0..n {
             indices[axis] = k;
@@ -860,7 +875,7 @@ pub fn ihfft<T>(
     input: &Array<T>,
     n: Option<usize>,
     axis: isize,
-    norm: Option<&str>,
+    norm: Option<FFTNorm>,
 ) -> Result<Array<Complex64>>
 where
     T: Clone + Into<f64> + Default + 'static,
@@ -878,7 +893,7 @@ fn ihfft_axis(
     input: &Array<Complex64>,
     n_out: usize,
     axis: usize,
-    norm: Option<&str>,
+    norm: Option<FFTNorm>,
 ) -> Result<Array<Complex64>> {
     let ndim = input.ndim();
     if axis >= ndim {
@@ -916,14 +931,11 @@ fn ihfft_axis(
 
         fft.process(&mut data);
 
-        let mut scale = m as f64;
-        if let Some(norm_str) = norm {
-            match norm_str {
-                "ortho" => scale = (m as f64).sqrt(),
-                "forward" => scale = m as f64,
-                _ => {}
-            }
-        }
+        let scale = if let Some(norm_mode) = norm {
+            norm_mode.forward_scale(m)
+        } else {
+            m as f64
+        };
 
         for k in 0..n_out {
             indices[axis] = k;
