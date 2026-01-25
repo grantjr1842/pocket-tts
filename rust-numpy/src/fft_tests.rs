@@ -3,6 +3,109 @@ use crate::Array;
 use num_complex::Complex64;
 
 #[test]
+fn test_fft_norm_enum_creation() {
+    // Test from_str method
+    assert_eq!(FFTNorm::from_str("backward"), Some(FFTNorm::Backward));
+    assert_eq!(FFTNorm::from_str("ortho"), Some(FFTNorm::Ortho));
+    assert_eq!(FFTNorm::from_str("forward"), Some(FFTNorm::Forward));
+    assert_eq!(FFTNorm::from_str("invalid"), None);
+}
+
+#[test]
+fn test_fft_norm_forward_scale() {
+    let n = 4;
+    assert_eq!(FFTNorm::Backward.forward_scale(n), 1.0);
+    assert_eq!(FFTNorm::Ortho.forward_scale(n), (n as f64).sqrt());
+    assert_eq!(FFTNorm::Forward.forward_scale(n), n as f64);
+}
+
+#[test]
+fn test_fft_norm_inverse_scale() {
+    let n = 4;
+    assert_eq!(FFTNorm::Backward.inverse_scale(n), n as f64);
+    assert_eq!(FFTNorm::Ortho.inverse_scale(n), (n as f64).sqrt());
+    assert_eq!(FFTNorm::Forward.inverse_scale(n), 1.0);
+}
+
+#[test]
+fn test_fft_backward_normalization() {
+    let x = vec![1.0, 2.0, 3.0, 4.0];
+    let input = Array::from_vec(x);
+
+    // Test backward normalization (default behavior)
+    let y = fft(&input, None, 0, Some(FFTNorm::Backward)).unwrap();
+    let x_reconstructed = ifft(&y, None, 0, Some(FFTNorm::Backward)).unwrap();
+
+    for i in 0..4 {
+        assert!((x_reconstructed.get(i).unwrap().re - input.get(i).unwrap().re).abs() < 1e-10);
+    }
+}
+
+#[test]
+fn test_fft_ortho_normalization() {
+    let x = vec![1.0, 2.0, 3.0, 4.0];
+    let input = Array::from_vec(x);
+
+    // Test ortho normalization
+    let y = fft(&input, None, 0, Some(FFTNorm::Ortho)).unwrap();
+    let x_reconstructed = ifft(&y, None, 0, Some(FFTNorm::Ortho)).unwrap();
+
+    for i in 0..4 {
+        assert!((x_reconstructed.get(i).unwrap().re - input.get(i).unwrap().re).abs() < 1e-10);
+    }
+}
+
+#[test]
+fn test_fft_forward_normalization() {
+    let x = vec![1.0, 2.0, 3.0, 4.0];
+    let input = Array::from_vec(x);
+
+    // Test forward normalization
+    let y = fft(&input, None, 0, Some(FFTNorm::Forward)).unwrap();
+    let x_reconstructed = ifft(&y, None, 0, Some(FFTNorm::Forward)).unwrap();
+
+    for i in 0..4 {
+        assert!((x_reconstructed.get(i).unwrap().re - input.get(i).unwrap().re).abs() < 1e-10);
+    }
+}
+
+#[test]
+fn test_rfft_normalization_roundtrip() {
+    let x = vec![1.0, 2.0, 3.0, 4.0];
+    let input = Array::from_vec(x);
+
+    // Test all normalization modes for rfft/irfft
+    let norms = [FFTNorm::Backward, FFTNorm::Ortho, FFTNorm::Forward];
+
+    for &norm in &norms {
+        let y = rfft(&input, None, 0, Some(norm)).unwrap();
+        let x_reconstructed = irfft(&y, Some(4), 0, Some(norm)).unwrap();
+
+        for i in 0..4 {
+            assert!(
+                (x_reconstructed.get(i).unwrap() - input.get(i).unwrap()).abs() < 1e-10,
+                "Failed for norm: {:?}",
+                norm
+            );
+        }
+    }
+}
+
+#[test]
+fn test_fft2_normalization() {
+    let data = vec![1.0, 2.0, 3.0, 4.0];
+    let input = Array::from_shape_vec(vec![2, 2], data);
+
+    // Test ortho normalization for 2D FFT
+    let y = fft2(&input, None, None, Some(FFTNorm::Ortho)).unwrap();
+    let x_reconstructed = ifft2(&y, None, None, Some(FFTNorm::Ortho)).unwrap();
+
+    for i in 0..4 {
+        assert!((x_reconstructed.get(i).unwrap().re - input.get(i).unwrap().re).abs() < 1e-10);
+    }
+}
+
+#[test]
 fn test_fftfreq_basic() {
     let freqs = fftfreq(8, 0.1);
     assert_eq!(freqs.len(), 8);
