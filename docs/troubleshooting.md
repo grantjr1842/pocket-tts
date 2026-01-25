@@ -1,5 +1,187 @@
 # Pocket TTS Troubleshooting Guide
 
+This comprehensive troubleshooting guide covers common issues, their solutions, and preventive measures for Pocket TTS.
+
+## Quick Diagnosis
+
+### System Check Script
+
+```python
+#!/usr/bin/env python3
+"""
+Pocket TTS System Diagnosis Script
+Run this script to quickly identify common configuration issues.
+"""
+
+import sys
+import os
+import platform
+import subprocess
+from pocket_tts import _RUST_NUMPY_AVAILABLE
+
+def check_python_version():
+    """Check Python version compatibility."""
+    version = sys.version_info
+    print(f"Python Version: {version.major}.{version.minor}.{version.micro}")
+    
+    if version < (3, 10):
+        print("❌ Python 3.10+ required. Current version not supported.")
+        return False
+    elif version >= (3, 15):
+        print("⚠️  Python 3.15+ not tested. Consider using 3.10-3.14.")
+        return False
+    else:
+        print("✅ Python version compatible.")
+        return True
+
+def check_torch_version():
+    """Check PyTorch version."""
+    try:
+        import torch
+        version = torch.__version__
+        print(f"PyTorch Version: {version}")
+        
+        # Extract version numbers
+        version_parts = version.split('+')[0].split('.')
+        major, minor, patch = map(int, version_parts[:3])
+        
+        if major < 2:
+            print("❌ PyTorch 2.0+ required.")
+            return False
+        elif major == 2 and minor < 5:
+            print("❌ PyTorch 2.5+ required (2.4.0 has audio issues).")
+            return False
+        else:
+            print("✅ PyTorch version compatible.")
+            return True
+            
+    except ImportError:
+        print("❌ PyTorch not installed.")
+        return False
+
+def check_system_resources():
+    """Check available system resources."""
+    import psutil
+    
+    # Memory check
+    memory = psutil.virtual_memory()
+    available_gb = memory.available / (1024**3)
+    total_gb = memory.total / (1024**3)
+    
+    print(f"Memory: {available_gb:.1f}GB available / {total_gb:.1f}GB total")
+    
+    if available_gb < 2:
+        print("⚠️  Low memory available (<2GB). May cause issues.")
+        return False
+    else:
+        print("✅ Sufficient memory available.")
+        return True
+    
+    # CPU check
+    cpu_count = psutil.cpu_count()
+    print(f"CPU Cores: {cpu_count}")
+    
+    if cpu_count < 2:
+        print("⚠️  Single core CPU detected. Performance may be slow.")
+    else:
+        print("✅ Multi-core CPU available.")
+
+def check_gpu_availability():
+    """Check GPU availability and suitability."""
+    try:
+        import torch
+        
+        if torch.cuda.is_available():
+            device_count = torch.cuda.device_count()
+            print(f"GPU: {device_count} device(s) available")
+            
+            for i in range(device_count):
+                props = torch.cuda.get_device_properties(i)
+                memory_gb = props.total_memory / (1024**3)
+                print(f"  GPU {i}: {props.name} ({memory_gb:.1f}GB)")
+            
+            print("⚠️  GPU available but may not provide speedup for this small model.")
+            print("   CPU is recommended for Pocket TTS.")
+            return True
+        else:
+            print("GPU: Not available (CPU recommended for Pocket TTS)")
+            return True
+            
+    except Exception as e:
+        print(f"GPU check failed: {e}")
+        return False
+
+def check_rust_acceleration():
+    """Check Rust acceleration status."""
+    print(f"Rust Acceleration: {'Enabled' if _RUST_NUMPY_AVAILABLE else 'Disabled'}")
+    
+    if _RUST_NUMPY_AVAILABLE:
+        print("✅ Rust acceleration available for improved performance.")
+    else:
+        print("⚠️  Rust acceleration not available. Using Python fallback.")
+        print("   Build with: cd training/rust_exts/audio_ds && cargo build --release")
+    
+    return _RUST_NUMPY_AVAILABLE
+
+def check_disk_space():
+    """Check available disk space."""
+    import shutil
+    
+    current_dir = os.getcwd()
+    total, used, free = shutil.disk_usage(current_dir)
+    free_gb = free / (1024**3)
+    
+    print(f"Disk Space: {free_gb:.1f}GB free")
+    
+    if free_gb < 1:
+        print("❌ Low disk space. May cause model download or audio save failures.")
+        return False
+    else:
+        print("✅ Sufficient disk space.")
+        return True
+
+def main():
+    """Run comprehensive system diagnosis."""
+    print("Pocket TTS System Diagnosis")
+    print("=" * 40)
+    
+    checks = [
+        ("Python Version", check_python_version),
+        ("PyTorch Version", check_torch_version),
+        ("System Resources", check_system_resources),
+        ("GPU Availability", check_gpu_availability),
+        ("Rust Acceleration", check_rust_acceleration),
+        ("Disk Space", check_disk_space)
+    ]
+    
+    results = []
+    for name, check_func in checks:
+        print(f"\n{name}:")
+        try:
+            result = check_func()
+            results.append((name, result))
+        except Exception as e:
+            print(f"❌ Check failed: {e}")
+            results.append((name, False))
+    
+    print("\n" + "=" * 40)
+    print("Summary:")
+    
+    all_passed = all(result for _, result in results if isinstance(result, bool))
+    
+    for name, result in results:
+        status = "✅ PASS" if result else "❌ FAIL"
+        print(f"  {name}: {status}")
+    
+    if all_passed:
+        print("\n🎉 All checks passed! Your system is ready for Pocket TTS.")
+    else:
+        print("\n⚠️  Some checks failed. See recommendations above.")
+
+if __name__ == "__main__":
+    main()
+```
+
 This guide covers common issues, debugging techniques, and solutions for Pocket TTS.
 
 ## Table of Contents
