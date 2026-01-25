@@ -32,6 +32,8 @@ from pocket_tts.modules.dummy_quantizer import DummyQuantizer
 from pocket_tts.modules.seanet import SEANetDecoder, SEANetEncoder
 from pocket_tts.modules.stateful_module import increment_steps, init_states
 from pocket_tts.utils.config import Config, load_config
+from pocket_tts.utils.model_cache import get_global_cache
+from pocket_tts.utils.profiling import LoadingProfiler
 from pocket_tts.utils.utils import (
     PREDEFINED_VOICES,
     display_execution_time,
@@ -74,21 +76,37 @@ class TTSModel(nn.Module):
 
     @classmethod
     def _from_pydantic_config(
-        cls, config: Config, temp, lsd_decode_steps, noise_clamp: float | None, eos_threshold
+        cls,
+        config: Config,
+        temp,
+        lsd_decode_steps,
+        noise_clamp: float | None,
+        eos_threshold,
     ) -> Self:
         flow_lm = FlowLMModel.from_pydantic_config(
             config.flow_lm, latent_dim=config.mimi.quantizer.dimension
         )
-        tts_model = cls(flow_lm, temp, lsd_decode_steps, noise_clamp, eos_threshold, config)
+        tts_model = cls(
+            flow_lm, temp, lsd_decode_steps, noise_clamp, eos_threshold, config
+        )
         return tts_model
 
     @classmethod
     def _from_pydantic_config_with_weights(
-        cls, config: Config, temp, lsd_decode_steps, noise_clamp: float | None, eos_threshold
+        cls,
+        config: Config,
+        temp,
+        lsd_decode_steps,
+        noise_clamp: float | None,
+        eos_threshold,
+        profiler: LoadingProfiler | None = None,
     ) -> Self:
         tts_model = cls._from_pydantic_config(
             config, temp, lsd_decode_steps, noise_clamp, eos_threshold
         )
+        if profiler:
+            profiler.record_stage("model_initialized")
+
         tts_model.flow_lm.speaker_proj_weight = torch.nn.Parameter(
             torch.zeros((1024, 512), dtype=torch.float32)
         )
@@ -102,6 +120,8 @@ class TTSModel(nn.Module):
                 download_if_necessary(config.flow_lm.weights_path)
             )
             tts_model.flow_lm.load_state_dict(state_dict_flowlm, strict=True)
+            if profiler:
+                profiler.record_stage("flowlm_weights_loaded")
 
         # safetensors.torch.save_file(tts_model.state_dict(), "7442637a.safetensors")
         # Create mimi config directly from the provided config using model_dump
@@ -111,8 +131,12 @@ class TTSModel(nn.Module):
         encoder = SEANetEncoder(**mimi_config["seanet"])
         decoder = SEANetDecoder(**mimi_config["seanet"])
 
-        encoder_transformer = mimi_transformer.ProjectedTransformer(**mimi_config["transformer"])
-        decoder_transformer = mimi_transformer.ProjectedTransformer(**mimi_config["transformer"])
+        encoder_transformer = mimi_transformer.ProjectedTransformer(
+            **mimi_config["transformer"]
+        )
+        decoder_transformer = mimi_transformer.ProjectedTransformer(
+            **mimi_config["transformer"]
+        )
         quantizer = DummyQuantizer(**mimi_config["quantizer"])
 
         tts_model.mimi = MimiModel(
@@ -127,6 +151,9 @@ class TTSModel(nn.Module):
             decoder_transformer=decoder_transformer,
         ).to(device="cpu")
 
+        if profiler:
+            profiler.record_stage("mimi_initialized")
+
         # Load mimi weights from the config safetensors file with complete mapping for strict loading
 
         if config.mimi.weights_path is not None:
@@ -135,8 +162,12 @@ class TTSModel(nn.Module):
                     "If you specify mimi.weights_path you should specify flow_lm.weights_path"
                 )
             logger.info(f"Loading Mimi weights from {config.mimi.weights_path}")
-            mimi_state = get_mimi_state_dict(download_if_necessary(config.mimi.weights_path))
+            mimi_state = get_mimi_state_dict(
+                download_if_necessary(config.mimi.weights_path)
+            )
             tts_model.mimi.load_state_dict(mimi_state, strict=True)
+            if profiler:
+                profiler.record_stage("mimi_weights_loaded")
 
         tts_model.mimi.eval()
         # tts_model.to(dtype=torch.float32)
@@ -150,10 +181,14 @@ class TTSModel(nn.Module):
                 weights_file = download_if_necessary(config.weights_path)
             except Exception:
                 tts_model.has_voice_cloning = False
-                weights_file = download_if_necessary(config.weights_path_without_voice_cloning)
+                weights_file = download_if_necessary(
+                    config.weights_path_without_voice_cloning
+                )
 
             state_dict = safetensors.torch.load_file(weights_file)
             tts_model.load_state_dict(state_dict, strict=True)
+            if profiler:
+                profiler.record_stage("tts_weights_loaded")
 
         if config.flow_lm.weights_path is None and config.weights_path is None:
             logger.warning(
@@ -170,6 +205,8 @@ class TTSModel(nn.Module):
         lsd_decode_steps: int = DEFAULT_LSD_DECODE_STEPS,
         noise_clamp: float | int | None = DEFAULT_NOISE_CLAMP,
         eos_threshold: float = DEFAULT_EOS_THRESHOLD,
+        use_cache: bool = True,
+        profile_loading: bool = False,
     ) -> Self:
         """Load a pre-trained TTS model with specified configuration.
 
@@ -188,6 +225,12 @@ class TTSModel(nn.Module):
                 is applied. Helps prevent extreme values in generation.
             eos_threshold: Threshold for end-of-sequence detection. Higher values
                 make the model more likely to continue generating.
+            use_cache: Whether to check the in-memory model cache before loading.
+                If True and a matching model is cached, the cached instance is returned.
+                Default is True.
+            profile_loading: If True, log detailed timing information for each
+                stage of model loading. Useful for performance analysis.
+                Default is False.
 
         Returns:
             TTSModel: Fully initialized model with loaded weights on cpu, ready for
@@ -198,10 +241,63 @@ class TTSModel(nn.Module):
                 are not found.
             ValueError: If the configuration is invalid or incompatible.
         """
+        # Normalize parameters for cache key
+        temp_norm = float(temp)
+        lsd_decode_steps_norm = int(lsd_decode_steps)
+        noise_clamp_norm = float(noise_clamp) if noise_clamp is not None else None
+        eos_threshold_norm = float(eos_threshold)
+
+        # Check cache first
+        if use_cache:
+            cache = get_global_cache()
+            cached_model = cache.get(
+                variant,
+                temp_norm,
+                lsd_decode_steps_norm,
+                noise_clamp_norm,
+                eos_threshold_norm,
+            )
+            if cached_model is not None:
+                logger.info("Returning cached model instance")
+                return cached_model
+
+        # Set up profiler if requested
+        profiler = LoadingProfiler() if profile_loading else None
+        if profiler:
+            profiler.start()
+
+        # Load the model
         config = load_config(Path(__file__).parents[1] / f"config/{variant}.yaml")
+        if profiler:
+            profiler.record_stage("config_loaded")
+
         tts_model = TTSModel._from_pydantic_config_with_weights(
-            config, temp, lsd_decode_steps, noise_clamp, eos_threshold
+            config,
+            temp_norm,
+            lsd_decode_steps_norm,
+            noise_clamp_norm,
+            eos_threshold_norm,
+            profiler,
         )
+
+        if profiler:
+            profiler.record_stage("model_loaded")
+
+        # Cache the model
+        if use_cache:
+            cache = get_global_cache()
+            cache.put(
+                variant,
+                temp_norm,
+                lsd_decode_steps_norm,
+                noise_clamp_norm,
+                eos_threshold_norm,
+                tts_model,
+            )
+
+        if profiler:
+            profiler.finish()
+
         return tts_model
 
     def _run_flow_lm_and_increment_step(
@@ -213,14 +309,20 @@ class TTSModel(nn.Module):
     ) -> tuple[torch.Tensor, torch.Tensor]:
         """First one is the backbone output, second one is the audio decoding output."""
         if text_tokens is None:
-            text_tokens = torch.zeros((1, 0), dtype=torch.int64, device=self.flow_lm.device)
+            text_tokens = torch.zeros(
+                (1, 0), dtype=torch.int64, device=self.flow_lm.device
+            )
         if backbone_input_latents is None:
             backbone_input_latents = torch.empty(
-                (1, 0, self.flow_lm.ldim), dtype=self.flow_lm.dtype, device=self.flow_lm.device
+                (1, 0, self.flow_lm.ldim),
+                dtype=self.flow_lm.dtype,
+                device=self.flow_lm.device,
             )
         if audio_conditioning is None:
             audio_conditioning = torch.empty(
-                (1, 0, self.flow_lm.dim), dtype=self.flow_lm.dtype, device=self.flow_lm.device
+                (1, 0, self.flow_lm.dim),
+                dtype=self.flow_lm.dtype,
+                device=self.flow_lm.device,
             )
 
         output = self._run_flow_lm(
@@ -230,7 +332,9 @@ class TTSModel(nn.Module):
             audio_conditioning=audio_conditioning,
         )
         increment_by = (
-            text_tokens.shape[1] + backbone_input_latents.shape[1] + audio_conditioning.shape[1]
+            text_tokens.shape[1]
+            + backbone_input_latents.shape[1]
+            + audio_conditioning.shape[1]
         )
         increment_steps(self.flow_lm, model_state, increment=increment_by)
         return output
@@ -281,7 +385,9 @@ class TTSModel(nn.Module):
                 original_size += cache.numel() * cache.element_size()
                 # Slice to keep only the first num_frames positions
                 module_state["cache"] = cache[:, :, :num_frames, :, :].clone()
-                sliced_size += module_state["cache"].numel() * module_state["cache"].element_size()
+                sliced_size += (
+                    module_state["cache"].numel() * module_state["cache"].element_size()
+                )
 
         memory_saved_mb = (original_size - sliced_size) / (1024 * 1024)
         logger.info(
@@ -323,7 +429,9 @@ class TTSModel(nn.Module):
                     module_state["cache"] = expanded_cache
 
     @torch.no_grad
-    def _decode_audio_worker(self, latents_queue: queue.Queue, result_queue: queue.Queue):
+    def _decode_audio_worker(
+        self, latents_queue: queue.Queue, result_queue: queue.Queue
+    ):
         """Worker thread function for decoding audio latents from queue with immediate streaming."""
         try:
             audio_chunks = []
@@ -332,14 +440,18 @@ class TTSModel(nn.Module):
                 latent = latents_queue.get()
                 if latent is None:
                     break
-                mimi_decoding_input = latent * self.flow_lm.emb_std + self.flow_lm.emb_mean
+                mimi_decoding_input = (
+                    latent * self.flow_lm.emb_std + self.flow_lm.emb_mean
+                )
                 transposed = mimi_decoding_input.transpose(-1, -2)
                 quantized = self.mimi.quantizer(transposed)
 
                 t = time.monotonic()
                 audio_frame = self.mimi.decode_from_latent(quantized, mimi_state)
                 increment_steps(self.mimi, mimi_state, increment=16)
-                audio_frame_duration = audio_frame.shape[2] / self.config.mimi.sample_rate
+                audio_frame_duration = (
+                    audio_frame.shape[2] / self.config.mimi.sample_rate
+                )
                 # We could log the timings here.
                 logger.debug(
                     " " * 30 + "Decoded %d ms of audio with mimi in %d ms",
@@ -470,7 +582,9 @@ class TTSModel(nn.Module):
             text_to_generate, frames_after_eos_guess = prepare_text_prompt(chunk)
             frames_after_eos_guess += 2
             effective_frames = (
-                frames_after_eos if frames_after_eos is not None else frames_after_eos_guess
+                frames_after_eos
+                if frames_after_eos is not None
+                else frames_after_eos_guess
             )
             yield from self._generate_audio_stream_short_text(
                 model_state=model_state,
@@ -481,7 +595,11 @@ class TTSModel(nn.Module):
 
     @torch.no_grad
     def _generate_audio_stream_short_text(
-        self, model_state: dict, text_to_generate: str, frames_after_eos: int, copy_state: bool
+        self,
+        model_state: dict,
+        text_to_generate: str,
+        frames_after_eos: int,
+        copy_state: bool,
     ):
         if copy_state:
             model_state = copy.deepcopy(model_state)
@@ -495,7 +613,9 @@ class TTSModel(nn.Module):
 
         # Start decoder worker thread
         decoder_thread = threading.Thread(
-            target=self._decode_audio_worker, args=(latents_queue, result_queue), daemon=True
+            target=self._decode_audio_worker,
+            args=(latents_queue, result_queue),
+            daemon=True,
         )
         logger.info("starting timer now!")
         t_generating = time.monotonic()
@@ -584,7 +704,11 @@ class TTSModel(nn.Module):
 
     @torch.no_grad
     def _autoregressive_generation(
-        self, model_state: dict, max_gen_len: int, frames_after_eos: int, latents_queue: queue.Queue
+        self,
+        model_state: dict,
+        max_gen_len: int,
+        frames_after_eos: int,
+        latents_queue: queue.Queue,
     ):
         backbone_input = torch.full(
             (1, 1, self.flow_lm.ldim),
@@ -595,13 +719,18 @@ class TTSModel(nn.Module):
         steps_times = []
         eos_step = None
         for generation_step in range(max_gen_len):
-            with display_execution_time("Generating latent", print_output=False) as timer:
+            with display_execution_time(
+                "Generating latent", print_output=False
+            ) as timer:
                 next_latent, is_eos = self._run_flow_lm_and_increment_step(
                     model_state=model_state, backbone_input_latents=backbone_input
                 )
                 if is_eos.item() and eos_step is None:
                     eos_step = generation_step
-                if eos_step is not None and generation_step >= eos_step + frames_after_eos:
+                if (
+                    eos_step is not None
+                    and generation_step >= eos_step + frames_after_eos
+                ):
                     break
 
                 # Add generated latent to queue for immediate decoding
@@ -617,7 +746,9 @@ class TTSModel(nn.Module):
 
         # Add sentinel value to signal end of generation
         latents_queue.put(None)
-        logger.info("Average generation step time: %d ms", int(statistics.mean(steps_times)))
+        logger.info(
+            "Average generation step time: %d ms", int(statistics.mean(steps_times))
+        )
 
     @lru_cache(maxsize=2)
     def _cached_get_state_for_audio_prompt(
@@ -662,11 +793,16 @@ class TTSModel(nn.Module):
             - Processing time is logged for performance monitoring
             - The state preserves speaker characteristics for voice cloning
         """
-        if isinstance(audio_conditioning, str) and audio_conditioning in PREDEFINED_VOICES:
+        if (
+            isinstance(audio_conditioning, str)
+            and audio_conditioning in PREDEFINED_VOICES
+        ):
             # We get the audio conditioning directly from the safetensors file.
             prompt = load_predefined_voice(audio_conditioning)
         else:
-            if not self.has_voice_cloning and isinstance(audio_conditioning, (str, Path)):
+            if not self.has_voice_cloning and isinstance(
+                audio_conditioning, (str, Path)
+            ):
                 raise ValueError(
                     f"We could not download the weights for the model with voice cloning, "
                     f"but you're trying to use voice cloning. "
@@ -682,17 +818,23 @@ class TTSModel(nn.Module):
                 audio, conditioning_sample_rate = audio_read(audio_conditioning)
 
                 if truncate:
-                    max_samples = int(30 * conditioning_sample_rate)  # 30 seconds of audio
+                    max_samples = int(
+                        30 * conditioning_sample_rate
+                    )  # 30 seconds of audio
                     if audio.shape[-1] > max_samples:
                         audio = audio[..., :max_samples]
-                        logger.info(f"Audio truncated to first 30 seconds ({max_samples} samples)")
+                        logger.info(
+                            f"Audio truncated to first 30 seconds ({max_samples} samples)"
+                        )
 
                 audio_conditioning = convert_audio(
                     audio, conditioning_sample_rate, self.config.mimi.sample_rate, 1
                 )
 
             with display_execution_time("Encoding audio prompt"):
-                prompt = self._encode_audio(audio_conditioning.unsqueeze(0).to(self.device))
+                prompt = self._encode_audio(
+                    audio_conditioning.unsqueeze(0).to(self.device)
+                )
                 # import safetensors.torch
                 # safetensors.torch.save_file(
                 #     {"audio_prompt": prompt},
@@ -702,7 +844,9 @@ class TTSModel(nn.Module):
         model_state = init_states(self.flow_lm, batch_size=1, sequence_length=1000)
 
         with display_execution_time("Prompting audio"):
-            self._run_flow_lm_and_increment_step(model_state=model_state, audio_conditioning=prompt)
+            self._run_flow_lm_and_increment_step(
+                model_state=model_state, audio_conditioning=prompt
+            )
 
         # Optimize memory by slicing KV cache to only keep frames from the audio prompt
         num_audio_frames = prompt.shape[1]
@@ -739,7 +883,9 @@ def prepare_text_prompt(text: str) -> tuple[str, int]:
     return text, frames_after_eos_guess
 
 
-def split_into_best_sentences(tokenizer, text_to_generate: str, max_tokens: int) -> list[str]:
+def split_into_best_sentences(
+    tokenizer, text_to_generate: str, max_tokens: int
+) -> list[str]:
     text_to_generate, _ = prepare_text_prompt(text_to_generate)
     text_to_generate = text_to_generate.strip()
     tokens = tokenizer(text_to_generate)
