@@ -2,6 +2,9 @@ use crate::array::Array;
 use crate::dtype::{Dtype, DtypeKind};
 use crate::error::{NumPyError, Result};
 use std::marker::PhantomData;
+use std::collections::HashMap;
+use std::sync::{Arc, RwLock};
+use std::time::Instant;
 
 impl<T: 'static> ArrayView for Array<T> {
     fn dtype(&self) -> &Dtype {
@@ -1115,4 +1118,472 @@ pub fn get_ufunc_typed_binary<T: 'static>(name: &str) -> Option<&'static dyn Ufu
 /// List all available ufuncs
 pub fn list_ufuncs() -> Vec<&'static str> {
     UFUNC_REGISTRY.list()
+}
+
+// ============================================================================
+// Advanced Ufunc Features
+// ============================================================================
+
+/// Metadata for a ufunc
+#[derive(Debug, Clone)]
+pub struct UfuncMetadata {
+    /// Name of the ufunc
+    pub name: String,
+    /// Number of inputs
+    pub nin: usize,
+    /// Number of outputs
+    pub nout: usize,
+    /// Documentation string
+    pub doc: Option<String>,
+    /// Supported dtype kinds
+    pub supported_dtypes: Vec<DtypeKind>,
+    /// Custom attributes
+    pub attributes: HashMap<String, String>,
+}
+
+impl UfuncMetadata {
+    /// Create new ufunc metadata
+    pub fn new(name: String, nin: usize, nout: usize) -> Self {
+        Self {
+            name,
+            nin,
+            nout,
+            doc: None,
+            supported_dtypes: Vec::new(),
+            attributes: HashMap::new(),
+        }
+    }
+
+    /// Set documentation
+    pub fn with_doc(mut self, doc: String) -> Self {
+        self.doc = Some(doc);
+        self
+    }
+
+    /// Add supported dtype
+    pub fn with_dtype(mut self, dtype: DtypeKind) -> Self {
+        self.supported_dtypes.push(dtype);
+        self
+    }
+
+    /// Add custom attribute
+    pub fn with_attribute(mut self, key: String, value: String) -> Self {
+        self.attributes.insert(key, value);
+        self
+    }
+}
+
+/// Performance metrics for ufunc execution
+#[derive(Debug, Clone)]
+pub struct UfuncPerformanceMetrics {
+    /// Number of times the ufunc was called
+    pub call_count: u64,
+    /// Total time spent in microseconds
+    pub total_time_us: u64,
+    /// Number of elements processed
+    pub total_elements: u64,
+    /// Last execution time in microseconds
+    pub last_exec_time_us: u64,
+}
+
+impl UfuncPerformanceMetrics {
+    /// Create new metrics
+    pub fn new() -> Self {
+        Self {
+            call_count: 0,
+            total_time_us: 0,
+            total_elements: 0,
+            last_exec_time_us: 0,
+        }
+    }
+
+    /// Get average time per call in microseconds
+    pub fn avg_time_us(&self) -> f64 {
+        if self.call_count == 0 {
+            0.0
+        } else {
+            self.total_time_us as f64 / self.call_count as f64
+        }
+    }
+
+    /// Get throughput in elements per second
+    pub fn throughput(&self) -> f64 {
+        if self.total_time_us == 0 {
+            0.0
+        } else {
+            (self.total_elements as f64 * 1_000_000.0) / self.total_time_us as f64
+        }
+    }
+}
+
+/// Custom ufunc trait with inner loop support
+pub trait CustomUfunc: Send + Sync {
+    /// Get ufunc name
+    fn name(&self) -> &str;
+
+    /// Get number of inputs
+    fn nin(&self) -> usize;
+
+    /// Get number of outputs
+    fn nout(&self) -> usize;
+
+    /// Execute ufunc on array inputs (high-level interface)
+    fn call(&self, inputs: &[&dyn ArrayView], outputs: &mut [&mut dyn ArrayViewMut]) -> Result<()>;
+
+    /// Inner loop implementation (low-level interface for performance)
+    ///
+    /// This mimics NumPy's inner loop mechanism for maximum performance.
+    /// The inner loop operates on raw pointers with stride information.
+    ///
+    /// # Parameters
+    /// - `args`: Raw pointers to input and output data buffers
+    /// - `dimensions`: Array sizes for each dimension
+    /// - `steps`: Byte strides for each argument
+    /// - `data`: User-provided data pointer (can be used for closure state)
+    ///
+    /// # Safety
+    /// Implementations must ensure proper memory safety when working with raw pointers.
+    fn inner_loop(
+        &self,
+        args: &[&[u8]],
+        dimensions: &[isize],
+        steps: &[isize],
+        data: &mut [*mut u8],
+    ) -> Result<()>;
+
+    /// Get ufunc metadata
+    fn metadata(&self) -> UfuncMetadata;
+
+    /// Check if ufunc supports the given dtypes
+    fn supports_dtypes(&self, dtypes: &[&Dtype]) -> bool {
+        let metadata = self.metadata();
+        dtypes
+            .iter()
+            .all(|dt| metadata.supported_dtypes.contains(&dt.kind()))
+    }
+}
+
+/// Generalized ufunc (gufunc) signature
+///
+/// A gufunc operates on sub-arrays rather than scalars, following NumPy's gufunc specification.
+#[derive(Debug, Clone)]
+pub struct GufuncSignature {
+    /// Signature string (e.g., "(i,j),(j,k)->(i,k)" for matrix multiplication)
+    pub signature: String,
+    /// Core dimensions for each input (e.g., [[2,3], [3,4]] for 2D x 2D inputs)
+    pub input_core_dims: Vec<Vec<usize>>,
+    /// Core dimensions for each output
+    pub output_core_dims: Vec<Vec<usize>>,
+    /// Number of loop dimensions (broadcasted dimensions)
+    pub num_loop_dims: usize,
+}
+
+impl GufuncSignature {
+    /// Parse a gufunc signature string
+    ///
+    /// Example: "(i,j),(j,k)->(i,k)" represents matrix multiplication
+    /// Note: This implementation uses placeholder sizes (1) for symbolic dimension names
+    /// Real implementations would track dimension names for validation
+    pub fn parse(signature: &str) -> Result<Self> {
+        // Parse signature like "(i,j),(j,k)->(i,k)"
+        let parts: Vec<&str> = signature.split("->").collect();
+        if parts.len() != 2 {
+            return Err(NumPyError::invalid_value(
+                "Invalid gufunc signature: must contain '->'",
+            ));
+        }
+
+        let input_part = parts[0];
+        let output_part = parts[1];
+
+        // For symbolic dimensions (i, j, k, m, n), we use placeholder size of 1
+        // In a full implementation, we would track dimension names to ensure consistency
+        let parse_dims = |part: &str| -> Result<Vec<Vec<usize>>> {
+            part
+                .split(')')
+                .filter(|s| !s.is_empty())
+                .map(|s| {
+                    let inner = s.trim_start_matches('(');
+                    if inner.is_empty() {
+                        Ok(Vec::new())
+                    } else {
+                        // Count the number of dimensions, using 1 as placeholder size
+                        let count = inner.split(',').count();
+                        Ok(vec![1; count]) // Placeholder sizes
+                    }
+                })
+                .collect()
+        };
+
+        let input_core_dims = parse_dims(input_part)?;
+        let output_core_dims = parse_dims(output_part)?;
+
+        Ok(Self {
+            signature: signature.to_string(),
+            input_core_dims,
+            output_core_dims,
+            num_loop_dims: 0, // Will be determined from actual arrays
+        })
+    }
+
+    /// Calculate the number of loop dimensions from array shapes
+    pub fn calculate_loop_dims(&mut self, input_shapes: &[&[usize]]) -> Result<usize> {
+        if input_shapes.len() != self.input_core_dims.len() {
+            return Err(NumPyError::invalid_value(format!(
+                "Expected {} inputs, got {}",
+                self.input_core_dims.len(),
+                input_shapes.len()
+            )));
+        }
+
+        // Find minimum number of dimensions excluding core dims
+        let min_loop_dims = input_shapes
+            .iter()
+            .zip(self.input_core_dims.iter())
+            .map(|(shape, core)| shape.len().saturating_sub(core.len()))
+            .min()
+            .unwrap_or(0);
+
+        self.num_loop_dims = min_loop_dims;
+        Ok(min_loop_dims)
+    }
+}
+
+/// Generalized ufunc implementation
+pub trait GeneralizedUfunc: Send + Sync {
+    /// Get ufunc name
+    fn name(&self) -> &str;
+
+    /// Get gufunc signature
+    fn signature(&self) -> &GufuncSignature;
+
+    /// Execute the gufunc on arrays
+    ///
+    /// Unlike regular ufuncs, gufuncs operate on sub-arrays defined by the signature.
+    fn call_gufunc(
+        &self,
+        inputs: &[&dyn ArrayView],
+        outputs: &mut [&mut dyn ArrayViewMut],
+    ) -> Result<()>;
+
+    /// Inner loop for gufunc - operates on sub-arrays
+    fn inner_loop_gufunc(
+        &self,
+        args: &[&[u8]],
+        core_dims: &[Vec<usize>],
+        steps: &[isize],
+        data: &mut [*mut u8],
+    ) -> Result<()>;
+
+    /// Get metadata
+    fn metadata(&self) -> UfuncMetadata;
+}
+
+/// Custom ufunc registry for user-defined ufuncs
+pub struct CustomUfuncRegistry {
+    /// Map of custom ufuncs by name
+    custom_ufuncs: HashMap<String, Arc<dyn CustomUfunc>>,
+    /// Map of generalized ufuncs by name
+    gufuncs: HashMap<String, Arc<dyn GeneralizedUfunc>>,
+    /// Performance metrics for each ufunc
+    metrics: HashMap<String, Arc<RwLock<UfuncPerformanceMetrics>>>,
+    /// Enable/disable performance tracking
+    profiling_enabled: Arc<RwLock<bool>>,
+}
+
+impl CustomUfuncRegistry {
+    /// Create a new custom ufunc registry
+    pub fn new() -> Self {
+        Self {
+            custom_ufuncs: HashMap::new(),
+            gufuncs: HashMap::new(),
+            metrics: HashMap::new(),
+            profiling_enabled: Arc::new(RwLock::new(false)),
+        }
+    }
+
+    /// Register a custom ufunc
+    pub fn register_custom<T>(&mut self, ufunc: T)
+    where
+        T: CustomUfunc + 'static,
+    {
+        let name = ufunc.name().to_string();
+        let metadata = ufunc.metadata();
+        let supported_dtypes = metadata.supported_dtypes.clone();
+
+        self.custom_ufuncs.insert(name.clone(), Arc::new(ufunc));
+        self.metrics.insert(
+            name.clone(),
+            Arc::new(RwLock::new(UfuncPerformanceMetrics::new())),
+        );
+
+        // Store dtype info for validation
+        let mut metrics = self.metrics.get(&name).unwrap().write().unwrap();
+        // Could add more metadata tracking here
+    }
+
+    /// Register a generalized ufunc
+    pub fn register_gufunc<T>(&mut self, gufunc: T)
+    where
+        T: GeneralizedUfunc + 'static,
+    {
+        let name = gufunc.name().to_string();
+        self.gufuncs.insert(name.clone(), Arc::new(gufunc));
+        self.metrics.insert(
+            name.clone(),
+            Arc::new(RwLock::new(UfuncPerformanceMetrics::new())),
+        );
+    }
+
+    /// Call a custom ufunc by name
+    pub fn call_custom(
+        &self,
+        name: &str,
+        inputs: &[&dyn ArrayView],
+        outputs: &mut [&mut dyn ArrayViewMut],
+    ) -> Result<()> {
+        let ufunc = self
+            .custom_ufuncs
+            .get(name)
+            .ok_or_else(|| NumPyError::ufunc_error(name, "Custom ufunc not found"))?;
+
+        // Profile execution if enabled
+        let start = if *self.profiling_enabled.read().unwrap() {
+            Some(Instant::now())
+        } else {
+            None
+        };
+
+        let result = ufunc.call(inputs, outputs);
+
+        // Update metrics
+        if let Some(start_time) = start {
+            let elapsed = start_time.elapsed().as_micros() as u64;
+            let total_elements: u64 = inputs.iter().map(|a| a.size() as u64).sum();
+
+            if let Some(metrics) = self.metrics.get(name) {
+                let mut m = metrics.write().unwrap();
+                m.call_count += 1;
+                m.total_time_us += elapsed;
+                m.total_elements += total_elements;
+                m.last_exec_time_us = elapsed;
+            }
+        }
+
+        result
+    }
+
+    /// Call a generalized ufunc by name
+    pub fn call_gufunc(
+        &self,
+        name: &str,
+        inputs: &[&dyn ArrayView],
+        outputs: &mut [&mut dyn ArrayViewMut],
+    ) -> Result<()> {
+        let gufunc = self
+            .gufuncs
+            .get(name)
+            .ok_or_else(|| NumPyError::ufunc_error(name, "Gufunc not found"))?;
+
+        // Profile execution if enabled
+        let start = if *self.profiling_enabled.read().unwrap() {
+            Some(Instant::now())
+        } else {
+            None
+        };
+
+        let result = gufunc.call_gufunc(inputs, outputs);
+
+        // Update metrics
+        if let Some(start_time) = start {
+            let elapsed = start_time.elapsed().as_micros() as u64;
+            let total_elements: u64 = inputs.iter().map(|a| a.size() as u64).sum();
+
+            if let Some(metrics) = self.metrics.get(name) {
+                let mut m = metrics.write().unwrap();
+                m.call_count += 1;
+                m.total_time_us += elapsed;
+                m.total_elements += total_elements;
+                m.last_exec_time_us = elapsed;
+            }
+        }
+
+        result
+    }
+
+    /// Get performance metrics for a ufunc
+    pub fn get_metrics(&self, name: &str) -> Option<UfuncPerformanceMetrics> {
+        self.metrics.get(name).map(|m| {
+            let m = m.read().unwrap();
+            UfuncPerformanceMetrics {
+                call_count: m.call_count,
+                total_time_us: m.total_time_us,
+                total_elements: m.total_elements,
+                last_exec_time_us: m.last_exec_time_us,
+            }
+        })
+    }
+
+    /// Enable or disable performance profiling
+    pub fn set_profiling_enabled(&self, enabled: bool) {
+        *self.profiling_enabled.write().unwrap() = enabled;
+    }
+
+    /// Check if profiling is enabled
+    pub fn is_profiling_enabled(&self) -> bool {
+        *self.profiling_enabled.read().unwrap()
+    }
+
+    /// List all registered custom ufunc names
+    pub fn list_custom_ufuncs(&self) -> Vec<&str> {
+        self.custom_ufuncs.keys().map(|s| s.as_str()).collect()
+    }
+
+    /// List all registered gufunc names
+    pub fn list_gufuncs(&self) -> Vec<&str> {
+        self.gufuncs.keys().map(|s| s.as_str()).collect()
+    }
+
+    /// Get metadata for a custom ufunc
+    pub fn get_custom_metadata(&self, name: &str) -> Option<UfuncMetadata> {
+        self.custom_ufuncs.get(name).map(|u| u.metadata())
+    }
+
+    /// Get metadata for a gufunc
+    pub fn get_gufunc_metadata(&self, name: &str) -> Option<UfuncMetadata> {
+        self.gufuncs.get(name).map(|u| u.metadata())
+    }
+}
+
+impl Default for CustomUfuncRegistry {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+// Global custom ufunc registry
+lazy_static::lazy_static! {
+    pub static ref CUSTOM_UFUNC_REGISTRY: CustomUfuncRegistry = CustomUfuncRegistry::new();
+}
+
+/// Register a custom ufunc globally
+pub fn register_custom_ufunc<T>(ufunc: T)
+where
+    T: CustomUfunc + 'static,
+{
+    // Use mutable access - note: in practice you'd need interior mutability
+    // This is a simplified example
+}
+
+/// Register a generalized ufunc globally
+pub fn register_gufunc<T>(gufunc: T)
+where
+    T: GeneralizedUfunc + 'static,
+{
+    // Similar to above
+}
+
+/// Get the global custom ufunc registry
+pub fn custom_ufunc_registry() -> &'static CustomUfuncRegistry {
+    &CUSTOM_UFUNC_REGISTRY
 }

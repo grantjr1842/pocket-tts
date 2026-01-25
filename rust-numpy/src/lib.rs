@@ -225,6 +225,19 @@ pub use math_ufuncs::{
     signbit,
 };
 pub use ufunc_ops::UfuncEngine;
+// Advanced ufunc features
+pub use ufunc::{
+    // Advanced ufunc traits
+    CustomUfunc, GeneralizedUfunc,
+    // Registries
+    CustomUfuncRegistry,
+    // Metadata and profiling
+    UfuncMetadata, UfuncPerformanceMetrics,
+    // Gufunc signature
+    GufuncSignature,
+    // Global functions
+    custom_ufunc_registry, register_custom_ufunc, register_gufunc,
+};
 
 // Array creation and conversion functions
 pub use array_creation::{
