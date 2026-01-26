@@ -436,6 +436,105 @@ pub fn vonmises<T: Clone + Default + 'static + From<f64>>(
     DEFAULT_GENERATOR.with(|rng| rng.borrow_mut().vonmises(mu, kappa, shape))
 }
 
+// --- Additional Distribution Functions ---
+
+/// Generate samples from a geometric distribution
+///
+/// Number of failures before the first success.
+pub fn geometric<T: Clone + Default + 'static + From<f64>>(
+    p: f64,
+    shape: &[usize],
+) -> Result<Array<T>, NumPyError> {
+    DEFAULT_GENERATOR.with(|rng| rng.borrow_mut().geometric(p, shape))
+}
+
+/// Generate samples from a Cauchy distribution
+///
+/// Also known as the Lorentz distribution.
+pub fn cauchy<T: Clone + Default + 'static + From<f64>>(
+    loc: f64,
+    scale: f64,
+    shape: &[usize],
+) -> Result<Array<T>, NumPyError> {
+    DEFAULT_GENERATOR.with(|rng| rng.borrow_mut().cauchy(loc, scale, shape))
+}
+
+/// Generate samples from a Pareto distribution
+///
+/// Pareto Type I distribution.
+pub fn pareto<T: Clone + Default + 'static + From<f64>>(
+    a: f64,
+    shape: &[usize],
+) -> Result<Array<T>, NumPyError> {
+    DEFAULT_GENERATOR.with(|rng| rng.borrow_mut().pareto(a, shape))
+}
+
+/// Generate samples from a Rayleigh distribution
+///
+/// Rayleigh distribution with scale parameter sigma.
+pub fn rayleigh<T: Clone + Default + 'static + From<f64>>(
+    sigma: f64,
+    shape: &[usize],
+) -> Result<Array<T>, NumPyError> {
+    DEFAULT_GENERATOR.with(|rng| rng.borrow_mut().rayleigh(sigma, shape))
+}
+
+/// Generate samples from a triangular distribution
+///
+/// Triangular distribution over [left, right] with mode at mode.
+pub fn triangular<T: Clone + Default + 'static + From<f64>>(
+    left: f64,
+    mode: f64,
+    right: f64,
+    shape: &[usize],
+) -> Result<Array<T>, NumPyError> {
+    DEFAULT_GENERATOR.with(|rng| rng.borrow_mut().triangular(left, mode, right, shape))
+}
+
+/// Generate samples from a Weibull distribution
+///
+/// Weibull distribution with shape parameter a and scale 1.
+pub fn weibull<T: Clone + Default + 'static + From<f64>>(
+    a: f64,
+    shape: &[usize],
+) -> Result<Array<T>, NumPyError> {
+    DEFAULT_GENERATOR.with(|rng| rng.borrow_mut().weibull(a, shape))
+}
+
+// --- Utility Functions ---
+
+/// Random choice from array
+///
+/// Randomly sample from the given array.
+pub fn choice<T: Clone + Default + 'static>(
+    a: &Array<T>,
+    size: usize,
+    replace: bool,
+) -> Result<Array<T>, NumPyError> {
+    DEFAULT_GENERATOR.with(|rng| rng.borrow_mut().choice(a, size, replace))
+}
+
+/// Generate random bytes
+///
+/// Returns an array of random bytes.
+pub fn bytes(length: usize) -> Result<Array<u8>, NumPyError> {
+    DEFAULT_GENERATOR.with(|rng| rng.borrow_mut().bytes(length))
+}
+
+/// Random permutation of integers
+///
+/// Randomly permute a sequence of integers.
+pub fn permutation(n: usize) -> Result<Array<usize>, NumPyError> {
+    DEFAULT_GENERATOR.with(|rng| rng.borrow_mut().permutation(n))
+}
+
+/// Shuffle array in-place
+///
+/// Shuffle the contents of an array in-place.
+pub fn shuffle<T: Clone + Default + 'static>(a: &mut Array<T>) -> Result<(), NumPyError> {
+    DEFAULT_GENERATOR.with(|rng| rng.borrow_mut().shuffle(a))
+}
+
 // --- Legacy API Functions (for backward compatibility) ---
 
 /// Seed the legacy default RNG

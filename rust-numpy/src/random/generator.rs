@@ -703,7 +703,7 @@ impl Generator {
             data.push(T::from(dist.sample(&mut self.bit_gen)));
         }
         Ok(Array::from_data(data, shape.to_vec()))
-}
+    }
 
     // --- Utility Methods ---
 
@@ -864,6 +864,286 @@ impl Generator {
         }
         Ok(Array::from_data(data, vec![size]))
     }
+
+    // --- Additional Distribution Functions ---
+
+    /// Generate random samples from a geometric distribution
+    ///
+    /// Number of failures before the first success, with probability of success p.
+    pub fn geometric<T>(&mut self, p: f64, shape: &[usize]) -> Result<Array<T>, NumPyError>
+    where
+        T: Clone + Default + 'static + From<f64>,
+    {
+        if p <= 0.0 || p > 1.0 {
+            return Err(NumPyError::invalid_value("p must be in (0, 1]"));
+        }
+
+        let size = shape.iter().product();
+        let mut data = Vec::with_capacity(size);
+        for _ in 0..size {
+            // Geometric distribution: number of failures before first success
+            let geom_val = (self.bit_gen.gen::<f64>().ln() / (1.0 - p).ln()).floor();
+            data.push(T::from(geom_val));
+        }
+        Ok(Array::from_data(data, shape.to_vec()))
+    }
+
+    /// Generate random samples from a Cauchy distribution
+    ///
+    /// Also known as the Lorentz distribution.
+    pub fn cauchy<T>(
+        &mut self,
+        loc: f64,
+        scale: f64,
+        shape: &[usize],
+    ) -> Result<Array<T>, NumPyError>
+    where
+        T: Clone + Default + 'static + From<f64>,
+    {
+        if scale <= 0.0 {
+            return Err(NumPyError::invalid_value("scale must be positive"));
+        }
+
+        let size = shape.iter().product();
+        let mut data = Vec::with_capacity(size);
+        for _ in 0..size {
+            // Cauchy distribution: loc + scale * tan(π * (U - 0.5))
+            let u = self.bit_gen.gen::<f64>();
+            let cauchy_val = loc + scale * (std::f64::consts::PI * (u - 0.5)).tan();
+            data.push(T::from(cauchy_val));
+        }
+        Ok(Array::from_data(data, shape.to_vec()))
+    }
+
+    /// Generate random samples from a Pareto distribution
+    ///
+    /// Pareto Type I distribution.
+    pub fn pareto<T>(&mut self, a: f64, shape: &[usize]) -> Result<Array<T>, NumPyError>
+    where
+        T: Clone + Default + 'static + From<f64>,
+    {
+        if a <= 0.0 {
+            return Err(NumPyError::invalid_value(
+                "shape parameter a must be positive",
+            ));
+        }
+
+        let size = shape.iter().product();
+        let mut data = Vec::with_capacity(size);
+        for _ in 0..size {
+            // Pareto distribution: (1 - U)^(-1/a) where U ~ Uniform(0,1)
+            let u = self.bit_gen.gen::<f64>();
+            let pareto_val = (1.0 - u).powf(-1.0 / a);
+            data.push(T::from(pareto_val));
+        }
+        Ok(Array::from_data(data, shape.to_vec()))
+    }
+
+    /// Generate random samples from a power distribution
+    ///
+    /// Power distribution over [0, 1].
+    pub fn power<T>(&mut self, a: f64, shape: &[usize]) -> Result<Array<T>, NumPyError>
+    where
+        T: Clone + Default + 'static + From<f64>,
+    {
+        if a <= 0.0 {
+            return Err(NumPyError::invalid_value(
+                "shape parameter a must be positive",
+            ));
+        }
+
+        let size = shape.iter().product();
+        let mut data = Vec::with_capacity(size);
+        for _ in 0..size {
+            // Power distribution: U^(1/a) where U ~ Uniform(0,1)
+            let u = self.bit_gen.gen::<f64>();
+            let power_val = u.powf(1.0 / a);
+            data.push(T::from(power_val));
+        }
+        Ok(Array::from_data(data, shape.to_vec()))
+    }
+
+    /// Generate random samples from a Rayleigh distribution
+    ///
+    /// Rayleigh distribution with scale parameter sigma.
+    pub fn rayleigh<T>(&mut self, sigma: f64, shape: &[usize]) -> Result<Array<T>, NumPyError>
+    where
+        T: Clone + Default + 'static + From<f64>,
+    {
+        if sigma <= 0.0 {
+            return Err(NumPyError::invalid_value("sigma must be positive"));
+        }
+
+        let size = shape.iter().product();
+        let mut data = Vec::with_capacity(size);
+        for _ in 0..size {
+            // Rayleigh distribution: sigma * sqrt(-2 * ln(U))
+            let u = self.bit_gen.gen::<f64>();
+            let rayleigh_val = sigma * (-2.0 * u.ln()).sqrt();
+            data.push(T::from(rayleigh_val));
+        }
+        Ok(Array::from_data(data, shape.to_vec()))
+    }
+
+    /// Generate random samples from a triangular distribution
+    ///
+    /// Triangular distribution over [left, right] with mode at mode.
+    pub fn triangular<T>(
+        &mut self,
+        left: f64,
+        mode: f64,
+        right: f64,
+        shape: &[usize],
+    ) -> Result<Array<T>, NumPyError>
+    where
+        T: Clone + Default + 'static + From<f64>,
+    {
+        if left >= right || mode < left || mode > right {
+            return Err(NumPyError::invalid_value("must have left <= mode <= right"));
+        }
+
+        let size = shape.iter().product();
+        let mut data = Vec::with_capacity(size);
+        let c = (mode - left) / (right - left);
+
+        for _ in 0..size {
+            let u = self.bit_gen.gen::<f64>();
+            let triangular_val = if u < c {
+                left + (right - left) * (u * c).sqrt()
+            } else {
+                right - (right - left) * ((1.0 - u) * (1.0 - c)).sqrt()
+            };
+            data.push(T::from(triangular_val));
+        }
+        Ok(Array::from_data(data, shape.to_vec()))
+    }
+
+    /// Generate random samples from a Weibull distribution
+    ///
+    /// Weibull distribution with shape parameter a and scale 1.
+    pub fn weibull<T>(&mut self, a: f64, shape: &[usize]) -> Result<Array<T>, NumPyError>
+    where
+        T: Clone + Default + 'static + From<f64>,
+    {
+        if a <= 0.0 {
+            return Err(NumPyError::invalid_value(
+                "shape parameter a must be positive",
+            ));
+        }
+
+        let size = shape.iter().product();
+        let mut data = Vec::with_capacity(size);
+        for _ in 0..size {
+            // Weibull distribution: (-ln(U))^(1/a) where U ~ Uniform(0,1)
+            let u = self.bit_gen.gen::<f64>();
+            let weibull_val = (-u.ln()).powf(1.0 / a);
+            data.push(T::from(weibull_val));
+        }
+        Ok(Array::from_data(data, shape.to_vec()))
+    }
+
+    // --- Utility Functions ---
+
+    /// Random choice from array
+    ///
+    /// Randomly sample from the given array.
+    pub fn choice<T>(
+        &mut self,
+        a: &Array<T>,
+        size: usize,
+        replace: bool,
+    ) -> Result<Array<T>, NumPyError>
+    where
+        T: Clone + Default + 'static,
+    {
+        let n = a.size();
+        if n == 0 {
+            return Err(NumPyError::invalid_value("cannot choose from empty array"));
+        }
+
+        let mut data = Vec::with_capacity(size);
+
+        if replace {
+            for _ in 0..size {
+                let idx = self.bit_gen.gen_range(0..n);
+                if let Some(val) = a.get(idx) {
+                    data.push(val.clone());
+                } else {
+                    return Err(NumPyError::invalid_value("index out of bounds"));
+                }
+            }
+        } else {
+            if size > n {
+                return Err(NumPyError::invalid_value(
+                    "cannot sample more elements than available when replace=false",
+                ));
+            }
+
+            // Create a vector of indices to sample without replacement
+            let mut indices: Vec<usize> = (0..n).collect();
+            for _ in 0..size {
+                let idx = self.bit_gen.gen_range(0..indices.len());
+                if let Some(val) = a.get(indices[idx]) {
+                    data.push(val.clone());
+                }
+                indices.remove(idx);
+            }
+        }
+
+        Ok(Array::from_data(data, vec![size]))
+    }
+
+    /// Random permutation of integers
+    ///
+    /// Randomly permute a sequence of integers.
+    pub fn permutation(&mut self, n: usize) -> Result<Array<usize>, NumPyError> {
+        let mut indices: Vec<usize> = (0..n).collect();
+
+        // Fisher-Yates shuffle
+        for i in (1..n).rev() {
+            let j = self.bit_gen.gen_range(0..=i);
+            indices.swap(i, j);
+        }
+
+        Ok(Array::from_data(indices, vec![n]))
+    }
+
+    /// Shuffle array in-place
+    ///
+    /// Shuffle the contents of an array in-place.
+    pub fn shuffle<T>(&mut self, a: &mut Array<T>) -> Result<(), NumPyError>
+    where
+        T: Clone + Default + 'static,
+    {
+        let n = a.size();
+        if n <= 1 {
+            return Ok(());
+        }
+
+        // For simplicity, we'll create a new shuffled array and replace the contents
+        let mut indices: Vec<usize> = (0..n).collect();
+
+        // Fisher-Yates shuffle
+        for i in (1..n).rev() {
+            let j = self.bit_gen.gen_range(0..=i);
+            indices.swap(i, j);
+        }
+
+        // Create new data in shuffled order
+        let mut new_data = Vec::with_capacity(n);
+        for &idx in &indices {
+            if let Some(val) = a.get(idx) {
+                new_data.push(val.clone());
+            } else {
+                return Err(NumPyError::invalid_value("index out of bounds"));
+            }
+        }
+
+        // Replace the array data
+        *a = Array::from_data(new_data, a.shape().to_vec());
+
+        Ok(())
+    }
 }
 
 impl RngCore for Generator {
@@ -881,5 +1161,7 @@ impl RngCore for Generator {
     }
 }
 
+#[cfg(test)]
+mod additional_tests;
 #[cfg(test)]
 mod tests;

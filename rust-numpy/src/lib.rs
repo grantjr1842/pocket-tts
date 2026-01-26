@@ -107,11 +107,13 @@
 #![allow(clippy::redundant_clone)] // 7 warnings - clone needed for API consistency
 #![allow(clippy::significant_drop_tightening)] // 7 warnings - temporary with significant Drop
 #![allow(clippy::manual_flatten)] // 4 warnings - flatten pattern style
-#![allow(clippy::manual_try_fold)] // 3 warnings - try_fold implementation
+#![allow(clippy::manual_try_fold)]
+// 3 warnings - try_fold implementation
 // Note: This lint doesn't exist in this version of clippy
 // #![allow(clippy::derivable_trait)]
 #![allow(clippy::eq_op)] // 3 warnings - equal operation comparison
-#![allow(clippy::case_sensitive_file_extension_comparisons)] // 2 warnings - file extension comparison
+#![allow(clippy::case_sensitive_file_extension_comparisons)]
+// 2 warnings - file extension comparison
 // Note: These lints don't exist in this version of clippy
 // #![allow(clippy::unused_nested_bindings)]
 // #![allow(clippy::implied_bounds_in_associated_item)]
@@ -132,11 +134,13 @@
 #![allow(clippy::manual_assert)] // 1 warning - panic! in if-then statement
 #![allow(clippy::unreachable)] // 1 warning - unreachable code
 #![allow(clippy::redundant_pub_crate)] // 1 warning - redundant pub(crate)
-#![allow(clippy::missing_trait_methods)] // 1 warning - missing trait method implementations
+#![allow(clippy::missing_trait_methods)]
+// 1 warning - missing trait method implementations
 // Note: This lint doesn't exist in this version of clippy
 // #![allow(clippy::derive_partial_eq_without_eq)]
 #![allow(clippy::struct_excessive_bools)] // 1 warning - more than 3 bools in struct
-#![allow(clippy::needless_pass_by_ref_mut)] // 1 warning - mutable reference not used mutably
+#![allow(clippy::needless_pass_by_ref_mut)]
+// 1 warning - mutable reference not used mutably
 // Note: if_blocks_same doesn't exist, using different lint name
 // #![allow(clippy::if_blocks_same)]
 #![allow(clippy::manual_midpoint)] // 3 warnings - manual midpoint implementation
@@ -181,9 +185,9 @@ mod fft_tests;
 pub mod io;
 pub mod iterator;
 pub mod kernel_api;
-pub mod kernels;
 pub mod kernel_impls;
 pub mod kernel_registry;
+pub mod kernels;
 pub mod layout_optimizer;
 pub mod linalg;
 pub mod math_ufuncs;
@@ -198,6 +202,48 @@ pub mod performance_metrics;
 pub mod polynomial;
 pub mod profiler;
 pub mod random;
+pub use random::{
+    bernoulli,
+    beta,
+    binomial,
+    bytes,
+    cauchy,
+    chisquare,
+    // Utility functions
+    choice,
+    // Generator API
+    default_rng,
+    default_rng_with_seed,
+
+    exponential,
+    f,
+    gamma,
+    geometric,
+    lognormal,
+    // Distribution functions
+    normal,
+    pareto,
+    permutation,
+    poisson,
+    power,
+    randint,
+    // Core random functions
+    random,
+    random::legacy::RandomState,
+    // Modern API
+    random::modern::{BitGenerator, Generator, PCG64},
+    rayleigh,
+    shuffle,
+
+    standard_exponential,
+
+    standard_normal,
+    triangular,
+    uniform,
+    vonmises,
+    weibull,
+};
+pub mod dynamic_kernel_registry;
 pub mod rec;
 pub mod reductions;
 pub mod set_ops;
@@ -210,10 +256,9 @@ pub mod strided_executor;
 pub mod strides;
 pub mod type_promotion;
 pub mod ufunc;
-pub mod utils;
 pub mod ufunc_ops;
+pub mod utils;
 pub mod window;
-pub mod dynamic_kernel_registry;
 
 #[cfg(test)]
 mod kernel_tests;
@@ -272,21 +317,51 @@ pub use array::Array;
 pub use array_manipulation::{apply_along_axis, apply_over_axes, expand_dims, Vectorize};
 pub use bitwise::*;
 pub use char::exports::{
-    add as char_add, capitalize, center, count as char_count, endswith, expandtabs, find,
-    index as char_index, isalnum, isalpha, isdigit, isnumeric, isspace, join, lower, lstrip,
-    multiply as char_multiply, replace, rfind, rindex, rstrip, split as char_split, startswith,
-    strip, upper, zfill,
+    add as char_add,
     // Comparison functions
-    add, equal, greater, greater_equal, less, less_equal,
+    add,
+    capitalize,
+    center,
+    count as char_count,
+    endswith,
+    equal,
+    expandtabs,
+    find,
+    greater,
+    greater_equal,
+    index as char_index,
+    isalnum,
+    isalpha,
+    isdigit,
+    isnumeric,
+    isspace,
+    join,
+    less,
+    less_equal,
+    lower,
+    lstrip,
+    multiply as char_multiply,
+    replace,
+    rfind,
+    rindex,
+    rstrip,
+    split as char_split,
+    startswith,
+    strip,
+    upper,
+    zfill,
 };
 pub use dist::{cdist, pdist, squareform};
 pub use dtype::{Casting, Dtype, DtypeKind};
 pub use error::{NumPyError, Result};
 pub use linalg::norm;
-pub use polynomial::{set_default_printstyle, Polynomial, PolynomialBase, fit, roots, val, deriv, integ, companion, domain};
 pub use performance_metrics::{
     Bottleneck, BottleneckType, MemoryTracker, OptimizationRecommendation, PerformanceMetrics,
     PerformanceReport,
+};
+pub use polynomial::{
+    companion, deriv, domain, fit, integ, roots, set_default_printstyle, val, Polynomial,
+    PolynomialBase,
 };
 pub use profiler::{
     disable_profiling, enable_profiling, get_performance_report, init_profiler,
@@ -316,11 +391,11 @@ pub use io::{fromfile, fromstring, load, loadtxt, save, savetxt, savez, savez_co
 // Window functions
 pub use window::{bartlett, blackman, hamming, hanning};
 // Complex utility functions
+pub use dynamic_kernel_registry::{DynamicKernelRegistry, RegistryStats};
 pub use kernel_api::{
     execute_binary, execute_unary, init_kernel_registry, register_binary_kernel,
     register_unary_kernel,
 };
-pub use dynamic_kernel_registry::{DynamicKernelRegistry, RegistryStats};
 pub use kernel_registry::Kernel;
 pub use kernels::UfuncPerformanceHint as PerformanceHint;
 pub use math_ufuncs::{
@@ -330,67 +405,67 @@ pub use math_ufuncs::{
     acosh,
     angle,
     angle32,
+    arccos,
+    arccosh,
+    arcsin,
+    arcsinh,
+    arctan,
+    arctanh,
+    around,
     asin,
     asinh,
     atan,
     atan2,
     atanh,
+    ceil,
     conj,
     conj32,
     conjugate,
     conjugate32,
+    convolve,
     copysign,
+    cos,
+    cosh,
+    degrees,
+    exp,
+    exp2,
+    expm1,
     fabs,
+    fix,
+    floor,
+    heaviside,
+    hypot,
+    i0,
     imag,
     imag32,
+    isfinite,
+    isinf,
+    isnan,
+    isneginf,
+    isposinf,
+    log,
+    log10,
+    log1p,
+    log2,
+    logaddexp,
+    logaddexp2,
+    radians,
     real,
     real32,
     real_if_close,
     real_if_close32,
+    rint,
+    round_,
     // Sign and absolute value functions
     sign,
     signbit,
     // Additional math functions
     sin,
-    cos,
-    tan,
-    arcsin,
-    arccos,
-    arctan,
-    hypot,
-    degrees,
-    radians,
-    sinh,
-    cosh,
-    tanh,
-    arcsinh,
-    arccosh,
-    arctanh,
-    exp,
-    exp2,
-    expm1,
-    log,
-    log2,
-    log10,
-    log1p,
-    logaddexp,
-    logaddexp2,
-    round_,
-    around,
-    rint,
-    floor,
-    ceil,
-    trunc,
-    fix,
-    isnan,
-    isinf,
-    isfinite,
-    isneginf,
-    isposinf,
     sinc,
-    i0,
-    heaviside,
-    convolve,
+    sinh,
+    tan,
+    tanh,
+    trunc,
     unwrap,
 };
 pub use ufunc_ops::UfuncEngine;
@@ -420,8 +495,7 @@ pub use array_creation::{
 
 // Array method wrappers
 pub use array_methods::{
-    divide, minimum, nancumprod, nancumsum, negative,
-    resize, subtract, take, transpose,
+    divide, minimum, nancumprod, nancumsum, negative, resize, subtract, take, transpose,
 };
 
 // Reduction functions
@@ -443,15 +517,7 @@ pub use utils::{
 // Typing and annotations
 pub mod typing;
 pub use typing::{
-    nbit_128,
-    nbit_16,
-    nbit_256,
-    nbit_32,
-    nbit_64,
-    nbit_8,
-    NBitBase,
-    SignedInt,
-    UnsignedInt,
+    nbit_128, nbit_16, nbit_256, nbit_32, nbit_64, nbit_8, NBitBase, SignedInt, UnsignedInt,
 };
 
 /// Version information
