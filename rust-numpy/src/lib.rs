@@ -252,7 +252,6 @@ pub use crate::typing::{
     // Bit-width types
     Int8Bit,
     // Integer,
-    NDArray,
     // Number,
     // Object,
     // Scalar,
@@ -450,6 +449,7 @@ pub use typing::{
     nbit_64,
     nbit_8,
     NBitBase,
+    NDArray,
     SignedInt,
     UnsignedInt,
 };
