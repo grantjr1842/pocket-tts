@@ -314,7 +314,7 @@ pub use datetime::{busday_count, busday_offset, datetime_as_string, datetime_dat
 pub use io::{fromfile, fromstring, load, loadtxt, save, savetxt, savez, savez_compressed};
 
 // Window functions
-pub use window::{bartlett, blackman, hamming, hanning};
+pub use window::{bartlett, blackman, hamming, hanning, kaiser};
 // Complex utility functions
 pub use kernel_api::{
     execute_binary, execute_unary, init_kernel_registry, register_binary_kernel,
