@@ -415,8 +415,225 @@ where
         }
         Ok(slices)
     }
+
+    // --- Additional Essential MaskedArray Methods ---
+
+    /// Return True if all unmasked elements evaluate to True
+    pub fn all(&self) -> bool
+    where
+        T: Into<bool>,
+    {
+        for (data_val, &mask_val) in self.data.data().iter().zip(self.mask.data().iter()) {
+            if !mask_val && !data_val.clone().into() {
+                return false;
+            }
+        }
+        true
+    }
+
+    /// Return True if any unmasked element evaluates to True
+    pub fn any(&self) -> bool
+    where
+        T: Into<bool>,
+    {
+        for (data_val, &mask_val) in self.data.data().iter().zip(self.mask.data().iter()) {
+            if !mask_val && data_val.clone().into() {
+                return true;
+            }
+        }
+        false
+    }
+
+    /// Return the maximum unmasked element
+    pub fn max(&self) -> Option<&T>
+    where
+        T: PartialOrd,
+    {
+        let mut max_val: Option<&T> = None;
+        for (data_val, &mask_val) in self.data.data().iter().zip(self.mask.data().iter()) {
+            if !mask_val {
+                match max_val {
+                    None => max_val = Some(data_val),
+                    Some(current_max) => {
+                        if data_val > current_max {
+                            max_val = Some(data_val);
+                        }
+                    }
+                }
+            }
+        }
+        max_val
+    }
+
+    /// Return the minimum unmasked element
+    pub fn min(&self) -> Option<&T>
+    where
+        T: PartialOrd,
+    {
+        let mut min_val: Option<&T> = None;
+        for (data_val, &mask_val) in self.data.data().iter().zip(self.mask.data().iter()) {
+            if !mask_val {
+                match min_val {
+                    None => min_val = Some(data_val),
+                    Some(current_min) => {
+                        if data_val < current_min {
+                            min_val = Some(data_val);
+                        }
+                    }
+                }
+            }
+        }
+        min_val
+    }
+
+    /// Return the product of unmasked elements
+    pub fn prod(&self) -> T
+    where
+        T: std::ops::Mul<Output = T> + Clone + Default + num_traits::One,
+    {
+        let mut product = T::one();
+        let mut has_unmasked = false;
+
+        for (data_val, &mask_val) in self.data.data().iter().zip(self.mask.data().iter()) {
+            if !mask_val {
+                product = product * data_val.clone();
+                has_unmasked = true;
+            }
+        }
+
+        if !has_unmasked {
+            T::default()
+        } else {
+            product
+        }
+    }
+
+    /// Alias for prod() - Return the product of unmasked elements
+    pub fn product(&self) -> T
+    where
+        T: std::ops::Mul<Output = T> + Clone + Default + num_traits::One,
+    {
+        self.prod()
+    }
+
+    /// Return the peak-to-peak (max - min) of unmasked elements
+    pub fn ptp(&self) -> Option<f64>
+    where
+        T: PartialOrd + Clone + Into<f64>,
+    {
+        if self.count() == 0 {
+            return None;
+        }
+
+        let max_val = self.max()?.clone().into();
+        let min_val = self.min()?.clone().into();
+        Some(max_val - min_val)
+    }
+
+    /// Create a copy of the MaskedArray
+    pub fn copy(&self) -> Self {
+        Self {
+            data: self.data.clone(),
+            mask: self.mask.clone(),
+            fill_value: self.fill_value.clone(),
+        }
+    }
+
+    /// Return a flattened copy of the MaskedArray
+    pub fn flatten(&self) -> Self {
+        let flat_data = self.data.flatten();
+        let flat_mask = self.mask.flatten();
+        Self {
+            data: flat_data,
+            mask: flat_mask,
+            fill_value: self.fill_value.clone(),
+        }
+    }
+
+    /// Return a flattened view of the MaskedArray (when possible)
+    pub fn ravel(&self) -> Self {
+        // For simplicity, return a flattened copy
+        self.flatten()
+    }
+
+    /// Return a reshaped copy of the MaskedArray
+    pub fn reshape(&self, new_shape: Vec<usize>) -> Result<Self> {
+        let total_elements: usize = new_shape.iter().product();
+        if total_elements != self.size() {
+            return Err(NumPyError::invalid_value(
+                "Cannot reshape: total elements must remain the same",
+            ));
+        }
+
+        let reshaped_data = Array::from_shape_vec(new_shape.clone(), self.data.data().to_vec())?;
+        let reshaped_mask = Array::from_shape_vec(new_shape, self.mask.data().to_vec())?;
+
+        Ok(Self {
+            data: reshaped_data,
+            mask: reshaped_mask,
+            fill_value: self.fill_value.clone(),
+        })
+    }
+
+    /// Remove single-dimensional entries from the shape
+    pub fn squeeze(&self) -> Self {
+        let squeezed_data = self.data.squeeze();
+        let squeezed_mask = self.mask.squeeze();
+
+        Self {
+            data: squeezed_data,
+            mask: squeezed_mask,
+            fill_value: self.fill_value.clone(),
+        }
+    }
+
+    /// Return the transposed MaskedArray
+    pub fn transpose(&self) -> Self {
+        Self {
+            data: self.data.transpose(),
+            mask: self.mask.transpose(),
+            fill_value: self.fill_value.clone(),
+        }
+    }
+
+    /// Take elements from the MaskedArray along an axis
+    pub fn take(&self, indices: &[usize], axis: Option<usize>) -> Result<Self> {
+        let taken_data = self.data.take(indices, axis)?;
+        let taken_mask = self.mask.take(indices, axis)?;
+
+        Ok(Self {
+            data: taken_data,
+            mask: taken_mask,
+            fill_value: self.fill_value.clone(),
+        })
+    }
+
+    /// Return the element at the given position (0D only)
+    pub fn item(&self) -> Option<&T> {
+        if self.size() == 1 {
+            self.data.data().first()
+        } else {
+            None
+        }
+    }
+
+    /// Set the element at the given position (0D only)
+    pub fn itemset(&mut self, value: T) -> Result<()> {
+        if self.size() == 1 {
+            // This is a simplified implementation
+            // In a full implementation, we'd need to handle the actual data mutation
+            Err(NumPyError::not_implemented("itemset for MaskedArray"))
+        } else {
+            Err(NumPyError::invalid_value(
+                "itemset only works for 0D arrays",
+            ))
+        }
+    }
 }
 
 pub mod exports {
     pub use super::MaskedArray;
 }
+
+#[cfg(test)]
+mod additional_tests;
