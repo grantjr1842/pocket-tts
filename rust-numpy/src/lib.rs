@@ -283,6 +283,7 @@ pub use dist::{cdist, pdist, squareform};
 pub use dtype::{Casting, Dtype, DtypeKind};
 pub use error::{NumPyError, Result};
 pub use linalg::norm;
+pub use polynomial::{set_default_printstyle, Polynomial, PolynomialBase, fit, roots, val, deriv, integ, companion, domain};
 pub use performance_metrics::{
     Bottleneck, BottleneckType, MemoryTracker, OptimizationRecommendation, PerformanceMetrics,
     PerformanceReport,

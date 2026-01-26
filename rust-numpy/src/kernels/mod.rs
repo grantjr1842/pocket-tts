@@ -273,7 +273,7 @@ impl UfuncKernelRegistry {
             }
         });
         
-        if let Some(((_, kernel)) = candidates.first() {
+        if let Some((_, kernel)) = candidates.first() {
             let kernel_name = kernel.name().to_string();
             let needs_cast = kernel.type_id() != type_id;
             
