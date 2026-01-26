@@ -6,7 +6,7 @@
 use crate::array::Array;
 use crate::dtype::{Dtype, DtypeKind};
 use crate::error::{NumPyError, Result};
-use crate::ufunc::{ArrayView, ArrayViewMut, Ufunc};
+use crate::ufunc::{ArrayView, ArrayViewMut};
 use std::collections::HashMap;
 use std::sync::{Arc, RwLock};
 
@@ -86,9 +86,7 @@ impl KernelEntry {
     }
 
     /// Get performance tier
-    pub fn tier(&self) -> PerformanceTier {
-        self.tier
-    }
+    pub const fn tier(&self) -> PerformanceTier { self.tier }
 
     /// Check if this entry matches the requested dtypes
     pub fn matches_dtypes(&self, dtypes: &[Dtype]) -> bool {
@@ -128,17 +126,14 @@ impl KernelEntry {
 pub struct DynamicKernelRegistry {
     /// Map from ufunc name to list of kernel entries
     kernels: HashMap<String, Vec<KernelEntry>>,
-    /// Global registry instance
-    instance: Arc<RwLock<Self>>,
 }
 
 impl DynamicKernelRegistry {
     /// Create new dynamic registry instance
     pub fn new() -> Arc<RwLock<Self>> {
-        let registry = Self {
+        Arc::new(RwLock::new(Self {
             kernels: HashMap::new(),
-        };
-        Arc::new(RwLock::new(registry))
+        }))
     }
 
     /// Get global registry instance
@@ -257,7 +252,7 @@ pub fn register_kernel(
 ) -> Result<()> {
     let registry = DynamicKernelRegistry::instance();
     let mut registry = registry.write().map_err(|_| {
-        NumPyError::InternalError("Failed to acquire write lock for kernel registry".to_string())
+        NumPyError::internal_error("Failed to acquire write lock for kernel registry")
     })?;
 
     registry.register_kernel(ufunc_name, kernel, input_dtypes)
@@ -287,7 +282,6 @@ pub fn get_registry_stats() -> Option<RegistryStats> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::dtype::Dtype;
 
     #[test]
     fn test_dynamic_registry() {

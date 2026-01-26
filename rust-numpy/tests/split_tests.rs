@@ -1,5 +1,5 @@
-use numpy::array::Array;
-use numpy::array_extra::{array_split, hsplit, split, vsplit, SplitArg};
+use rust_numpy::array::Array;
+use rust_numpy::array_extra::{array_split, hsplit, split, vsplit, SplitArg};
 
 #[test]
 fn test_array_split_equal() {

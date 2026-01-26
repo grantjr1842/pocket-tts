@@ -1,6 +1,6 @@
 use ndarray::array;
 
-use numpy::polynomial::{fit, roots, set_default_printstyle, Polynomial, PolynomialBase};
+use rust_numpy::polynomial::{fit, roots, set_default_printstyle, Polynomial, PolynomialBase};
 
 #[test]
 fn test_poly_eval() {

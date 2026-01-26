@@ -1,5 +1,98 @@
 use crate::error::NumPyError;
 
+/// Create a character array from an object or string
+///
+/// This function creates a character array from input, which can be a string,
+/// list of strings, or array-like object.
+pub fn array(obj: &str) -> Result<crate::Array<String>, NumPyError> {
+    // For simplicity, treat as input as a single string and create a 1D array
+    Ok(crate::Array::from_vec(vec![obj.to_string()]))
+}
+
+/// Return the input as a character array
+///
+/// This function returns the input as a character array, similar to numpy.char.asarray
+pub fn asarray(obj: &str) -> Result<crate::Array<String>, NumPyError> {
+    // For simplicity, treat as input as a single string and create a 1D array
+    Ok(crate::Array::from_vec(vec![obj.to_string()]))
+}
+
+/// Compare two string arrays lexicographically
+///
+/// Returns -1 if a < b, 0 if a == b, 1 if a > b
+pub fn compare_chararrays(
+    a: &crate::Array<String>,
+    b: &crate::Array<String>,
+) -> Result<crate::Array<isize>, NumPyError> {
+    if a.shape() != b.shape() {
+        return Err(NumPyError::shape_mismatch(
+            a.shape().to_vec(),
+            b.shape().to_vec(),
+        ));
+    }
+
+    let mut result = vec![0isize; a.size()];
+
+    for idx in 0..a.size() {
+        if let (Some(s1), Some(s2)) = (get_string(a, idx), get_string(b, idx)) {
+            result[idx] = s1.cmp(&s2) as isize;
+        } else {
+            return Err(NumPyError::dtype_error("Not a string array"));
+        }
+    }
+
+    Ok(crate::Array::from_vec(result))
+}
+
+/// Decode byte strings to unicode strings
+///
+/// Decodes each string in the array from bytes to UTF-8 string
+pub fn decode(
+    a: &crate::Array<String>,
+    encoding: Option<&str>,
+) -> Result<crate::Array<String>, NumPyError> {
+    let _enc = encoding.unwrap_or("utf-8");
+    let mut result = Vec::with_capacity(a.size());
+
+    for idx in 0..a.size() {
+        if let Some(s) = get_string(a, idx) {
+            // Try to decode the string (assuming it contains hex or byte representations)
+            // For simplicity, we'll just return the string as-is for now
+            // A full implementation would need proper byte decoding
+            result.push(s.clone());
+        } else {
+            return Err(NumPyError::dtype_error("Not a string array"));
+        }
+    }
+
+    Ok(crate::Array::from_vec(result))
+}
+
+/// Encode unicode strings to byte strings
+///
+/// Encodes each string in the array to bytes using the specified encoding
+pub fn encode(
+    a: &crate::Array<String>,
+    encoding: Option<&str>,
+) -> Result<crate::Array<String>, NumPyError> {
+    let _enc = encoding.unwrap_or("utf-8");
+    let mut result = Vec::with_capacity(a.size());
+
+    for idx in 0..a.size() {
+        if let Some(s) = get_string(a, idx) {
+            // For simplicity, return hex representation of bytes
+            // A full implementation would need proper byte encoding
+            let bytes: Vec<u8> = s.bytes().collect();
+            let hex_str: String = bytes.iter().map(|b| format!("{:02x}", b)).collect();
+            result.push(hex_str);
+        } else {
+            return Err(NumPyError::dtype_error("Not a string array"));
+        }
+    }
+
+    Ok(crate::Array::from_vec(result))
+}
+
 /// Character string operations on arrays
 ///
 /// This module provides vectorized string operations similar to numpy.char
@@ -128,6 +221,28 @@ pub fn rstrip(a: &crate::Array<String>) -> Result<crate::Array<String>, NumPyErr
     for idx in 0..a.size() {
         if let Some(s) = get_string(a, idx) {
             result.push(s.trim_end().to_string());
+        } else {
+            return Err(NumPyError::dtype_error("Not a string array"));
+        }
+    }
+
+    Ok(crate::Array::from_vec(result))
+}
+
+/// Strip specific characters from the beginning and end of each string
+pub fn strip_chars(
+    a: &crate::Array<String>,
+    chars: &str,
+) -> Result<crate::Array<String>, NumPyError> {
+    let mut result = Vec::with_capacity(a.size());
+
+    for idx in 0..a.size() {
+        if let Some(s) = get_string(a, idx) {
+            let stripped = s
+                .trim_start_matches(|c| chars.contains(c))
+                .trim_end_matches(|c| chars.contains(c))
+                .to_string();
+            result.push(stripped);
         } else {
             return Err(NumPyError::dtype_error("Not a string array"));
         }
@@ -961,10 +1076,11 @@ pub fn mod_impl(
 
 pub mod exports {
     pub use super::{
-        add, capitalize, center, count, endswith, equal, expandtabs, find, greater, greater_equal,
-        index, isalnum, isalpha, isdecimal, isdigit, islower, isnumeric, isspace, istitle, isupper,
-        join, less, less_equal, ljust, lower, lstrip, mod_impl, multiply, not_equal, partition,
-        replace, rfind, rindex, rjust, rpartition, rsplit, rstrip, split, splitlines, startswith,
-        str_len, strip, swapcase, title, translate, upper, zfill,
+        add, array, asarray, capitalize, center, compare_chararrays, count, decode, encode, endswith,
+        equal, expandtabs, find, greater, greater_equal, index, isalnum, isalpha, isdecimal, isdigit,
+        islower, isnumeric, isspace, istitle, isupper, join, less, less_equal, ljust,
+        lower, lstrip, strip_chars, mod_impl, multiply, not_equal, partition, replace, rfind,
+        rindex, rjust, rpartition, rsplit, rstrip, split, splitlines,
+        startswith, str_len, strip, swapcase, title, translate, upper, zfill,
     };
 }

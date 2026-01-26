@@ -1,0 +1,1042 @@
+{
+  "array_creation": [
+    {
+      "function": "array",
+      "input": {
+        "object": [
+          1,
+          2,
+          3,
+          4,
+          5
+        ]
+      },
+      "output": {
+        "data": [
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "shape": [
+          5
+        ],
+        "dtype": "int64"
+      }
+    },
+    {
+      "function": "array",
+      "input": {
+        "object": [
+          [
+            1,
+            2,
+            3
+          ],
+          [
+            4,
+            5,
+            6
+          ]
+        ]
+      },
+      "output": {
+        "data": [
+          1,
+          2,
+          3,
+          4,
+          5,
+          6
+        ],
+        "shape": [
+          2,
+          3
+        ],
+        "dtype": "int64"
+      }
+    },
+    {
+      "function": "zeros",
+      "input": {
+        "shape": [
+          3,
+          4
+        ]
+      },
+      "output": {
+        "shape": [
+          3,
+          4
+        ],
+        "dtype": "float64",
+        "all_zeros": true
+      }
+    },
+    {
+      "function": "ones",
+      "input": {
+        "shape": [
+          2,
+          3
+        ]
+      },
+      "output": {
+        "shape": [
+          2,
+          3
+        ],
+        "dtype": "float64",
+        "all_ones": true
+      }
+    },
+    {
+      "function": "arange",
+      "input": {
+        "start": 0,
+        "stop": 10,
+        "step": 2
+      },
+      "output": {
+        "data": [
+          0,
+          2,
+          4,
+          6,
+          8
+        ],
+        "shape": [
+          5
+        ],
+        "dtype": "int64"
+      }
+    },
+    {
+      "function": "linspace",
+      "input": {
+        "start": 0,
+        "stop": 1,
+        "num": 5
+      },
+      "output": {
+        "data": [
+          0.0,
+          0.25,
+          0.5,
+          0.75,
+          1.0
+        ],
+        "shape": [
+          5
+        ],
+        "dtype": "float64"
+      }
+    },
+    {
+      "function": "eye",
+      "input": {
+        "N": 3
+      },
+      "output": {
+        "data": [
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "shape": [
+          3,
+          3
+        ],
+        "dtype": "float64"
+      }
+    }
+  ],
+  "arithmetic": [
+    {
+      "function": "add",
+      "input": {
+        "x": [
+          1,
+          2,
+          3,
+          4
+        ],
+        "y": [
+          5,
+          6,
+          7,
+          8
+        ]
+      },
+      "output": {
+        "data": [
+          6,
+          8,
+          10,
+          12
+        ],
+        "shape": [
+          4
+        ],
+        "dtype": "int64"
+      }
+    },
+    {
+      "function": "subtract",
+      "input": {
+        "x": [
+          5,
+          6,
+          7,
+          8
+        ],
+        "y": [
+          1,
+          2,
+          3,
+          4
+        ]
+      },
+      "output": {
+        "data": [
+          4,
+          4,
+          4,
+          4
+        ],
+        "shape": [
+          4
+        ],
+        "dtype": "int64"
+      }
+    },
+    {
+      "function": "multiply",
+      "input": {
+        "x": [
+          1,
+          2,
+          3,
+          4
+        ],
+        "y": [
+          5,
+          6,
+          7,
+          8
+        ]
+      },
+      "output": {
+        "data": [
+          5,
+          12,
+          21,
+          32
+        ],
+        "shape": [
+          4
+        ],
+        "dtype": "int64"
+      }
+    },
+    {
+      "function": "divide",
+      "input": {
+        "x": [
+          5,
+          6,
+          7,
+          8
+        ],
+        "y": [
+          1,
+          2,
+          3,
+          4
+        ]
+      },
+      "output": {
+        "data": [
+          5.0,
+          3.0,
+          2.3333333333333335,
+          2.0
+        ],
+        "shape": [
+          4
+        ],
+        "dtype": "float64"
+      }
+    },
+    {
+      "function": "power",
+      "input": {
+        "x": [
+          1,
+          2,
+          3,
+          4
+        ],
+        "y": 2
+      },
+      "output": {
+        "data": [
+          1,
+          4,
+          9,
+          16
+        ],
+        "shape": [
+          4
+        ],
+        "dtype": "int64"
+      }
+    }
+  ],
+  "mathematical": [
+    {
+      "function": "sqrt",
+      "input": {
+        "x": [
+          1,
+          4,
+          9,
+          16
+        ]
+      },
+      "output": {
+        "data": [
+          1.0,
+          2.0,
+          3.0,
+          4.0
+        ],
+        "shape": [
+          4
+        ],
+        "dtype": "float64"
+      }
+    },
+    {
+      "function": "abs",
+      "input": {
+        "x": [
+          -1,
+          -2,
+          3,
+          -4
+        ]
+      },
+      "output": {
+        "data": [
+          1,
+          2,
+          3,
+          4
+        ],
+        "shape": [
+          4
+        ],
+        "dtype": "int64"
+      }
+    },
+    {
+      "function": "sin",
+      "input": {
+        "x": [
+          0,
+          1.5707963267948966,
+          3.141592653589793
+        ]
+      },
+      "output": {
+        "data": [
+          0.0,
+          1.0,
+          0.0
+        ],
+        "shape": [
+          3
+        ],
+        "dtype": "float64"
+      }
+    },
+    {
+      "function": "cos",
+      "input": {
+        "x": [
+          0,
+          1.5707963267948966,
+          3.141592653589793
+        ]
+      },
+      "output": {
+        "data": [
+          1.0,
+          0.0,
+          -1.0
+        ],
+        "shape": [
+          3
+        ],
+        "dtype": "float64"
+      }
+    },
+    {
+      "function": "exp",
+      "input": {
+        "x": [
+          0,
+          1,
+          2
+        ]
+      },
+      "output": {
+        "data": [
+          1.0,
+          2.718281828459045,
+          7.38905609893065
+        ],
+        "shape": [
+          3
+        ],
+        "dtype": "float64"
+      }
+    },
+    {
+      "function": "log",
+      "input": {
+        "x": [
+          1,
+          2.718281828459045,
+          7.3890560989306495
+        ]
+      },
+      "output": {
+        "data": [
+          0.0,
+          1.0,
+          2.0
+        ],
+        "shape": [
+          3
+        ],
+        "dtype": "float64"
+      }
+    }
+  ],
+  "statistical": [
+    {
+      "function": "sum",
+      "input": {
+        "a": [
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10
+        ]
+      },
+      "output": {
+        "value": 55
+      }
+    },
+    {
+      "function": "mean",
+      "input": {
+        "a": [
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10
+        ]
+      },
+      "output": {
+        "value": 5.5
+      }
+    },
+    {
+      "function": "median",
+      "input": {
+        "a": [
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10
+        ]
+      },
+      "output": {
+        "value": 5.5
+      }
+    },
+    {
+      "function": "std",
+      "input": {
+        "a": [
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10
+        ]
+      },
+      "output": {
+        "value": 3.0276503540974917
+      }
+    },
+    {
+      "function": "var",
+      "input": {
+        "a": [
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10
+        ]
+      },
+      "output": {
+        "value": 9.166666666666666
+      }
+    },
+    {
+      "function": "min",
+      "input": {
+        "a": [
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10
+        ]
+      },
+      "output": {
+        "value": 1
+      }
+    },
+    {
+      "function": "max",
+      "input": {
+        "a": [
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10
+        ]
+      },
+      "output": {
+        "value": 10
+      }
+    },
+    {
+      "function": "argmin",
+      "input": {
+        "a": [
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10
+        ]
+      },
+      "output": {
+        "value": 0
+      }
+    },
+    {
+      "function": "argmax",
+      "input": {
+        "a": [
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10
+        ]
+      },
+      "output": {
+        "value": 9
+      }
+    }
+  ],
+  "manipulation": [
+    {
+      "function": "reshape",
+      "input": {
+        "a": [
+          [
+            1,
+            2,
+            3
+          ],
+          [
+            4,
+            5,
+            6
+          ]
+        ],
+        "newshape": [
+          3,
+          2
+        ]
+      },
+      "output": {
+        "data": [
+          1,
+          2,
+          3,
+          4,
+          5,
+          6
+        ],
+        "shape": [
+          3,
+          2
+        ],
+        "dtype": "int64"
+      }
+    },
+    {
+      "function": "transpose",
+      "input": {
+        "a": [
+          [
+            1,
+            2,
+            3
+          ],
+          [
+            4,
+            5,
+            6
+          ]
+        ]
+      },
+      "output": {
+        "data": [
+          1,
+          4,
+          2,
+          5,
+          3,
+          6
+        ],
+        "shape": [
+          3,
+          2
+        ],
+        "dtype": "int64"
+      }
+    },
+    {
+      "function": "flatten",
+      "input": {
+        "a": [
+          [
+            1,
+            2,
+            3
+          ],
+          [
+            4,
+            5,
+            6
+          ]
+        ]
+      },
+      "output": {
+        "data": [
+          1,
+          2,
+          3,
+          4,
+          5,
+          6
+        ],
+        "shape": [
+          6
+        ],
+        "dtype": "int64"
+      }
+    },
+    {
+      "function": "concatenate",
+      "input": {
+        "arrays": [
+          [
+            1,
+            2
+          ],
+          [
+            3,
+            4
+          ]
+        ]
+      },
+      "output": {
+        "data": [
+          1,
+          2,
+          3,
+          4
+        ],
+        "shape": [
+          4
+        ],
+        "dtype": "int64"
+      }
+    },
+    {
+      "function": "stack",
+      "input": {
+        "arrays": [
+          [
+            1,
+            2
+          ],
+          [
+            3,
+            4
+          ]
+        ]
+      },
+      "output": {
+        "data": [
+          1,
+          2,
+          3,
+          4
+        ],
+        "shape": [
+          2,
+          2
+        ],
+        "dtype": "int64"
+      }
+    }
+  ],
+  "comparison": [
+    {
+      "function": "equal",
+      "input": {
+        "x": [
+          1,
+          2,
+          3,
+          4
+        ],
+        "y": [
+          2,
+          2,
+          2,
+          2
+        ]
+      },
+      "output": {
+        "data": [
+          false,
+          true,
+          false,
+          false
+        ],
+        "shape": [
+          4
+        ],
+        "dtype": "bool"
+      }
+    },
+    {
+      "function": "not_equal",
+      "input": {
+        "x": [
+          1,
+          2,
+          3,
+          4
+        ],
+        "y": [
+          2,
+          2,
+          2,
+          2
+        ]
+      },
+      "output": {
+        "data": [
+          true,
+          false,
+          true,
+          true
+        ],
+        "shape": [
+          4
+        ],
+        "dtype": "bool"
+      }
+    },
+    {
+      "function": "greater",
+      "input": {
+        "x": [
+          1,
+          2,
+          3,
+          4
+        ],
+        "y": [
+          2,
+          2,
+          2,
+          2
+        ]
+      },
+      "output": {
+        "data": [
+          false,
+          false,
+          true,
+          true
+        ],
+        "shape": [
+          4
+        ],
+        "dtype": "bool"
+      }
+    },
+    {
+      "function": "less",
+      "input": {
+        "x": [
+          1,
+          2,
+          3,
+          4
+        ],
+        "y": [
+          2,
+          2,
+          2,
+          2
+        ]
+      },
+      "output": {
+        "data": [
+          true,
+          false,
+          false,
+          false
+        ],
+        "shape": [
+          4
+        ],
+        "dtype": "bool"
+      }
+    }
+  ],
+  "linear_algebra": [
+    {
+      "function": "dot",
+      "input": {
+        "a": [
+          1,
+          2
+        ],
+        "b": [
+          1,
+          2
+        ]
+      },
+      "output": {
+        "value": 5
+      }
+    },
+    {
+      "function": "matmul",
+      "input": {
+        "a": [
+          [
+            1,
+            2
+          ],
+          [
+            3,
+            4
+          ]
+        ],
+        "b": [
+          1,
+          2
+        ]
+      },
+      "output": {
+        "data": [
+          5,
+          11
+        ],
+        "shape": [
+          2
+        ],
+        "dtype": "int64"
+      }
+    },
+    {
+      "function": "det",
+      "input": {
+        "a": [
+          [
+            1,
+            2
+          ],
+          [
+            3,
+            4
+          ]
+        ]
+      },
+      "output": {
+        "value": -2.0
+      }
+    },
+    {
+      "function": "inv",
+      "input": {
+        "a": [
+          [
+            1,
+            2
+          ],
+          [
+            3,
+            4
+          ]
+        ]
+      },
+      "output": {
+        "data": [
+          -2.0,
+          1.0,
+          1.5,
+          -0.5
+        ],
+        "shape": [
+          2,
+          2
+        ],
+        "dtype": "float64"
+      }
+    }
+  ],
+  "edge_cases": [
+    {
+      "function": "isnan",
+      "input": {
+        "x": [
+          1,
+          2,
+          NaN,
+          4
+        ]
+      },
+      "output": {
+        "data": [
+          false,
+          false,
+          true,
+          false
+        ],
+        "shape": [
+          4
+        ],
+        "dtype": "bool"
+      }
+    },
+    {
+      "function": "isinf",
+      "input": {
+        "x": [
+          1,
+          Infinity,
+          -Infinity,
+          4
+        ]
+      },
+      "output": {
+        "data": [
+          false,
+          true,
+          true,
+          false
+        ],
+        "shape": [
+          4
+        ],
+        "dtype": "bool"
+      }
+    },
+    {
+      "function": "empty_array",
+      "input": {},
+      "output": {
+        "data": [],
+        "shape": [
+          0
+        ]
+      }
+    }
+  ]
+}

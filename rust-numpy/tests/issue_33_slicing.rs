@@ -1,5 +1,5 @@
-use numpy::array::Array;
-use numpy::slicing::{MultiSlice, Slice};
+use rust_numpy::array::Array;
+use rust_numpy::slicing::{MultiSlice, Slice};
 
 #[test]
 fn test_slice_view_semantics() {

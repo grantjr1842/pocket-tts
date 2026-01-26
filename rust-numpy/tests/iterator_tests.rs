@@ -1,4 +1,4 @@
-use numpy::{array, s, Array};
+use rust_numpy::{array, s, Array};
 
 #[test]
 fn test_iter_1d() {
@@ -21,7 +21,7 @@ fn test_iter_sliced() {
     let arr = array![0, 1, 2, 3, 4, 5];
     // Slice: [1, 3, 5] (step 2)
     let slice = s!(1..6..2);
-    let ms = numpy::slicing::MultiSlice::new(vec![slice]);
+    let ms = rust_numpy::slicing::MultiSlice::new(vec![slice]);
     let view = arr.slice(&ms).unwrap();
     let collected: Vec<_> = view.iter().cloned().collect();
     assert_eq!(collected, vec![1, 3, 5]);

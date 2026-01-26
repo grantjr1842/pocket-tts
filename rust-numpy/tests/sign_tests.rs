@@ -1,6 +1,6 @@
 //! Tests for sign and absolute value functions
 
-use numpy::*;
+use rust_numpy::*;
 
 #[test]
 fn test_sign() {

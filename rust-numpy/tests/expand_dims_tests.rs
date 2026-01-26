@@ -1,6 +1,6 @@
 #[cfg(test)]
 mod tests {
-    use numpy::*;
+    use rust_numpy::*;
 
     #[test]
     fn test_expand_dims_basic() {

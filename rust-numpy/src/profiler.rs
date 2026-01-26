@@ -52,9 +52,7 @@ impl Profiler {
     }
 
     /// Check if profiling is enabled
-    pub fn is_enabled(&self) -> bool {
-        self.enabled
-    }
+    pub const fn is_enabled(&self) -> bool { self.enabled }
 
     /// Profile an operation and return its result
     pub fn profile_operation<T, F>(&mut self, name: &str, operation: F) -> T

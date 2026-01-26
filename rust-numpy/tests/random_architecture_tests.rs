@@ -5,10 +5,10 @@
 // http://opensource.org/licenses/MIT>, at your option. This file may not be
 // copied, modified, or distributed except according to those terms.
 
-use numpy::dtype::Dtype;
-use numpy::random::bit_generator::PCG64;
-use numpy::random::generator::Generator;
-use numpy::random::RandomState;
+use rust_numpy::dtype::Dtype;
+use rust_numpy::random::bit_generator::PCG64;
+use rust_numpy::random::generator::Generator;
+use rust_numpy::random::RandomState;
 
 #[test]
 fn test_generator_creation() {
@@ -27,14 +27,14 @@ fn test_random_state_delegation() {
 
 #[test]
 fn test_global_proxies() {
-    use numpy::random::*;
+    use rust_numpy::random::*;
     let res = normal(0.0, 1.0, &[5]).unwrap();
     assert_eq!(res.shape(), vec![5]);
 }
 
 #[test]
 fn test_randint() {
-    use numpy::random::*;
+    use rust_numpy::random::*;
     let res = randint(0, 10, &[10]).unwrap();
     assert_eq!(res.shape(), vec![10]);
     for i in 0..10 {

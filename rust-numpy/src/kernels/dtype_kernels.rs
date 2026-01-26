@@ -1,4 +1,4 @@
-use crate::kernels::mod::{
+use crate::kernels::{
     UfuncKernel, UfuncPerformanceHint, ArrayLayoutPreference, UfuncType
 };
 use crate::error::Result;
@@ -370,7 +370,7 @@ impl UfuncKernel<f64> for F64AbsKernel {
 }
 
 /// Register all dtype-specific kernels
-pub fn register_dtype_kernels(registry: &mut crate::kernels::mod::UfuncKernelRegistry) -> Result<()> {
+pub fn register_dtype_kernels(registry: &mut crate::kernels::UfuncKernelRegistry) -> Result<()> {
     registry.register(UfuncType::Add, F64AddKernel)?;
     registry.register(UfuncType::Multiply, F64MulKernel)?;
     registry.register(UfuncType::Negative, F64NegKernel)?;

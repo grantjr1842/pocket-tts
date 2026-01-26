@@ -17,8 +17,8 @@ mod tests {
 
     #[test]
     fn test_bitwidth_aliases() {
-        // Just verify they compile
-        let _i8: Int8 = nbit_8;
-        let _f64: Float64 = nbit_64;
+        // Just verify they compile as type annotations
+        let _i8: Int8 = Int8Bit;
+        let _f64: Float64 = Float64Bit;
     }
 }

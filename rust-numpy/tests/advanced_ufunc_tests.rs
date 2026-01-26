@@ -7,8 +7,8 @@
 //! - Performance profiling
 //! - Ufunc metadata
 
-use numpy::*;
-use numpy::ufunc::{ArrayView, ArrayViewMut};
+use rust_numpy::*;
+use rust_numpy::ufunc::{ArrayView, ArrayViewMut};
 use std::sync::Arc;
 
 /// Simple custom ufunc implementation for testing

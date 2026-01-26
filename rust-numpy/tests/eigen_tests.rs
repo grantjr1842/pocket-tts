@@ -1,6 +1,6 @@
 use num_complex::Complex64;
-use numpy::linalg::{eig, eigh, eigvals, eigvalsh};
-use numpy::{array2, Array};
+use rust_numpy::linalg::{eig, eigh, eigvals, eigvalsh};
+use rust_numpy::{array2, Array};
 
 fn assert_approx_eq_c64(a: Complex64, b: Complex64, eps: f64, msg: &str) {
     if (a - b).norm() >= eps {

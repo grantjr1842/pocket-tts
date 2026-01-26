@@ -1,5 +1,5 @@
-use numpy::sorting::{argpartition, partition, ArrayOrInt};
-use numpy::*;
+use rust_numpy::sorting::{argpartition, partition, ArrayOrInt};
+use rust_numpy::*;
 
 #[test]
 fn test_partition_array_kth() {

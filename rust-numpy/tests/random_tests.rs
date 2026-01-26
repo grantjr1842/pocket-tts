@@ -5,34 +5,34 @@
 // http://opensource.org/licenses/MIT>, at your option. This file may not be
 // copied, modified, or distributed except according to those terms.
 
-use numpy::random::*;
-use numpy::{array, Array};
+use rust_numpy::random::*;
+use rust_numpy::{array, Array};
 
 #[test]
 fn test_geometric() {
-    let result = geometric(0.5, Some(&[1000])).unwrap();
+    let result = geometric(0.5, &[1000]).unwrap();
     assert_eq!(result.shape(), vec![1000]);
 
     // Check that all values are positive integers
     let values: Vec<f64> = result.iter().copied().collect();
-    for &val in &values {
-        assert!(val >= 1.0);
+    for val in &values {
+        assert!(val >= &1.0);
         assert!(val.fract() == 0.0);
     }
 }
 
 #[test]
 fn test_geometric_invalid_p() {
-    let result = geometric(1.5, Some(&[10]));
+    let result = geometric::<f64>(1.5, &[10]);
     assert!(result.is_err());
 
-    let result = geometric(-0.1, Some(&[10]));
+    let result = geometric::<f64>(-0.1, &[10]);
     assert!(result.is_err());
 }
 
 #[test]
 fn test_negative_binomial() {
-    let result = negative_binomial(5, 0.5, Some(&[100])).unwrap();
+    let result = negative_binomial(5, 0.5, &[100]).unwrap();
     assert_eq!(result.shape(), vec![100]);
 
     // Check that all values are >= n
@@ -44,7 +44,7 @@ fn test_negative_binomial() {
 
 #[test]
 fn test_hypergeometric() {
-    let result = hypergeometric(10, 5, 8, Some(&[100])).unwrap();
+    let result = hypergeometric(10, 5, 8, &[100]).unwrap();
     assert_eq!(result.shape(), vec![100]);
 
     // Check that values are in valid range [0, nsample]
@@ -56,20 +56,20 @@ fn test_hypergeometric() {
 
 #[test]
 fn test_logseries() {
-    let result = logseries(0.5, Some(&[100])).unwrap();
+    let result = logseries(0.5, &[100]).unwrap();
     assert_eq!(result.shape(), vec![100]);
 
     // Check that all values are positive integers
     let values: Vec<f64> = result.iter().copied().collect();
-    for &val in &values {
-        assert!(val >= 1.0);
+    for val in &values {
+        assert!(val >= &1.0);
         assert!(val.fract() == 0.0);
     }
 }
 
 #[test]
 fn test_rayleigh() {
-    let result = rayleigh(1.0, Some(&[1000])).unwrap();
+    let result = rayleigh(1.0, &[1000]).unwrap();
     assert_eq!(result.shape(), vec![1000]);
 
     // Check that all values are non-negative
@@ -85,7 +85,7 @@ fn test_rayleigh() {
 
 #[test]
 fn test_wald() {
-    let result = wald(1.0, 0.5, Some(&[100])).unwrap();
+    let result = wald(1.0, 0.5, &[100]).unwrap();
     assert_eq!(result.shape(), vec![100]);
 
     // Check that all values are positive or very close to zero
@@ -102,7 +102,7 @@ fn test_wald() {
 
 #[test]
 fn test_weibull() {
-    let result = weibull(2.0, Some(&[1000])).unwrap();
+    let result = weibull(2.0, &[1000]).unwrap();
     assert_eq!(result.shape(), vec![1000]);
 
     // Check that all values are non-negative
@@ -114,7 +114,7 @@ fn test_weibull() {
 
 #[test]
 fn test_triangular() {
-    let result = triangular(0.0, 0.5, 1.0, Some(&[100])).unwrap();
+    let result = triangular(0.0, 0.5, 1.0, &[100]).unwrap();
     assert_eq!(result.shape(), vec![100]);
 
     // Check that all values are in [0, 1]
@@ -126,7 +126,7 @@ fn test_triangular() {
 
 #[test]
 fn test_pareto() {
-    let result = pareto(3.0, Some(&[1000])).unwrap();
+    let result = pareto(3.0, &[1000]).unwrap();
     assert_eq!(result.shape(), vec![1000]);
 
     // Check that all values are >= 0
@@ -138,20 +138,20 @@ fn test_pareto() {
 
 #[test]
 fn test_zipf() {
-    let result = zipf(2.0, Some(&[100])).unwrap();
+    let result = zipf(2.0, &[100]).unwrap();
     assert_eq!(result.shape(), vec![100]);
 
     // Check that all values are positive integers
     let values: Vec<f64> = result.iter().copied().collect();
-    for &val in &values {
-        assert!(val >= 1.0);
+    for val in &values {
+        assert!(val >= &1.0);
         assert!(val.fract() == 0.0);
     }
 }
 
 #[test]
 fn test_standard_cauchy() {
-    let result = standard_cauchy(Some(&[1000])).unwrap();
+    let result = standard_cauchy(&[1000]).unwrap();
     assert_eq!(result.shape(), vec![1000]);
 
     // Cauchy distribution should have heavy tails
@@ -162,7 +162,7 @@ fn test_standard_cauchy() {
 
 #[test]
 fn test_standard_exponential() {
-    let result = standard_exponential(Some(&[1000])).unwrap();
+    let result = standard_exponential(&[1000]).unwrap();
     assert_eq!(result.shape(), vec![1000]);
 
     // Check that all values are non-negative
@@ -178,7 +178,7 @@ fn test_standard_exponential() {
 
 #[test]
 fn test_standard_gamma() {
-    let result = standard_gamma(2.0, Some(&[1000])).unwrap();
+    let result = standard_gamma(2.0, &[1000]).unwrap();
     assert_eq!(result.shape(), vec![1000]);
 
     // Check that all values are non-negative
@@ -197,7 +197,8 @@ fn test_shuffle() {
     let mut arr = array![1i32, 2, 3, 4, 5, 6, 7, 8, 9, 10];
     let original: Vec<i32> = arr.iter().copied().collect();
 
-    shuffle(&mut arr).unwrap();
+    let mut rng = default_rng();
+    rng.shuffle(&mut arr).unwrap();
 
     let shuffled: Vec<i32> = arr.iter().copied().collect();
 
@@ -215,21 +216,21 @@ fn test_shuffle() {
 
 #[test]
 fn test_shuffle_empty() {
-    let mut arr = array![1i32];
-    arr = Array::from_vec(vec![]);
-    let result = shuffle(&mut arr);
+    let mut arr: Array<i32> = Array::from_vec(vec![]);
+    let mut rng = default_rng();
+    let result = rng.shuffle(&mut arr);
     assert!(result.is_ok());
 }
 
 #[test]
 fn test_reproducibility() {
-    use numpy::random::RandomState;
+    use rust_numpy::random::RandomState;
 
     let mut rng1 = RandomState::seed_from_u64(42);
-    let result1 = rng1.geometric(0.5, Some(&[100])).unwrap();
+    let result1 = rng1.geometric(0.5, &[100]).unwrap();
 
     let mut rng2 = RandomState::seed_from_u64(42);
-    let result2 = rng2.geometric(0.5, Some(&[100])).unwrap();
+    let result2 = rng2.geometric(0.5, &[100]).unwrap();
 
     let values1: Vec<f64> = result1.iter().copied().collect();
     let values2: Vec<f64> = result2.iter().copied().collect();

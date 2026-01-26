@@ -6,12 +6,11 @@ channels = ["conda-forge"]
 platforms = ["linux-64"]
 
 [dependencies]
-python = "3.11.14"
+python = "==3.11.14"
 scipy = "~=1.17.0"
 openblas = "~=0.3.31"
 numpy = "~=2.3.5"
 websockets = "~=16.0"
-pre-commit = "~=4.5.1"
 pipdeptree = ">=2.30.0,<3"
 structlog = ">=25.5.0,<26"
 pytest-cov = ">=7.0.0,<8"

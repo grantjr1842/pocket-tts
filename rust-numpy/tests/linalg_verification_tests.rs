@@ -1,5 +1,5 @@
-use numpy::linalg::{det, inv, lstsq, pinv, solve};
-use numpy::*;
+use rust_numpy::linalg::{det, inv, lstsq, pinv, solve};
+use rust_numpy::*;
 
 #[test]
 fn test_singular_matrix_det() {
@@ -30,7 +30,6 @@ fn test_singular_matrix_inv() {
         // For now, let's just log it. Real LAPACK might use dhesv/dgetrf ...
     } else {
         // This is a valid outcome for singular matrix
-        assert!(true);
     }
 }
 
@@ -70,7 +69,7 @@ fn test_pinv_moore_penrose() {
     let a_pinv = pinv(&a, None).unwrap();
 
     // Check 1: A * A^+ * A approx A
-    // Use dot() method which is available on Array, or numpy::linalg::matmul
+    // Use dot() method which is available on Array, or rust_numpy::linalg::matmul
     let a_pinv_a = a.dot(&a_pinv).unwrap().dot(&a).unwrap();
 
     // Manual difference calculation

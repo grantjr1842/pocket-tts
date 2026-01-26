@@ -1,6 +1,6 @@
 #[cfg(feature = "rayon")]
-use numpy::parallel::ParArrayIter;
-use numpy::Array;
+use rust_numpy::parallel::ParArrayIter;
+use rust_numpy::Array;
 #[cfg(feature = "rayon")]
 use rayon::prelude::*;
 
@@ -51,6 +51,6 @@ fn test_par_iter_strided_panic() {
 fn test_simd_module_exists() {
     // Just verify we can import from simd module
     #[allow(unused_imports)]
-    use numpy::simd::SimdVector;
+    use rust_numpy::simd::SimdVector;
     // Nothing to test really as it's a trait, but ensures module is public
 }

@@ -1,5 +1,5 @@
-use numpy::modules::ma::MaskedArray;
-use numpy::*;
+use rust_numpy::modules::ma::MaskedArray;
+use rust_numpy::*;
 
 #[test]
 fn test_masked_values() {

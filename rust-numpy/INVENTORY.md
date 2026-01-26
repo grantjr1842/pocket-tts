@@ -2,6 +2,8 @@
 
 | Rust Module            | Rust Function               | Status      | Notes |
 | ---------------------- | --------------------------- | ----------- | ----- |
+| typing                 | NBitBase                   | Implemented | Bit-width type hierarchy trait for precision-based typing |
+| typing                 | NDArray                     | Implemented | Type alias for runtime array type annotations |
 | advanced_broadcast     | broadcast_to_enhanced       | Implemented |       |
 | advanced_broadcast     | repeat                      | Implemented |       |
 | advanced_broadcast     | tile                        | Implemented |       |
@@ -446,6 +448,7 @@
 | polynomial             | fit                         | Implemented |       |
 | polynomial             | integ                       | Implemented |       |
 | polynomial             | roots                       | Implemented |       |
+| polynomial             | set_default_printstyle       | Implemented |       |
 | polynomial             | val                         | Implemented |       |
 | polynomial::chebyshev  | coeffs                      | Implemented |       |
 | polynomial::chebyshev  | domain                      | Implemented |       |

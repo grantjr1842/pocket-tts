@@ -18,28 +18,28 @@ impl FFTNorm {
     /// Convert string representation to FFTNorm enum
     pub fn from_str(s: &str) -> Option<Self> {
         match s {
-            "backward" => Some(FFTNorm::Backward),
-            "ortho" => Some(FFTNorm::Ortho),
-            "forward" => Some(FFTNorm::Forward),
+            "backward" => Some(Self::Backward),
+            "ortho" => Some(Self::Ortho),
+            "forward" => Some(Self::Forward),
             _ => None,
         }
     }
 
     /// Get the forward normalization scale factor for this mode
-    fn forward_scale(&self, n: usize) -> f64 {
+    pub fn forward_scale(&self, n: usize) -> f64 {
         match self {
-            FFTNorm::Backward => 1.0,
-            FFTNorm::Ortho => (n as f64).sqrt(),
-            FFTNorm::Forward => n as f64,
+            Self::Backward => 1.0,
+            Self::Ortho => (n as f64).sqrt(),
+            Self::Forward => n as f64,
         }
     }
 
     /// Get the inverse normalization scale factor for this mode
-    fn inverse_scale(&self, n: usize) -> f64 {
+    pub fn inverse_scale(&self, n: usize) -> f64 {
         match self {
-            FFTNorm::Backward => n as f64,
-            FFTNorm::Ortho => (n as f64).sqrt(),
-            FFTNorm::Forward => 1.0,
+            Self::Backward => n as f64,
+            Self::Ortho => (n as f64).sqrt(),
+            Self::Forward => 1.0,
         }
     }
 }
@@ -55,7 +55,7 @@ where
     T: Clone + Into<Complex64> + Default + 'static,
 {
     let axis = normalize_axis(axis, input.ndim())?;
-    let n = n.unwrap_or(input.shape()[axis]);
+    let n = n.unwrap_or_else(|| input.shape()[axis]);
 
     let complex_input = input.clone_to_complex();
     fft_axis(&complex_input, n, axis, norm)
@@ -72,7 +72,7 @@ where
     T: Clone + Into<Complex64> + Default + 'static,
 {
     let axis = normalize_axis(axis, input.ndim())?;
-    let n = n.unwrap_or(input.shape()[axis]);
+    let n = n.unwrap_or_else(|| input.shape()[axis]);
 
     let complex_input = input.clone_to_complex();
     ifft_axis(&complex_input, n, axis, norm)
@@ -211,7 +211,7 @@ where
     T: Clone + Into<f64> + Default + 'static,
 {
     let axis = normalize_axis(axis, input.ndim())?;
-    let n = n.unwrap_or(input.shape()[axis]);
+    let n = n.unwrap_or_else(|| input.shape()[axis]);
 
     let complex_input = input.clone_to_complex_real();
     rfft_axis(&complex_input, n, axis, norm)
@@ -230,7 +230,7 @@ where
     let axis = normalize_axis(axis, input.ndim())?;
     // For irfft, n defaults to 2*(m-1) where m is length of input along axis
     let m = input.shape()[axis];
-    let n = n.unwrap_or(2 * (m - 1));
+    let n = n.unwrap_or_else(|| 2 * (m - 1));
 
     let complex_input = input.clone_to_complex();
     irfft_axis(&complex_input, n, axis, norm)
@@ -783,7 +783,7 @@ where
     let axis = normalize_axis(axis, input.ndim())?;
     // For hfft, n defaults to 2*(m-1) where m is length of input along axis
     let m = input.shape()[axis];
-    let n = n.unwrap_or(2 * (m - 1));
+    let n = n.unwrap_or_else(|| 2 * (m - 1));
 
     let complex_input = input.clone_to_complex();
     hfft_axis(&complex_input, n, axis, norm)
@@ -883,7 +883,7 @@ where
     let axis = normalize_axis(axis, input.ndim())?;
     let m = input.shape()[axis];
     // For ihfft, n defaults to m/2 + 1 (the rfft output length)
-    let n_out = n.unwrap_or(m / 2 + 1);
+    let n_out = n.unwrap_or_else(|| m / 2 + 1);
 
     let complex_input = input.clone_to_complex_real();
     ihfft_axis(&complex_input, n_out, axis, norm)

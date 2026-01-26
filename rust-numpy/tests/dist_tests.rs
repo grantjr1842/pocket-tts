@@ -1,4 +1,4 @@
-use numpy::{array, array2, cdist, pdist, squareform};
+use rust_numpy::{array, array2, cdist, pdist, squareform};
 
 #[test]
 fn test_pdist_euclidean() {

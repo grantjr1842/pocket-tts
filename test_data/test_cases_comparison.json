@@ -1,0 +1,118 @@
+[
+  {
+    "function": "equal",
+    "input": {
+      "x": [
+        1,
+        2,
+        3,
+        4
+      ],
+      "y": [
+        2,
+        2,
+        2,
+        2
+      ]
+    },
+    "output": {
+      "data": [
+        false,
+        true,
+        false,
+        false
+      ],
+      "shape": [
+        4
+      ],
+      "dtype": "bool"
+    }
+  },
+  {
+    "function": "not_equal",
+    "input": {
+      "x": [
+        1,
+        2,
+        3,
+        4
+      ],
+      "y": [
+        2,
+        2,
+        2,
+        2
+      ]
+    },
+    "output": {
+      "data": [
+        true,
+        false,
+        true,
+        true
+      ],
+      "shape": [
+        4
+      ],
+      "dtype": "bool"
+    }
+  },
+  {
+    "function": "greater",
+    "input": {
+      "x": [
+        1,
+        2,
+        3,
+        4
+      ],
+      "y": [
+        2,
+        2,
+        2,
+        2
+      ]
+    },
+    "output": {
+      "data": [
+        false,
+        false,
+        true,
+        true
+      ],
+      "shape": [
+        4
+      ],
+      "dtype": "bool"
+    }
+  },
+  {
+    "function": "less",
+    "input": {
+      "x": [
+        1,
+        2,
+        3,
+        4
+      ],
+      "y": [
+        2,
+        2,
+        2,
+        2
+      ]
+    },
+    "output": {
+      "data": [
+        true,
+        false,
+        false,
+        false
+      ],
+      "shape": [
+        4
+      ],
+      "dtype": "bool"
+    }
+  }
+]

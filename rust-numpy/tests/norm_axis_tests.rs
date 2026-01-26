@@ -1,4 +1,4 @@
-use numpy::*;
+use rust_numpy::*;
 
 #[test]
 fn test_norm_axis_0_2d() {

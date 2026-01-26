@@ -101,30 +101,30 @@ impl Slice {
     /// Convert slice to range with bounds checking
     pub fn to_range(&self, len: isize) -> (isize, isize, isize) {
         match self {
-            Slice::Full => (0, len, 1),
-            Slice::Range(start, stop) => {
+            Self::Full => (0, len, 1),
+            Self::Range(start, stop) => {
                 let start = if *start < 0 { len + *start } else { *start };
                 let stop = if *stop < 0 { len + *stop } else { *stop };
                 (start, stop, 1)
             }
-            Slice::RangeStep(start, stop, step) => {
+            Self::RangeStep(start, stop, step) => {
                 let start = if *start < 0 { len + *start } else { *start };
                 let stop = if *stop < 0 { len + *stop } else { *stop };
                 (start, stop, *step)
             }
-            Slice::Index(idx) => {
+            Self::Index(idx) => {
                 let idx = if *idx < 0 { len + *idx } else { *idx };
                 (idx, idx + 1, 1)
             }
-            Slice::From(start) => {
+            Self::From(start) => {
                 let start = if *start < 0 { len + *start } else { *start };
                 (start, len, 1)
             }
-            Slice::To(stop) => {
+            Self::To(stop) => {
                 let stop = if *stop < 0 { len + *stop } else { *stop };
                 (0, stop, 1)
             }
-            Slice::Step(step) => {
+            Self::Step(step) => {
                 if *step > 0 {
                     (0, len, *step)
                 } else {

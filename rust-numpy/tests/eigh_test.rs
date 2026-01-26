@@ -1,4 +1,4 @@
-use numpy::{array2, linalg};
+use rust_numpy::{array2, linalg};
 
 #[test]
 fn test_eigh_simple() {

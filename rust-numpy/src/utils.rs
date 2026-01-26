@@ -4,7 +4,7 @@ use crate::error::{NumPyError, Result};
 
 /// Convert an integer to a string in a given base
 pub fn base_repr(number: i64, base: i64, padding: Option<usize>) -> Result<String> {
-    if base < 2 || base > 36 {
+    if !(2..=36).contains(&base) {
         return Err(NumPyError::invalid_value("base must be between 2 and 36"));
     }
 
@@ -401,12 +401,12 @@ pub fn mintypecode(_arr: &str) -> &'static str {
 }
 
 /// Common type
-pub fn common_type(arrays: &[&str]) -> &'static str {
+pub fn common_type(_arrays: &[&str]) -> &'static str {
     "float64"
 }
 
 /// Result type
-pub fn result_type(arrays: &[&str]) -> &'static str {
+pub fn result_type(_arrays: &[&str]) -> &'static str {
     "float64"
 }
 

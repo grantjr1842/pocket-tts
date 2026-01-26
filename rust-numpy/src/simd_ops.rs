@@ -27,33 +27,33 @@ impl SimdChunkSize {
     pub fn new() -> Self {
         let features = crate::simd_intrinsics::CpuFeatures::detect();
         if features.has_avx512f {
-            SimdChunkSize::Avx512
+            Self::Avx512
         } else if features.has_avx2 {
-            SimdChunkSize::Avx2
+            Self::Avx2
         } else if features.has_sse41 {
-            SimdChunkSize::Sse128
+            Self::Sse128
         } else {
-            SimdChunkSize::Scalar
+            Self::Scalar
         }
     }
 
     #[inline]
     pub fn chunk_size_f64(&self) -> usize {
         match self {
-            SimdChunkSize::Avx2 => 4,
-            SimdChunkSize::Avx512 => 8,
-            SimdChunkSize::Sse128 => 2,
-            SimdChunkSize::Scalar => 1,
+            Self::Avx2 => 4,
+            Self::Avx512 => 8,
+            Self::Sse128 => 2,
+            Self::Scalar => 1,
         }
     }
 
     #[inline]
     pub fn chunk_size_f32(&self) -> usize {
         match self {
-            SimdChunkSize::Avx2 => 8,
-            SimdChunkSize::Avx512 => 16,
-            SimdChunkSize::Sse128 => 4,
-            SimdChunkSize::Scalar => 1,
+            Self::Avx2 => 8,
+            Self::Avx512 => 16,
+            Self::Sse128 => 4,
+            Self::Scalar => 1,
         }
     }
 }
@@ -364,7 +364,7 @@ mod tests {
 
     #[test]
     fn test_cpu_features() {
-        let features = crate::simd_intrinsics::CpuFeatures::detect();
+        let features = crate::cpu_features::CpuFeatures::detect();
         // Should not panic
         let _width_f64 = features.best_vector_width_f64();
         let _width_f32 = features.best_vector_width_f32();
@@ -372,8 +372,8 @@ mod tests {
 
     #[test]
     fn test_simd_chunk_size() {
-        let chunk_size = SimdChunkSize::new();
-        let _size_f64 = chunk_size.chunk_size_f64();
-        let _size_f32 = chunk_size.chunk_size_f32();
+        let features = crate::cpu_features::CpuFeatures::detect();
+        let _size_f64 = features.best_vector_width_f64();
+        let _size_f32 = features.best_vector_width_f32();
     }
 }

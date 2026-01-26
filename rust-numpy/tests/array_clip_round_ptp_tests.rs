@@ -1,6 +1,6 @@
 //! Tests for clip(), round(), and ptp() functions
 
-use numpy::*;
+use rust_numpy::*;
 
 #[cfg(test)]
 mod tests {

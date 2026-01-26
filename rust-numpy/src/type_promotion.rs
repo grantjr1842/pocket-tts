@@ -516,13 +516,13 @@ pub fn promote_types(t1: &Dtype, t2: &Dtype) -> Option<Dtype> {
                 matches!(t1, Dtype::Unicode { .. }) || matches!(t2, Dtype::Unicode { .. });
 
             let l1 = match t1 {
-                Dtype::String { length } => length.unwrap_or(0),
-                Dtype::Unicode { length } => length.unwrap_or(0),
+                Dtype::String { length } => length.unwrap_or_else(|| 0),
+                Dtype::Unicode { length } => length.unwrap_or_else(|| 0),
                 _ => 0,
             };
             let l2 = match t2 {
-                Dtype::String { length } => length.unwrap_or(0),
-                Dtype::Unicode { length } => length.unwrap_or(0),
+                Dtype::String { length } => length.unwrap_or_else(|| 0),
+                Dtype::Unicode { length } => length.unwrap_or_else(|| 0),
                 _ => 0,
             };
 

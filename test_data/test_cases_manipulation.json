@@ -1,0 +1,156 @@
+[
+  {
+    "function": "reshape",
+    "input": {
+      "a": [
+        [
+          1,
+          2,
+          3
+        ],
+        [
+          4,
+          5,
+          6
+        ]
+      ],
+      "newshape": [
+        3,
+        2
+      ]
+    },
+    "output": {
+      "data": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6
+      ],
+      "shape": [
+        3,
+        2
+      ],
+      "dtype": "int64"
+    }
+  },
+  {
+    "function": "transpose",
+    "input": {
+      "a": [
+        [
+          1,
+          2,
+          3
+        ],
+        [
+          4,
+          5,
+          6
+        ]
+      ]
+    },
+    "output": {
+      "data": [
+        1,
+        4,
+        2,
+        5,
+        3,
+        6
+      ],
+      "shape": [
+        3,
+        2
+      ],
+      "dtype": "int64"
+    }
+  },
+  {
+    "function": "flatten",
+    "input": {
+      "a": [
+        [
+          1,
+          2,
+          3
+        ],
+        [
+          4,
+          5,
+          6
+        ]
+      ]
+    },
+    "output": {
+      "data": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6
+      ],
+      "shape": [
+        6
+      ],
+      "dtype": "int64"
+    }
+  },
+  {
+    "function": "concatenate",
+    "input": {
+      "arrays": [
+        [
+          1,
+          2
+        ],
+        [
+          3,
+          4
+        ]
+      ]
+    },
+    "output": {
+      "data": [
+        1,
+        2,
+        3,
+        4
+      ],
+      "shape": [
+        4
+      ],
+      "dtype": "int64"
+    }
+  },
+  {
+    "function": "stack",
+    "input": {
+      "arrays": [
+        [
+          1,
+          2
+        ],
+        [
+          3,
+          4
+        ]
+      ]
+    },
+    "output": {
+      "data": [
+        1,
+        2,
+        3,
+        4
+      ],
+      "shape": [
+        2,
+        2
+      ],
+      "dtype": "int64"
+    }
+  }
+]

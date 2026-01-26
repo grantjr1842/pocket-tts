@@ -244,7 +244,7 @@ where
 {
     if let SplitArg::Count(n) = indices_or_sections {
         let axis_idx = normalize_axis(axis, array.ndim())?;
-        if !array.shape()[axis_idx].is_multiple_of(n) {
+        if array.shape()[axis_idx] % n != 0 {
             return Err(NumPyError::invalid_value(
                 "array split does not result in an equal division",
             ));

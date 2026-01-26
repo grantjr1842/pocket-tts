@@ -1,0 +1,58 @@
+[
+  {
+    "function": "isnan",
+    "input": {
+      "x": [
+        1,
+        2,
+        NaN,
+        4
+      ]
+    },
+    "output": {
+      "data": [
+        false,
+        false,
+        true,
+        false
+      ],
+      "shape": [
+        4
+      ],
+      "dtype": "bool"
+    }
+  },
+  {
+    "function": "isinf",
+    "input": {
+      "x": [
+        1,
+        Infinity,
+        -Infinity,
+        4
+      ]
+    },
+    "output": {
+      "data": [
+        false,
+        true,
+        true,
+        false
+      ],
+      "shape": [
+        4
+      ],
+      "dtype": "bool"
+    }
+  },
+  {
+    "function": "empty_array",
+    "input": {},
+    "output": {
+      "data": [],
+      "shape": [
+        0
+      ]
+    }
+  }
+]

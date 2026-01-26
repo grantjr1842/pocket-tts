@@ -18,8 +18,8 @@ where
     /// # Examples
     ///
     /// ```rust,ignore
-    /// use numpy::Array;
-    /// use numpy::parallel::ParArrayIter;
+    /// use rust_numpy::Array;
+    /// use rust_numpy::parallel::ParArrayIter;
     /// use rayon::prelude::*;
     ///
     /// let arr = Array::from_vec(vec![1, 2, 3, 4]);

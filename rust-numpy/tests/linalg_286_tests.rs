@@ -1,5 +1,5 @@
-use numpy::array_extra::{tril, triu, vander};
-use numpy::Array;
+use rust_numpy::array_extra::{tril, triu, vander};
+use rust_numpy::Array;
 
 #[test]
 fn test_triu_basic() {

@@ -1,7 +1,7 @@
 use num_complex::Complex64;
-use numpy::array;
-use numpy::dtype::Dtype;
-use numpy::Array;
+use rust_numpy::array;
+use rust_numpy::dtype::Dtype;
+use rust_numpy::Array;
 use std::io::Read;
 
 #[test]

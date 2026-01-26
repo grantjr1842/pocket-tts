@@ -3,11 +3,11 @@
 //! This file shows how to use the modern Generator/BitGenerator API
 //! and the legacy RandomState API for backward compatibility.
 
+use rust_numpy::dtype::Dtype;
 use rust_numpy::error::NumPyError;
-use rust_numpy::prelude::*;
 use rust_numpy::random;
 use rust_numpy::random::legacy;
-use rust_numpy::random::modern;
+use rust_numpy::random::{Generator, PCG64, BitGenerator};
 
 /// Example using the modern default_rng() function
 fn example_default_rng() -> Result<(), NumPyError> {
@@ -17,7 +17,7 @@ fn example_default_rng() -> Result<(), NumPyError> {
     let mut rng = random::default_rng();
 
     // Generate random numbers
-    let random_arr = rng.random::<f64>(&[3, 4], Dtype::Float64)?;
+    let random_arr = rng.random::<f64>(&[3, 4], Dtype::Float64 { byteorder: None })?;
     println!("Random array shape: {:?}", random_arr.shape());
     println!("Random array length: {}", random_arr.len());
 
@@ -44,8 +44,8 @@ fn example_seeded_generators() -> Result<(), NumPyError> {
     let mut rng2 = random::default_rng_with_seed(seed);
 
     // Generate arrays with same seed
-    let arr1 = rng1.random::<f64>(&[2, 3], Dtype::Float64)?;
-    let arr2 = rng2.random::<f64>(&[2, 3], Dtype::Float64)?;
+    let arr1 = rng1.random::<f64>(&[2, 3], Dtype::Float64 { byteorder: None })?;
+    let arr2 = rng2.random::<f64>(&[2, 3], Dtype::Float64 { byteorder: None })?;
 
     println!("Seeded array 1 shape: {:?}", arr1.shape());
     println!("Seeded array 2 shape: {:?}", arr2.shape());
@@ -55,9 +55,9 @@ fn example_seeded_generators() -> Result<(), NumPyError> {
     );
 
     // Manual Generator creation with PCG64
-    let pcg = random::PCG64::seed_from_u64(seed);
-    let mut manual_rng = random::Generator::new(Box::new(pcg));
-    let manual_arr = manual_rng.random::<f64>(&[2, 3], Dtype::Float64)?;
+    let pcg = PCG64::seed_from_u64(seed);
+    let mut manual_rng = Generator::new(Box::new(pcg));
+    let manual_arr = manual_rng.random::<f64>(&[2, 3], Dtype::Float64 { byteorder: None })?;
 
     println!("Manual generator array shape: {:?}", manual_arr.shape());
 
@@ -69,7 +69,7 @@ fn example_module_level_functions() -> Result<(), NumPyError> {
     println!("\n=== Module-Level Functions ===");
 
     // These use the modern Generator API internally
-    let random_arr = random::random::<f64>(&[2, 3], Dtype::Float64)?;
+    let random_arr = random::random::<f64>(&[2, 3], Dtype::Float64 { byteorder: None })?;
     println!("Module random array shape: {:?}", random_arr.shape());
 
     let int_arr = random::randint::<i32>(0, 10, &[2, 2])?;
@@ -128,24 +128,24 @@ fn example_modern_submodule() -> Result<(), NumPyError> {
 
     // Use modern submodule
     let mut rng = modern::default_rng();
-    let arr = rng.random::<f64>(&[2, 2], Dtype::Float64)?;
+    let arr = rng.random::<f64>(&[2, 2], Dtype::Float64 { byteorder: None })?;
     println!("Modern submodule array shape: {:?}", arr.shape());
 
     // Create seeded generator through submodule
     let mut seeded_rng = modern::default_rng_with_seed(123);
-    let seeded_arr = seeded_rng.random::<f64>(&[2, 2], Dtype::Float64)?;
+    let seeded_arr = seeded_rng.random::<f64>(&[2, 2], Dtype::Float64 { byteorder: None })?;
     println!("Modern seeded array shape: {:?}", seeded_arr.shape());
 
-    // Access PCG64 through submodule
-    let pcg = modern::PCG64::new();
-    let manual_rng = modern::Generator::new(Box::new(pcg));
-    let manual_arr = manual_rng.random::<f64>(&[2, 2], Dtype::Float64)?;
+    // Access PCG64 through module
+    let pcg = PCG64::new();
+    let mut manual_rng = Generator::new(Box::new(pcg));
+    let manual_arr = manual_rng.random::<f64>(&[2, 2], Dtype::Float64 { byteorder: None })?;
     println!("Modern manual array shape: {:?}", manual_arr.shape());
 
     // Test BitGenerator trait
-    let bit_gen: Box<dyn modern::BitGenerator> = Box::new(modern::PCG64::seed_from_u64(456));
-    let trait_rng = modern::Generator::new(bit_gen);
-    let trait_arr = trait_rng.random::<f64>(&[2, 2], Dtype::Float64)?;
+    let bit_gen: Box<dyn BitGenerator> = Box::new(PCG64::seed_from_u64(456));
+    let mut trait_rng = Generator::new(bit_gen);
+    let trait_arr = trait_rng.random::<f64>(&[2, 2], Dtype::Float64 { byteorder: None })?;
     println!("Modern trait array shape: {:?}", trait_arr.shape());
 
     Ok(())
@@ -156,7 +156,7 @@ fn example_legacy_api() -> Result<(), NumPyError> {
     println!("\n=== Legacy API (Backward Compatibility) ===");
 
     // Legacy functions (with deprecation warnings)
-    let legacy_arr = legacy::legacy_random::<f64>(&[2, 2], Dtype::Float64)?;
+    let legacy_arr = legacy::legacy_random::<f64>(&[2, 2], Dtype::Float64 { byteorder: None })?;
     println!("Legacy random array shape: {:?}", legacy_arr.shape());
 
     let legacy_int_arr = legacy::legacy_randint::<i32>(0, 10, &[2, 2])?;
@@ -164,11 +164,11 @@ fn example_legacy_api() -> Result<(), NumPyError> {
 
     // Legacy seeding
     legacy::seed(12345);
-    let seeded_legacy_arr = legacy::legacy_random::<f64>(&[2, 2], Dtype::Float64)?;
+    let seeded_legacy_arr = legacy::legacy_random::<f64>(&[2, 2], Dtype::Float64 { byteorder: None })?;
     println!("Seeded legacy array shape: {:?}", seeded_legacy_arr.shape());
 
     // Legacy RandomState
-    let legacy_rng = legacy::legacy_rng();
+    let _legacy_rng = legacy::legacy_rng();
     println!("Created legacy RandomState instance");
 
     Ok(())
@@ -179,11 +179,11 @@ fn example_api_separation() -> Result<(), NumPyError> {
     println!("\n=== API Separation ===");
 
     // Modern API uses Generator internally
-    let modern_arr = random::random::<f64>(&[2, 2], Dtype::Float64)?;
+    let modern_arr = random::random::<f64>(&[2, 2], Dtype::Float64 { byteorder: None })?;
     println!("Modern API array shape: {:?}", modern_arr.shape());
 
     // Legacy API uses RandomState internally
-    let legacy_arr = legacy::legacy_random::<f64>(&[2, 2], Dtype::Float64)?;
+    let legacy_arr = legacy::legacy_random::<f64>(&[2, 2], Dtype::Float64 { byteorder: None })?;
     println!("Legacy API array shape: {:?}", legacy_arr.shape());
 
     // Both work independently
@@ -193,8 +193,8 @@ fn example_api_separation() -> Result<(), NumPyError> {
     );
 
     // Thread-local behavior
-    let thread_arr1 = random::random::<f64>(&[2, 2], Dtype::Float64)?;
-    let thread_arr2 = random::random::<f64>(&[2, 2], Dtype::Float64)?;
+    let thread_arr1 = random::random::<f64>(&[2, 2], Dtype::Float64 { byteorder: None })?;
+    let thread_arr2 = random::random::<f64>(&[2, 2], Dtype::Float64 { byteorder: None })?;
     println!(
         "Thread-local arrays have same shape: {}",
         thread_arr1.shape() == thread_arr2.shape()
@@ -209,33 +209,37 @@ fn example_comprehensive_distributions() -> Result<(), NumPyError> {
 
     let mut rng = random::default_rng();
 
-    let distributions = vec![
-        ("random", || rng.random::<f64>(&[2, 2], Dtype::Float64)),
-        ("randint", || rng.randint::<i32>(0, 10, &[2, 2])),
-        ("uniform", || rng.uniform::<f64>(0.0, 1.0, &[2, 2])),
-        ("normal", || rng.normal::<f64>(0.0, 1.0, &[2, 2])),
-        ("standard_normal", || rng.standard_normal::<f64>(&[2, 2])),
-        ("binomial", || rng.binomial::<f64>(10, 0.5, &[2, 2])),
-        ("poisson", || rng.poisson::<f64>(5.0, &[2, 2])),
-        ("exponential", || rng.exponential::<f64>(1.0, &[2, 2])),
-        ("gamma", || rng.gamma::<f64>(2.0, 2.0, &[2, 2])),
-        ("beta", || rng.beta::<f64>(2.0, 2.0, &[2, 2])),
-        ("chisquare", || rng.chisquare::<f64>(2.0, &[2, 2])),
-        ("bernoulli", || rng.bernoulli::<f64>(0.5, &[2, 2])),
-        ("lognormal", || rng.lognormal::<f64>(0.0, 1.0, &[2, 2])),
-        ("logistic", || rng.logistic::<f64>(0.0, 1.0, &[2, 2])),
-        ("geometric", || rng.geometric::<f64>(0.5, &[2, 2])),
-        ("standard_cauchy", || rng.standard_cauchy::<f64>(&[2, 2])),
-        ("standard_exponential", || {
-            rng.standard_exponential::<f64>(&[2, 2])
-        }),
+    // Test each distribution individually
+    let distributions: &[(&str, Result<rust_numpy::Array<f64>, NumPyError>)] = &[
+        ("random", rng.random::<f64>(&[2, 2], Dtype::Float64 { byteorder: None })),
+        ("uniform", rng.uniform::<f64>(0.0, 1.0, &[2, 2])),
+        ("normal", rng.normal::<f64>(0.0, 1.0, &[2, 2])),
+        ("standard_normal", rng.standard_normal::<f64>(&[2, 2])),
+        ("binomial", rng.binomial::<f64>(10, 0.5, &[2, 2])),
+        ("poisson", rng.poisson::<f64>(5.0, &[2, 2])),
+        ("exponential", rng.exponential::<f64>(1.0, &[2, 2])),
+        ("gamma", rng.gamma::<f64>(2.0, 2.0, &[2, 2])),
+        ("beta", rng.beta::<f64>(2.0, 2.0, &[2, 2])),
+        ("chisquare", rng.chisquare::<f64>(2.0, &[2, 2])),
+        ("bernoulli", rng.bernoulli::<f64>(0.5, &[2, 2])),
+        ("lognormal", rng.lognormal::<f64>(0.0, 1.0, &[2, 2])),
+        ("geometric", rng.geometric::<f64>(0.5, &[2, 2])),
+        ("standard_cauchy", rng.standard_cauchy::<f64>(&[2, 2])),
+        ("standard_exponential", rng.standard_exponential::<f64>(&[2, 2])),
     ];
 
-    for (name, dist_fn) in distributions {
-        match dist_fn() {
+    for (name, result) in distributions {
+        match result {
             Ok(arr) => println!("✓ {}: shape {:?}", name, arr.shape()),
             Err(e) => println!("✗ {}: error {}", name, e),
         }
+    }
+
+    // Test integer distributions separately
+    let int_result = rng.randint::<i32>(0, 10, &[2, 2]);
+    match int_result {
+        Ok(arr) => println!("✓ randint: shape {:?}", arr.shape()),
+        Err(e) => println!("✗ randint: error {}", e),
     }
 
     Ok(())
@@ -247,26 +251,26 @@ fn example_migration_patterns() -> Result<(), NumPyError> {
 
     println!("Old code (Legacy API):");
     println!("  random::seed(42);");
-    println!("  let arr = random::legacy_random::<f64>(&[2, 2], Dtype::Float64)?;");
+    println!("  let arr = random::legacy_random::<f64>(&[2, 2], Dtype::Float64 {{ byteorder: None }})?;");
 
     // Old way
     legacy::seed(42);
-    let old_arr = legacy::legacy_random::<f64>(&[2, 2], Dtype::Float64)?;
+    let old_arr = legacy::legacy_random::<f64>(&[2, 2], Dtype::Float64 { byteorder: None })?;
     println!("  → Legacy array shape: {:?}", old_arr.shape());
 
     println!("\nNew code (Modern API):");
     println!("  let mut rng = random::default_rng_with_seed(42);");
-    println!("  let arr = rng.random::<f64>(&[2, 2], Dtype::Float64)?;");
+    println!("  let arr = rng.random::<f64>(&[2, 2], Dtype::Float64 {{ byteorder: None }})?;");
 
     // New way
     let mut rng = random::default_rng_with_seed(42);
-    let new_arr = rng.random::<f64>(&[2, 2], Dtype::Float64)?;
+    let new_arr = rng.random::<f64>(&[2, 2], Dtype::Float64 { byteorder: None })?;
     println!("  → Modern array shape: {:?}", new_arr.shape());
 
     println!("\nOr using module-level functions:");
-    println!("  let arr = random::random::<f64>(&[2, 2], Dtype::Float64)?;");
+    println!("  let arr = random::random::<f64>(&[2, 2], Dtype::Float64 {{ byteorder: None }})?;");
 
-    let module_arr = random::random::<f64>(&[2, 2], Dtype::Float64)?;
+    let module_arr = random::random::<f64>(&[2, 2], Dtype::Float64 { byteorder: None })?;
     println!("  → Module array shape: {:?}", module_arr.shape());
 
     println!(
@@ -286,16 +290,16 @@ fn example_thread_safety() -> Result<(), NumPyError> {
     // Each thread gets its own thread-local generator
     let handle1 = thread::spawn(|| {
         let mut rng = random::default_rng();
-        rng.random::<f64>(&[2, 2], Dtype::Float64).unwrap()
+        rng.random::<f64>(&[2, 2], Dtype::Float64 { byteorder: None }).unwrap()
     });
 
     let handle2 = thread::spawn(|| {
         let mut rng = random::default_rng();
-        rng.random::<f64>(&[2, 2], Dtype::Float64).unwrap()
+        rng.random::<f64>(&[2, 2], Dtype::Float64 { byteorder: None }).unwrap()
     });
 
-    let arr1 = handle1.join().unwrap()?;
-    let arr2 = handle2.join().unwrap()?;
+    let arr1 = handle1.join().unwrap();
+    let arr2 = handle2.join().unwrap();
 
     println!("Thread 1 array shape: {:?}", arr1.shape());
     println!("Thread 2 array shape: {:?}", arr2.shape());
@@ -343,8 +347,8 @@ mod tests {
     #[test]
     fn test_modern_vs_legacy() {
         // Test that modern and legacy APIs work independently
-        let modern_arr = random::random::<f64>(&[2, 2], Dtype::Float64).unwrap();
-        let legacy_arr = legacy::legacy_random::<f64>(&[2, 2], Dtype::Float64).unwrap();
+        let modern_arr = random::random::<f64>(&[2, 2], Dtype::Float64 { byteorder: None }).unwrap();
+        let legacy_arr = legacy::legacy_random::<f64>(&[2, 2], Dtype::Float64 { byteorder: None }).unwrap();
 
         assert_eq!(modern_arr.shape(), legacy_arr.shape());
     }
@@ -356,8 +360,8 @@ mod tests {
         let mut rng1 = random::default_rng_with_seed(seed);
         let mut rng2 = random::default_rng_with_seed(seed);
 
-        let arr1 = rng1.random::<f64>(&[2, 2], Dtype::Float64).unwrap();
-        let arr2 = rng2.random::<f64>(&[2, 2], Dtype::Float64).unwrap();
+        let arr1 = rng1.random::<f64>(&[2, 2], Dtype::Float64 { byteorder: None }).unwrap();
+        let arr2 = rng2.random::<f64>(&[2, 2], Dtype::Float64 { byteorder: None }).unwrap();
 
         assert_eq!(arr1.shape(), arr2.shape());
         assert_eq!(arr1.len(), arr2.len());
@@ -366,20 +370,20 @@ mod tests {
     #[test]
     fn test_modern_submodule() {
         let mut rng = modern::default_rng();
-        let arr = rng.random::<f64>(&[2, 2], Dtype::Float64).unwrap();
+        let arr = rng.random::<f64>(&[2, 2], Dtype::Float64 { byteorder: None }).unwrap();
 
         assert_eq!(arr.shape(), &[2, 2]);
 
         let pcg = modern::PCG64::new();
         let manual_rng = modern::Generator::new(Box::new(pcg));
-        let manual_arr = manual_rng.random::<f64>(&[2, 2], Dtype::Float64).unwrap();
+        let manual_arr = manual_rng.random::<f64>(&[2, 2], Dtype::Float64 { byteorder: None }).unwrap();
 
         assert_eq!(manual_arr.shape(), &[2, 2]);
     }
 
     #[test]
     fn test_legacy_submodule() {
-        let arr = legacy::legacy_random::<f64>(&[2, 2], Dtype::Float64).unwrap();
+        let arr = legacy::legacy_random::<f64>(&[2, 2], Dtype::Float64 { byteorder: None }).unwrap();
         assert_eq!(arr.shape(), &[2, 2]);
 
         let int_arr = legacy::legacy_randint::<i32>(0, 10, &[2, 2]).unwrap();

@@ -1,6 +1,6 @@
 // use ndarray::Array1;
 // TODO: Implement polynomial module
-// use numpy::polynomial::{
+// use rust_numpy::polynomial::{
 //     Chebyshev, Hermite, HermiteE, Laguerre, Legendre, Polynomial, PolynomialBase,
 // };
 

@@ -5,7 +5,6 @@
 
 use crate::array::Array;
 use crate::error::NumPyError;
-use num_complex::{Complex32, Complex64};
 
 /// Options for advanced reduction operations
 #[derive(Debug, Clone, Default)]
@@ -323,13 +322,13 @@ where
         // need proper multi-dimensional indexing
         let mut sum = num_complex::Complex::default();
         for val in input_data {
-            sum = sum + val;
+            sum += val;
         }
         Ok(Array::from_data(vec![sum], output_shape))
     } else {
         let mut sum = num_complex::Complex::default();
         for val in input_data {
-            sum = sum + val;
+            sum += val;
         }
         Ok(Array::from_data(vec![sum], output_shape))
     }
@@ -348,13 +347,13 @@ where
         // Axis-based reduction for complex numbers
         let mut prod = num_complex::Complex::new(T::one(), T::zero());
         for val in input_data {
-            prod = prod * val;
+            prod *= val;
         }
         Ok(Array::from_data(vec![prod], output_shape))
     } else {
         let mut prod = num_complex::Complex::new(T::one(), T::zero());
         for val in input_data {
-            prod = prod * val;
+            prod *= val;
         }
         Ok(Array::from_data(vec![prod], output_shape))
     }
@@ -363,6 +362,7 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
+    use num_complex::Complex32;
 
     #[test]
     fn test_reduction_options_default() {
@@ -389,7 +389,7 @@ mod tests {
         let options = ReductionOptions::new();
         let shape = vec![2, 3, 4];
         let output = compute_output_shape(&shape, &options);
-        assert_eq!(output, vec![]);
+        assert_eq!(output, Vec::<usize>::new());
     }
 
     #[test]

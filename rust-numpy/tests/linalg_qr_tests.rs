@@ -1,6 +1,6 @@
 use approx::assert_abs_diff_eq;
-use numpy::linalg::{qr, QRResult};
-use numpy::{array2, Array};
+use rust_numpy::linalg::{qr, QRResult};
+use rust_numpy::{array2, Array};
 
 #[test]
 fn test_qr_basic_reduced() {

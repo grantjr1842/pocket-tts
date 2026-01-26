@@ -1,5 +1,5 @@
-use numpy::set_ops::{in1d, intersect1d, isin, setdiff1d, setxor1d, union1d, SetOps};
-use numpy::{array2, Array};
+use rust_numpy::set_ops::{in1d, intersect1d, isin, setdiff1d, setxor1d, union1d, SetOps};
+use rust_numpy::{array2, Array};
 
 #[test]
 fn test_in1d_basic() {

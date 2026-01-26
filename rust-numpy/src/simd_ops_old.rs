@@ -27,9 +27,9 @@ impl SimdChunkSize {
     #[cfg(target_feature = "avx2")]
     const fn new() -> Self {
         if is_x86_feature_detected!("avx512f") {
-            SimdChunkSize::Avx512
+            Self::Avx512
         } else {
-            SimdChunkSize::Avx2
+            Self::Avx2
         }
     }
 
@@ -37,38 +37,38 @@ impl SimdChunkSize {
     #[cfg(target_arch = "x86_64")]
     #[cfg(not(target_feature = "avx2"))]
     const fn new() -> Self {
-        SimdChunkSize::Sse128
+        Self::Sse128
     }
 
     #[inline]
     #[cfg(target_arch = "aarch64")]
     const fn new() -> Self {
-        SimdChunkSize::Sse128
+        Self::Sse128
     }
 
     #[inline]
     #[cfg(not(any(target_arch = "x86_64", target_arch = "aarch64")))]
     const fn new() -> Self {
-        SimdChunkSize::Scalar
+        Self::Scalar
     }
 
     #[inline]
     pub fn chunk_size_f64(&self) -> usize {
         match self {
-            SimdChunkSize::Avx2 => 4,
-            SimdChunkSize::Avx512 => 8,
-            SimdChunkSize::Sse128 => 2,
-            SimdChunkSize::Scalar => 1,
+            Self::Avx2 => 4,
+            Self::Avx512 => 8,
+            Self::Sse128 => 2,
+            Self::Scalar => 1,
         }
     }
 
     #[inline]
     pub fn chunk_size_f32(&self) -> usize {
         match self {
-            SimdChunkSize::Avx2 => 8,
-            SimdChunkSize::Avx512 => 16,
-            SimdChunkSize::Sse128 => 4,
-            SimdChunkSize::Scalar => 1,
+            Self::Avx2 => 8,
+            Self::Avx512 => 16,
+            Self::Sse128 => 4,
+            Self::Scalar => 1,
         }
     }
 }

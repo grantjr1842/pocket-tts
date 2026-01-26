@@ -291,8 +291,13 @@ impl<T> Array<T>
 where
     T: Clone + Default + 'static,
 {
-    /// Element-wise addition
-    pub fn add(
+    /// Element-wise addition with default parameters
+    pub fn add(&self, other: &Array<T>) -> Result<Array<T>> {
+        self.add_with_options(other, None, crate::dtype::Casting::Safe)
+    }
+
+    /// Element-wise addition with optional where mask and casting
+    pub fn add_with_options(
         &self,
         other: &Array<T>,
         where_mask: Option<&Array<bool>>,
@@ -313,8 +318,13 @@ where
         engine.execute_binary("subtract", self, other, where_mask, casting)
     }
 
-    /// Element-wise multiplication
-    pub fn multiply(
+    /// Element-wise multiplication with default parameters
+    pub fn multiply(&self, other: &Array<T>) -> Result<Array<T>> {
+        self.multiply_with_options(other, None, crate::dtype::Casting::Safe)
+    }
+
+    /// Element-wise multiplication with optional where mask and casting
+    pub fn multiply_with_options(
         &self,
         other: &Array<T>,
         where_mask: Option<&Array<bool>>,

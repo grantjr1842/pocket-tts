@@ -1,4 +1,4 @@
-use numpy::*;
+use rust_numpy::*;
 
 #[cfg(test)]
 mod tests {
@@ -134,7 +134,7 @@ mod tests {
 
     #[test]
     fn test_ufunc_registry_contains_comparisons() {
-        use numpy::ufunc::{get_ufunc, list_ufuncs};
+        use rust_numpy::ufunc::{get_ufunc, list_ufuncs};
 
         assert!(get_ufunc("greater").is_some());
         assert!(get_ufunc("less").is_some());

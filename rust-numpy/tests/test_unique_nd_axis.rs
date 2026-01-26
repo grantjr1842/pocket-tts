@@ -7,9 +7,9 @@
 //
 //! Tests for N-D axis support in unique() function
 
-use numpy::array::Array;
-use numpy::error::Result;
-use numpy::set_ops::unique;
+use rust_numpy::array::Array;
+use rust_numpy::error::Result;
+use rust_numpy::set_ops::unique;
 
 #[test]
 fn test_unique_2d_axis_0() -> Result<()> {
@@ -120,9 +120,9 @@ fn test_unique_4d_axis_2() -> Result<()> {
                 for l in 0..2 {
                     // Make slices at k=0 and k=1 identical for some j
                     let val = if k == 0 || (j == 1) {
-                        (i * 6 + j * 2 + l + 1) as i32
+                        i * 6 + j * 2 + l + 1
                     } else {
-                        (i * 6 + j * 2 + l + 10) as i32
+                        i * 6 + j * 2 + l + 10
                     };
                     data.push(val);
                 }

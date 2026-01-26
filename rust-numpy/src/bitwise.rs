@@ -653,7 +653,7 @@ where
 ///
 /// # Example
 /// ```rust
-/// use numpy::{array, bitwise_and};
+/// use rust_numpy::{array, bitwise_and};
 /// let a = array![5, 3, 7];  // 101, 011, 111
 /// let b = array![2, 6, 1];  // 010, 110, 001
 /// let result = bitwise_and(&a, &b).unwrap();

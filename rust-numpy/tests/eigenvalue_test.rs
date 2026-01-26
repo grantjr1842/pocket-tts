@@ -1,5 +1,5 @@
 use num_complex::Complex64;
-use numpy::{array2, linalg};
+use rust_numpy::{array2, linalg};
 
 #[test]
 fn test_eigenvalue_simple() {

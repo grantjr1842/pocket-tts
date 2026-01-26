@@ -1,5 +1,5 @@
 use num_complex::Complex64;
-use numpy::{
+use rust_numpy::{
     array, array2,
     fft::{fft, fftfreq, fftshift, hfft, ifft, ifftshift, ihfft, irfft, rfft, rfftfreq},
     Array,
@@ -86,7 +86,7 @@ fn test_ifftshift() {
 
 #[test]
 fn test_fftshift_2d() {
-    let a = numpy::array2![[0, 1, 2], [3, 4, 5]];
+    let a = array2![[0, 1, 2], [3, 4, 5]];
 
     // Shift axis 1: [[2, 0, 1], [5, 3, 4]]
     let res1 = fftshift(&a, Some(&[1]));
@@ -103,7 +103,7 @@ fn test_fftshift_2d() {
 
 #[test]
 fn test_ifftshift_2d() {
-    let a = numpy::array2![[5, 3, 4], [2, 0, 1]];
+    let a = array2![[5, 3, 4], [2, 0, 1]];
     let res = ifftshift(&a, None);
     assert_eq!(res.to_vec(), vec![0, 1, 2, 3, 4, 5]);
 }

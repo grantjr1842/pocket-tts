@@ -1,6 +1,6 @@
 use approx::assert_abs_diff_eq;
-use numpy::linalg::solvers::lstsq;
-use numpy::{array2, Array};
+use rust_numpy::linalg::solvers::lstsq;
+use rust_numpy::{array2, Array};
 
 #[test]
 fn test_lstsq_simple_exact() {

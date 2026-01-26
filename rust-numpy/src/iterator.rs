@@ -126,9 +126,7 @@ impl<'a> NDIter<'a> {
         &self.shape
     }
 
-    pub fn size(&self) -> usize {
-        self.remaining
-    }
+    pub const fn size(&self) -> usize { self.remaining }
 }
 
 impl<'a> Iterator for NDIter<'a> {

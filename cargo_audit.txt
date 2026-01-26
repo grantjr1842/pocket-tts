@@ -1,0 +1,36 @@
+[0m[0m[1m[32m    Fetching[0m advisory database from `https://github.com/RustSec/advisory-db.git`
+[0m[0m[1m[32m      Loaded[0m 903 security advisories (from /home/grant/.cargo/advisory-db)
+[0m[0m[1m[32m    Updating[0m crates.io index
+[0m[0m[1m[32m    Scanning[0m Cargo.lock for vulnerabilities (217 crate dependencies)
+[0m[0m[1m[33mCrate:    [0m paste
+[0m[0m[1m[33mVersion:  [0m 1.0.15
+[0m[0m[1m[33mWarning:  [0m unmaintained
+[0m[0m[1m[33mTitle:    [0m paste - no longer maintained
+[0m[0m[1m[33mDate:     [0m 2024-10-07
+[0m[0m[1m[33mID:       [0m RUSTSEC-2024-0436
+[0m[0m[1m[33mURL:      [0m https://rustsec.org/advisories/RUSTSEC-2024-0436
+[0m[0m[1m[33mDependency tree:
+[0mpaste 1.0.15
+├── gemm-f64 0.18.2
+│   └── gemm 0.18.2
+│       └── faer 0.23.2
+│           └── rust-numpy 0.1.0
+├── gemm-f32 0.18.2
+│   ├── gemm-f16 0.18.2
+│   │   └── gemm 0.18.2
+│   └── gemm 0.18.2
+├── gemm-f16 0.18.2
+├── gemm-common 0.18.2
+│   ├── gemm-f64 0.18.2
+│   ├── gemm-f32 0.18.2
+│   ├── gemm-f16 0.18.2
+│   ├── gemm-c64 0.18.2
+│   │   └── gemm 0.18.2
+│   ├── gemm-c32 0.18.2
+│   │   └── gemm 0.18.2
+│   └── gemm 0.18.2
+├── gemm-c64 0.18.2
+├── gemm-c32 0.18.2
+└── gemm 0.18.2
+
+[0m[0m[1m[33mwarning:[0m 1 allowed warning found

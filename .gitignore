@@ -94,19 +94,13 @@ output/pocket_tts/rust_libs/
 *.d
 
 # Local testing and scratch files
-*.wav
 benchmarks/
 numrs/
 test_outputs/
-*.json
-*.txt
 test_*.py
 !tests/test_*.py
 !pocket_tts/tests/test_*.py
 !tests/**/test_*.py
-batch_output.wav
-my_voice.wav
-benchmark_rust_cli_vs_numpy.py
 thoughts/
 training/
 .sisyphus/
@@ -128,8 +122,4 @@ onnx_export_*/
 *:Zone.Identifier
 **/*:Zone.Identifier
 
-<<<<<<< HEAD
 numpy-resources/
-=======
-numpy-resources/
->>>>>>> de514e0a0d73b94928981ff95e3dc034d9df93b5

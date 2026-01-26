@@ -1,5 +1,5 @@
-use numpy::array::Array;
-use numpy::linalg::svd;
+use rust_numpy::array::Array;
+use rust_numpy::linalg::svd;
 
 #[test]
 fn test_svd_2x2() {

@@ -1,4 +1,4 @@
-use numpy::*;
+use rust_numpy::*;
 
 #[test]
 fn test_boolean_indexing() {

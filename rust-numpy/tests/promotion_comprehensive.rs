@@ -1,5 +1,5 @@
-use numpy::dtype::Dtype;
-use numpy::type_promotion::promote_types;
+use rust_numpy::dtype::Dtype;
+use rust_numpy::type_promotion::promote_types;
 
 #[test]
 fn test_promote_string_bytes() {

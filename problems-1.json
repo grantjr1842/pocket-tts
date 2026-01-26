@@ -1,0 +1,2594 @@
+[
+    {
+        "resource": "/home/grant/github/pocket-tts/rust-numpy/examples/random_examples.rs",
+        "owner": "rustc",
+        "code": {
+            "value": "E0433",
+            "target": {
+                "$mid": 1,
+                "path": "/diagnostic message [0]",
+                "scheme": "rust-analyzer-diagnostics-view",
+                "query": "0",
+                "fragment": "file:///home/grant/github/pocket-tts/rust-numpy/examples/random_examples.rs"
+            }
+        },
+        "severity": 8,
+        "message": "error[E0433]: failed to resolve: could not find `PCG64` in `modern`\n   --> examples/random_examples.rs:142:23\n    |\n142 |     let pcg = modern::PCG64::new();\n    |                       ^^^^^ could not find `PCG64` in `modern`\n    |\n",
+        "source": "rustc",
+        "startLineNumber": 142,
+        "startColumn": 23,
+        "endLineNumber": 142,
+        "endColumn": 28,
+        "relatedInformation": [
+            {
+                "startLineNumber": 6,
+                "startColumn": 1,
+                "endLineNumber": 6,
+                "endColumn": 1,
+                "message": "consider importing one of these structs: `use crate::PCG64;\n`, `use rust_numpy::random::PCG64;\n`",
+                "resource": "/home/grant/github/pocket-tts/rust-numpy/examples/random_examples.rs"
+            },
+            {
+                "startLineNumber": 142,
+                "startColumn": 15,
+                "endLineNumber": 142,
+                "endColumn": 23,
+                "message": "if you import `PCG64`, refer to it directly",
+                "resource": "/home/grant/github/pocket-tts/rust-numpy/examples/random_examples.rs"
+            }
+        ],
+        "origin": "extHost2"
+    },
+    {
+        "resource": "/home/grant/github/pocket-tts/rust-numpy/examples/random_examples.rs",
+        "owner": "rustc",
+        "code": {
+            "value": "E0433",
+            "target": {
+                "$mid": 1,
+                "path": "/diagnostic message [3]",
+                "scheme": "rust-analyzer-diagnostics-view",
+                "query": "3",
+                "fragment": "file:///home/grant/github/pocket-tts/rust-numpy/examples/random_examples.rs"
+            }
+        },
+        "severity": 8,
+        "message": "error[E0433]: failed to resolve: could not find `Generator` in `modern`\n   --> examples/random_examples.rs:143:34\n    |\n143 |     let mut manual_rng = modern::Generator::new(Box::new(pcg));\n    |                                  ^^^^^^^^^ could not find `Generator` in `modern`\n    |\n",
+        "source": "rustc",
+        "startLineNumber": 143,
+        "startColumn": 34,
+        "endLineNumber": 143,
+        "endColumn": 43,
+        "relatedInformation": [
+            {
+                "startLineNumber": 6,
+                "startColumn": 1,
+                "endLineNumber": 6,
+                "endColumn": 1,
+                "message": "consider importing one of these structs: `use crate::Generator;\n`, `use rust_numpy::random::Generator;\n`",
+                "resource": "/home/grant/github/pocket-tts/rust-numpy/examples/random_examples.rs"
+            },
+            {
+                "startLineNumber": 143,
+                "startColumn": 26,
+                "endLineNumber": 143,
+                "endColumn": 34,
+                "message": "if you import `Generator`, refer to it directly",
+                "resource": "/home/grant/github/pocket-tts/rust-numpy/examples/random_examples.rs"
+            }
+        ],
+        "origin": "extHost2"
+    },
+    {
+        "resource": "/home/grant/github/pocket-tts/rust-numpy/examples/random_examples.rs",
+        "owner": "rust-analyzer",
+        "code": {
+            "value": "E0599",
+            "target": {
+                "$mid": 1,
+                "path": "/stable/error_codes/E0599.html",
+                "scheme": "https",
+                "authority": "doc.rust-lang.org"
+            }
+        },
+        "severity": 8,
+        "message": "no method `shape` on type `()`",
+        "source": "rust-analyzer",
+        "startLineNumber": 145,
+        "startColumn": 60,
+        "endLineNumber": 145,
+        "endColumn": 65,
+        "modelVersionId": 1,
+        "origin": "extHost2"
+    },
+    {
+        "resource": "/home/grant/github/pocket-tts/rust-numpy/examples/random_examples.rs",
+        "owner": "rustc",
+        "code": {
+            "value": "E0405",
+            "target": {
+                "$mid": 1,
+                "path": "/diagnostic message [6]",
+                "scheme": "rust-analyzer-diagnostics-view",
+                "query": "6",
+                "fragment": "file:///home/grant/github/pocket-tts/rust-numpy/examples/random_examples.rs"
+            }
+        },
+        "severity": 8,
+        "message": "error[E0405]: cannot find trait `BitGenerator` in module `modern`\n   --> examples/random_examples.rs:148:34\n    |\n148 |     let bit_gen: Box<dyn modern::BitGenerator> = Box::new(modern::PCG64::seed_from_u64(456));\n    |                                  ^^^^^^^^^^^^ not found in `modern`\n    |\n",
+        "source": "rustc",
+        "startLineNumber": 148,
+        "startColumn": 34,
+        "endLineNumber": 148,
+        "endColumn": 46,
+        "relatedInformation": [
+            {
+                "startLineNumber": 6,
+                "startColumn": 1,
+                "endLineNumber": 6,
+                "endColumn": 1,
+                "message": "consider importing one of these traits: `use crate::random::BitGenerator;\n`, `use rust_numpy::random::BitGenerator;\n`",
+                "resource": "/home/grant/github/pocket-tts/rust-numpy/examples/random_examples.rs"
+            },
+            {
+                "startLineNumber": 148,
+                "startColumn": 26,
+                "endLineNumber": 148,
+                "endColumn": 34,
+                "message": "if you import `BitGenerator`, refer to it directly",
+                "resource": "/home/grant/github/pocket-tts/rust-numpy/examples/random_examples.rs"
+            }
+        ],
+        "origin": "extHost2"
+    },
+    {
+        "resource": "/home/grant/github/pocket-tts/rust-numpy/examples/random_examples.rs",
+        "owner": "rustc",
+        "code": {
+            "value": "E0433",
+            "target": {
+                "$mid": 1,
+                "path": "/diagnostic message [9]",
+                "scheme": "rust-analyzer-diagnostics-view",
+                "query": "9",
+                "fragment": "file:///home/grant/github/pocket-tts/rust-numpy/examples/random_examples.rs"
+            }
+        },
+        "severity": 8,
+        "message": "error[E0433]: failed to resolve: could not find `PCG64` in `modern`\n   --> examples/random_examples.rs:148:67\n    |\n148 |     let bit_gen: Box<dyn modern::BitGenerator> = Box::new(modern::PCG64::seed_from_u64(456));\n    |                                                                   ^^^^^ could not find `PCG64` in `modern`\n    |\n",
+        "source": "rustc",
+        "startLineNumber": 148,
+        "startColumn": 67,
+        "endLineNumber": 148,
+        "endColumn": 72,
+        "relatedInformation": [
+            {
+                "startLineNumber": 6,
+                "startColumn": 1,
+                "endLineNumber": 6,
+                "endColumn": 1,
+                "message": "consider importing one of these structs: `use crate::PCG64;\n`, `use rust_numpy::random::PCG64;\n`",
+                "resource": "/home/grant/github/pocket-tts/rust-numpy/examples/random_examples.rs"
+            },
+            {
+                "startLineNumber": 148,
+                "startColumn": 59,
+                "endLineNumber": 148,
+                "endColumn": 67,
+                "message": "if you import `PCG64`, refer to it directly",
+                "resource": "/home/grant/github/pocket-tts/rust-numpy/examples/random_examples.rs"
+            }
+        ],
+        "origin": "extHost2"
+    },
+    {
+        "resource": "/home/grant/github/pocket-tts/rust-numpy/examples/random_examples.rs",
+        "owner": "rustc",
+        "code": {
+            "value": "E0433",
+            "target": {
+                "$mid": 1,
+                "path": "/diagnostic message [11]",
+                "scheme": "rust-analyzer-diagnostics-view",
+                "query": "11",
+                "fragment": "file:///home/grant/github/pocket-tts/rust-numpy/examples/random_examples.rs"
+            }
+        },
+        "severity": 8,
+        "message": "error[E0433]: failed to resolve: could not find `Generator` in `modern`\n   --> examples/random_examples.rs:149:33\n    |\n149 |     let mut trait_rng = modern::Generator::new(bit_gen);\n    |                                 ^^^^^^^^^ could not find `Generator` in `modern`\n    |\n",
+        "source": "rustc",
+        "startLineNumber": 149,
+        "startColumn": 33,
+        "endLineNumber": 149,
+        "endColumn": 42,
+        "relatedInformation": [
+            {
+                "startLineNumber": 6,
+                "startColumn": 1,
+                "endLineNumber": 6,
+                "endColumn": 1,
+                "message": "consider importing one of these structs: `use crate::Generator;\n`, `use rust_numpy::random::Generator;\n`",
+                "resource": "/home/grant/github/pocket-tts/rust-numpy/examples/random_examples.rs"
+            },
+            {
+                "startLineNumber": 149,
+                "startColumn": 25,
+                "endLineNumber": 149,
+                "endColumn": 33,
+                "message": "if you import `Generator`, refer to it directly",
+                "resource": "/home/grant/github/pocket-tts/rust-numpy/examples/random_examples.rs"
+            }
+        ],
+        "origin": "extHost2"
+    },
+    {
+        "resource": "/home/grant/github/pocket-tts/rust-numpy/examples/random_examples.rs",
+        "owner": "rust-analyzer",
+        "code": {
+            "value": "E0599",
+            "target": {
+                "$mid": 1,
+                "path": "/stable/error_codes/E0599.html",
+                "scheme": "https",
+                "authority": "doc.rust-lang.org"
+            }
+        },
+        "severity": 8,
+        "message": "no method `shape` on type `()`",
+        "source": "rust-analyzer",
+        "startLineNumber": 151,
+        "startColumn": 58,
+        "endLineNumber": 151,
+        "endColumn": 63,
+        "modelVersionId": 1,
+        "origin": "extHost2"
+    },
+    {
+        "resource": "/home/grant/github/pocket-tts/rust-numpy/examples/random_examples.rs",
+        "owner": "rustc",
+        "code": {
+            "value": "E0425",
+            "target": {
+                "$mid": 1,
+                "path": "/diagnostic message [13]",
+                "scheme": "rust-analyzer-diagnostics-view",
+                "query": "13",
+                "fragment": "file:///home/grant/github/pocket-tts/rust-numpy/examples/random_examples.rs"
+            }
+        },
+        "severity": 8,
+        "message": "error[E0425]: cannot find function `legacy_rng` in module `legacy`\n   --> examples/random_examples.rs:173:31\n    |\n173 |     let _legacy_rng = legacy::legacy_rng();\n    |                               ^^^^^^^^^^ not found in `legacy`\n    |\n",
+        "source": "rustc",
+        "startLineNumber": 173,
+        "startColumn": 31,
+        "endLineNumber": 173,
+        "endColumn": 41,
+        "relatedInformation": [
+            {
+                "startLineNumber": 6,
+                "startColumn": 1,
+                "endLineNumber": 6,
+                "endColumn": 1,
+                "message": "consider importing one of these functions: `use crate::random::legacy_rng;\n`, `use rust_numpy::random::legacy_rng;\n`",
+                "resource": "/home/grant/github/pocket-tts/rust-numpy/examples/random_examples.rs"
+            },
+            {
+                "startLineNumber": 173,
+                "startColumn": 23,
+                "endLineNumber": 173,
+                "endColumn": 31,
+                "message": "if you import `legacy_rng`, refer to it directly",
+                "resource": "/home/grant/github/pocket-tts/rust-numpy/examples/random_examples.rs"
+            }
+        ],
+        "origin": "extHost2"
+    },
+    {
+        "resource": "/home/grant/github/pocket-tts/rust-numpy/tests/comprehensive_tests.rs",
+        "owner": "rustc",
+        "code": {
+            "value": "E0061",
+            "target": {
+                "$mid": 1,
+                "path": "/diagnostic message [0]",
+                "scheme": "rust-analyzer-diagnostics-view",
+                "query": "0",
+                "fragment": "file:///home/grant/github/pocket-tts/rust-numpy/tests/comprehensive_tests.rs"
+            }
+        },
+        "severity": 8,
+        "message": "error[E0061]: this method takes 3 arguments but 1 argument was supplied\n   --> tests/comprehensive_tests.rs:114:29\n    |\n114 |         let _sub_result = a.subtract(&b);\n    |                             ^^^^^^^^---- two arguments of type `Option<&rust_numpy::Array<bool>>` and `Casting` are missing\n    |\n",
+        "source": "rustc",
+        "startLineNumber": 114,
+        "startColumn": 29,
+        "endLineNumber": 114,
+        "endColumn": 37,
+        "relatedInformation": [
+            {
+                "startLineNumber": 114,
+                "startColumn": 37,
+                "endLineNumber": 114,
+                "endColumn": 41,
+                "message": "two arguments of type `Option<&rust_numpy::Array<bool>>` and `Casting` are missing",
+                "resource": "/home/grant/github/pocket-tts/rust-numpy/tests/comprehensive_tests.rs"
+            },
+            {
+                "startLineNumber": 311,
+                "startColumn": 12,
+                "endLineNumber": 311,
+                "endColumn": 20,
+                "message": "method defined here",
+                "resource": "/home/grant/github/pocket-tts/rust-numpy/src/ufunc_ops.rs"
+            },
+            {
+                "startLineNumber": 114,
+                "startColumn": 37,
+                "endLineNumber": 114,
+                "endColumn": 41,
+                "message": "provide the arguments: `(&b, /* Option<&rust_numpy::Array<bool>> */, /* Casting */)`",
+                "resource": "/home/grant/github/pocket-tts/rust-numpy/tests/comprehensive_tests.rs"
+            }
+        ],
+        "origin": "extHost2"
+    },
+    {
+        "resource": "/home/grant/github/pocket-tts/rust-numpy/tests/comprehensive_tests.rs",
+        "owner": "rustc",
+        "code": {
+            "value": "E0061",
+            "target": {
+                "$mid": 1,
+                "path": "/diagnostic message [3]",
+                "scheme": "rust-analyzer-diagnostics-view",
+                "query": "3",
+                "fragment": "file:///home/grant/github/pocket-tts/rust-numpy/tests/comprehensive_tests.rs"
+            }
+        },
+        "severity": 8,
+        "message": "error[E0061]: this method takes 3 arguments but 1 argument was supplied\n   --> tests/comprehensive_tests.rs:116:29\n    |\n116 |         let _div_result = a.divide(&b);\n    |                             ^^^^^^---- two arguments of type `Option<&rust_numpy::Array<bool>>` and `Casting` are missing\n    |\n",
+        "source": "rustc",
+        "startLineNumber": 116,
+        "startColumn": 29,
+        "endLineNumber": 116,
+        "endColumn": 35,
+        "relatedInformation": [
+            {
+                "startLineNumber": 116,
+                "startColumn": 35,
+                "endLineNumber": 116,
+                "endColumn": 39,
+                "message": "two arguments of type `Option<&rust_numpy::Array<bool>>` and `Casting` are missing",
+                "resource": "/home/grant/github/pocket-tts/rust-numpy/tests/comprehensive_tests.rs"
+            },
+            {
+                "startLineNumber": 338,
+                "startColumn": 12,
+                "endLineNumber": 338,
+                "endColumn": 18,
+                "message": "method defined here",
+                "resource": "/home/grant/github/pocket-tts/rust-numpy/src/ufunc_ops.rs"
+            },
+            {
+                "startLineNumber": 116,
+                "startColumn": 35,
+                "endLineNumber": 116,
+                "endColumn": 39,
+                "message": "provide the arguments: `(&b, /* Option<&rust_numpy::Array<bool>> */, /* Casting */)`",
+                "resource": "/home/grant/github/pocket-tts/rust-numpy/tests/comprehensive_tests.rs"
+            }
+        ],
+        "origin": "extHost2"
+    },
+    {
+        "resource": "/home/grant/github/pocket-tts/rust-numpy/tests/comprehensive_tests.rs",
+        "owner": "rustc",
+        "code": {
+            "value": "E0061",
+            "target": {
+                "$mid": 1,
+                "path": "/diagnostic message [6]",
+                "scheme": "rust-analyzer-diagnostics-view",
+                "query": "6",
+                "fragment": "file:///home/grant/github/pocket-tts/rust-numpy/tests/comprehensive_tests.rs"
+            }
+        },
+        "severity": 8,
+        "message": "error[E0061]: this method takes 2 arguments but 0 arguments were supplied\n   --> tests/comprehensive_tests.rs:119:29\n    |\n119 |         let _neg_result = a.negative();\n    |                             ^^^^^^^^-- two arguments of type `Option<&rust_numpy::Array<bool>>` and `Casting` are missing\n    |\n",
+        "source": "rustc",
+        "startLineNumber": 119,
+        "startColumn": 29,
+        "endLineNumber": 119,
+        "endColumn": 37,
+        "relatedInformation": [
+            {
+                "startLineNumber": 119,
+                "startColumn": 37,
+                "endLineNumber": 119,
+                "endColumn": 39,
+                "message": "two arguments of type `Option<&rust_numpy::Array<bool>>` and `Casting` are missing",
+                "resource": "/home/grant/github/pocket-tts/rust-numpy/tests/comprehensive_tests.rs"
+            },
+            {
+                "startLineNumber": 349,
+                "startColumn": 12,
+                "endLineNumber": 349,
+                "endColumn": 20,
+                "message": "method defined here",
+                "resource": "/home/grant/github/pocket-tts/rust-numpy/src/ufunc_ops.rs"
+            },
+            {
+                "startLineNumber": 119,
+                "startColumn": 37,
+                "endLineNumber": 119,
+                "endColumn": 39,
+                "message": "provide the arguments: `(/* Option<&rust_numpy::Array<bool>> */, /* Casting */)`",
+                "resource": "/home/grant/github/pocket-tts/rust-numpy/tests/comprehensive_tests.rs"
+            }
+        ],
+        "origin": "extHost2"
+    },
+    {
+        "resource": "/home/grant/github/pocket-tts/rust-numpy/tests/comprehensive_tests.rs",
+        "owner": "rustc",
+        "code": {
+            "value": "E0061",
+            "target": {
+                "$mid": 1,
+                "path": "/diagnostic message [9]",
+                "scheme": "rust-analyzer-diagnostics-view",
+                "query": "9",
+                "fragment": "file:///home/grant/github/pocket-tts/rust-numpy/tests/comprehensive_tests.rs"
+            }
+        },
+        "severity": 8,
+        "message": "error[E0061]: this method takes 2 arguments but 0 arguments were supplied\n   --> tests/comprehensive_tests.rs:120:29\n    |\n120 |         let _abs_result = a.abs();\n    |                             ^^^-- two arguments of type `Option<&rust_numpy::Array<bool>>` and `Casting` are missing\n    |\n",
+        "source": "rustc",
+        "startLineNumber": 120,
+        "startColumn": 29,
+        "endLineNumber": 120,
+        "endColumn": 32,
+        "relatedInformation": [
+            {
+                "startLineNumber": 120,
+                "startColumn": 32,
+                "endLineNumber": 120,
+                "endColumn": 34,
+                "message": "two arguments of type `Option<&rust_numpy::Array<bool>>` and `Casting` are missing",
+                "resource": "/home/grant/github/pocket-tts/rust-numpy/tests/comprehensive_tests.rs"
+            },
+            {
+                "startLineNumber": 359,
+                "startColumn": 12,
+                "endLineNumber": 359,
+                "endColumn": 15,
+                "message": "method defined here",
+                "resource": "/home/grant/github/pocket-tts/rust-numpy/src/ufunc_ops.rs"
+            },
+            {
+                "startLineNumber": 120,
+                "startColumn": 32,
+                "endLineNumber": 120,
+                "endColumn": 34,
+                "message": "provide the arguments: `(/* Option<&rust_numpy::Array<bool>> */, /* Casting */)`",
+                "resource": "/home/grant/github/pocket-tts/rust-numpy/tests/comprehensive_tests.rs"
+            }
+        ],
+        "origin": "extHost2"
+    },
+    {
+        "resource": "/home/grant/github/pocket-tts/rust-numpy/tests/random_tests.rs",
+        "owner": "rustc",
+        "code": {
+            "value": "E0425",
+            "target": {
+                "$mid": 1,
+                "path": "/diagnostic message [0]",
+                "scheme": "rust-analyzer-diagnostics-view",
+                "query": "0",
+                "fragment": "file:///home/grant/github/pocket-tts/rust-numpy/tests/random_tests.rs"
+            }
+        },
+        "severity": 8,
+        "message": "error[E0425]: cannot find function `geometric` in this scope\n  --> tests/random_tests.rs:13:18\n   |\n13 |     let result = geometric(0.5, &[1000]).unwrap();\n   |                  ^^^^^^^^^ not found in this scope\n\n",
+        "source": "rustc",
+        "startLineNumber": 13,
+        "startColumn": 18,
+        "endLineNumber": 13,
+        "endColumn": 27,
+        "origin": "extHost2"
+    },
+    {
+        "resource": "/home/grant/github/pocket-tts/rust-numpy/tests/random_tests.rs",
+        "owner": "rustc",
+        "code": {
+            "value": "E0282",
+            "target": {
+                "$mid": 1,
+                "path": "/diagnostic message [1]",
+                "scheme": "rust-analyzer-diagnostics-view",
+                "query": "1",
+                "fragment": "file:///home/grant/github/pocket-tts/rust-numpy/tests/random_tests.rs"
+            }
+        },
+        "severity": 8,
+        "message": "error[E0282]: type annotations needed\n  --> tests/random_tests.rs:20:17\n   |\n20 |         assert!(val.fract() == 0.0);\n   |                 ^^^ cannot infer type\n\n",
+        "source": "rustc",
+        "startLineNumber": 20,
+        "startColumn": 17,
+        "endLineNumber": 20,
+        "endColumn": 20,
+        "origin": "extHost2"
+    },
+    {
+        "resource": "/home/grant/github/pocket-tts/rust-numpy/tests/random_tests.rs",
+        "owner": "rustc",
+        "code": {
+            "value": "E0425",
+            "target": {
+                "$mid": 1,
+                "path": "/diagnostic message [2]",
+                "scheme": "rust-analyzer-diagnostics-view",
+                "query": "2",
+                "fragment": "file:///home/grant/github/pocket-tts/rust-numpy/tests/random_tests.rs"
+            }
+        },
+        "severity": 8,
+        "message": "error[E0425]: cannot find function `geometric` in this scope\n  --> tests/random_tests.rs:26:18\n   |\n26 |     let result = geometric::<f64>(1.5, &[10]);\n   |                  ^^^^^^^^^ not found in this scope\n\n",
+        "source": "rustc",
+        "startLineNumber": 26,
+        "startColumn": 18,
+        "endLineNumber": 26,
+        "endColumn": 27,
+        "origin": "extHost2"
+    },
+    {
+        "resource": "/home/grant/github/pocket-tts/rust-numpy/tests/random_tests.rs",
+        "owner": "rustc",
+        "code": {
+            "value": "E0425",
+            "target": {
+                "$mid": 1,
+                "path": "/diagnostic message [3]",
+                "scheme": "rust-analyzer-diagnostics-view",
+                "query": "3",
+                "fragment": "file:///home/grant/github/pocket-tts/rust-numpy/tests/random_tests.rs"
+            }
+        },
+        "severity": 8,
+        "message": "error[E0425]: cannot find function `geometric` in this scope\n  --> tests/random_tests.rs:29:18\n   |\n29 |     let result = geometric::<f64>(-0.1, &[10]);\n   |                  ^^^^^^^^^ not found in this scope\n\n",
+        "source": "rustc",
+        "startLineNumber": 29,
+        "startColumn": 18,
+        "endLineNumber": 29,
+        "endColumn": 27,
+        "origin": "extHost2"
+    },
+    {
+        "resource": "/home/grant/github/pocket-tts/rust-numpy/tests/random_tests.rs",
+        "owner": "rustc",
+        "code": {
+            "value": "E0425",
+            "target": {
+                "$mid": 1,
+                "path": "/diagnostic message [4]",
+                "scheme": "rust-analyzer-diagnostics-view",
+                "query": "4",
+                "fragment": "file:///home/grant/github/pocket-tts/rust-numpy/tests/random_tests.rs"
+            }
+        },
+        "severity": 8,
+        "message": "error[E0425]: cannot find function `negative_binomial` in this scope\n  --> tests/random_tests.rs:35:18\n   |\n35 |     let result = negative_binomial(5, 0.5, &[100]).unwrap();\n   |                  ^^^^^^^^^^^^^^^^^ not found in this scope\n\n",
+        "source": "rustc",
+        "startLineNumber": 35,
+        "startColumn": 18,
+        "endLineNumber": 35,
+        "endColumn": 35,
+        "origin": "extHost2"
+    },
+    {
+        "resource": "/home/grant/github/pocket-tts/rust-numpy/tests/random_tests.rs",
+        "owner": "rustc",
+        "code": {
+            "value": "E0425",
+            "target": {
+                "$mid": 1,
+                "path": "/diagnostic message [5]",
+                "scheme": "rust-analyzer-diagnostics-view",
+                "query": "5",
+                "fragment": "file:///home/grant/github/pocket-tts/rust-numpy/tests/random_tests.rs"
+            }
+        },
+        "severity": 8,
+        "message": "error[E0425]: cannot find function `hypergeometric` in this scope\n  --> tests/random_tests.rs:47:18\n   |\n47 |     let result = hypergeometric(10, 5, 8, &[100]).unwrap();\n   |                  ^^^^^^^^^^^^^^ not found in this scope\n\n",
+        "source": "rustc",
+        "startLineNumber": 47,
+        "startColumn": 18,
+        "endLineNumber": 47,
+        "endColumn": 32,
+        "origin": "extHost2"
+    },
+    {
+        "resource": "/home/grant/github/pocket-tts/rust-numpy/tests/random_tests.rs",
+        "owner": "rustc",
+        "code": {
+            "value": "E0425",
+            "target": {
+                "$mid": 1,
+                "path": "/diagnostic message [6]",
+                "scheme": "rust-analyzer-diagnostics-view",
+                "query": "6",
+                "fragment": "file:///home/grant/github/pocket-tts/rust-numpy/tests/random_tests.rs"
+            }
+        },
+        "severity": 8,
+        "message": "error[E0425]: cannot find function `logseries` in this scope\n  --> tests/random_tests.rs:59:18\n   |\n59 |     let result = logseries(0.5, &[100]).unwrap();\n   |                  ^^^^^^^^^ not found in this scope\n\n",
+        "source": "rustc",
+        "startLineNumber": 59,
+        "startColumn": 18,
+        "endLineNumber": 59,
+        "endColumn": 27,
+        "origin": "extHost2"
+    },
+    {
+        "resource": "/home/grant/github/pocket-tts/rust-numpy/tests/random_tests.rs",
+        "owner": "rustc",
+        "code": {
+            "value": "E0282",
+            "target": {
+                "$mid": 1,
+                "path": "/diagnostic message [7]",
+                "scheme": "rust-analyzer-diagnostics-view",
+                "query": "7",
+                "fragment": "file:///home/grant/github/pocket-tts/rust-numpy/tests/random_tests.rs"
+            }
+        },
+        "severity": 8,
+        "message": "error[E0282]: type annotations needed\n  --> tests/random_tests.rs:66:17\n   |\n66 |         assert!(val.fract() == 0.0);\n   |                 ^^^ cannot infer type\n\n",
+        "source": "rustc",
+        "startLineNumber": 66,
+        "startColumn": 17,
+        "endLineNumber": 66,
+        "endColumn": 20,
+        "origin": "extHost2"
+    },
+    {
+        "resource": "/home/grant/github/pocket-tts/rust-numpy/tests/random_tests.rs",
+        "owner": "rustc",
+        "code": {
+            "value": "E0425",
+            "target": {
+                "$mid": 1,
+                "path": "/diagnostic message [8]",
+                "scheme": "rust-analyzer-diagnostics-view",
+                "query": "8",
+                "fragment": "file:///home/grant/github/pocket-tts/rust-numpy/tests/random_tests.rs"
+            }
+        },
+        "severity": 8,
+        "message": "error[E0425]: cannot find function `rayleigh` in this scope\n  --> tests/random_tests.rs:72:18\n   |\n72 |     let result = rayleigh(1.0, &[1000]).unwrap();\n   |                  ^^^^^^^^ not found in this scope\n\n",
+        "source": "rustc",
+        "startLineNumber": 72,
+        "startColumn": 18,
+        "endLineNumber": 72,
+        "endColumn": 26,
+        "origin": "extHost2"
+    },
+    {
+        "resource": "/home/grant/github/pocket-tts/rust-numpy/tests/random_tests.rs",
+        "owner": "rustc",
+        "code": {
+            "value": "E0425",
+            "target": {
+                "$mid": 1,
+                "path": "/diagnostic message [9]",
+                "scheme": "rust-analyzer-diagnostics-view",
+                "query": "9",
+                "fragment": "file:///home/grant/github/pocket-tts/rust-numpy/tests/random_tests.rs"
+            }
+        },
+        "severity": 8,
+        "message": "error[E0425]: cannot find function `wald` in this scope\n  --> tests/random_tests.rs:88:18\n   |\n88 |     let result = wald(1.0, 0.5, &[100]).unwrap();\n   |                  ^^^^ not found in this scope\n\n",
+        "source": "rustc",
+        "startLineNumber": 88,
+        "startColumn": 18,
+        "endLineNumber": 88,
+        "endColumn": 22,
+        "origin": "extHost2"
+    },
+    {
+        "resource": "/home/grant/github/pocket-tts/rust-numpy/tests/random_tests.rs",
+        "owner": "rustc",
+        "code": {
+            "value": "E0425",
+            "target": {
+                "$mid": 1,
+                "path": "/diagnostic message [10]",
+                "scheme": "rust-analyzer-diagnostics-view",
+                "query": "10",
+                "fragment": "file:///home/grant/github/pocket-tts/rust-numpy/tests/random_tests.rs"
+            }
+        },
+        "severity": 8,
+        "message": "error[E0425]: cannot find function `weibull` in this scope\n   --> tests/random_tests.rs:105:18\n    |\n105 |     let result = weibull(2.0, &[1000]).unwrap();\n    |                  ^^^^^^^ not found in this scope\n\n",
+        "source": "rustc",
+        "startLineNumber": 105,
+        "startColumn": 18,
+        "endLineNumber": 105,
+        "endColumn": 25,
+        "origin": "extHost2"
+    },
+    {
+        "resource": "/home/grant/github/pocket-tts/rust-numpy/tests/random_tests.rs",
+        "owner": "rustc",
+        "code": {
+            "value": "E0425",
+            "target": {
+                "$mid": 1,
+                "path": "/diagnostic message [11]",
+                "scheme": "rust-analyzer-diagnostics-view",
+                "query": "11",
+                "fragment": "file:///home/grant/github/pocket-tts/rust-numpy/tests/random_tests.rs"
+            }
+        },
+        "severity": 8,
+        "message": "error[E0425]: cannot find function `triangular` in this scope\n   --> tests/random_tests.rs:117:18\n    |\n117 |     let result = triangular(0.0, 0.5, 1.0, &[100]).unwrap();\n    |                  ^^^^^^^^^^ not found in this scope\n\n",
+        "source": "rustc",
+        "startLineNumber": 117,
+        "startColumn": 18,
+        "endLineNumber": 117,
+        "endColumn": 28,
+        "origin": "extHost2"
+    },
+    {
+        "resource": "/home/grant/github/pocket-tts/rust-numpy/tests/random_tests.rs",
+        "owner": "rustc",
+        "code": {
+            "value": "E0425",
+            "target": {
+                "$mid": 1,
+                "path": "/diagnostic message [12]",
+                "scheme": "rust-analyzer-diagnostics-view",
+                "query": "12",
+                "fragment": "file:///home/grant/github/pocket-tts/rust-numpy/tests/random_tests.rs"
+            }
+        },
+        "severity": 8,
+        "message": "error[E0425]: cannot find function `pareto` in this scope\n   --> tests/random_tests.rs:129:18\n    |\n129 |     let result = pareto(3.0, &[1000]).unwrap();\n    |                  ^^^^^^ not found in this scope\n\n",
+        "source": "rustc",
+        "startLineNumber": 129,
+        "startColumn": 18,
+        "endLineNumber": 129,
+        "endColumn": 24,
+        "origin": "extHost2"
+    },
+    {
+        "resource": "/home/grant/github/pocket-tts/rust-numpy/tests/random_tests.rs",
+        "owner": "rustc",
+        "code": {
+            "value": "E0425",
+            "target": {
+                "$mid": 1,
+                "path": "/diagnostic message [13]",
+                "scheme": "rust-analyzer-diagnostics-view",
+                "query": "13",
+                "fragment": "file:///home/grant/github/pocket-tts/rust-numpy/tests/random_tests.rs"
+            }
+        },
+        "severity": 8,
+        "message": "error[E0425]: cannot find function `zipf` in this scope\n   --> tests/random_tests.rs:141:18\n    |\n141 |     let result = zipf(2.0, &[100]).unwrap();\n    |                  ^^^^ not found in this scope\n\n",
+        "source": "rustc",
+        "startLineNumber": 141,
+        "startColumn": 18,
+        "endLineNumber": 141,
+        "endColumn": 22,
+        "origin": "extHost2"
+    },
+    {
+        "resource": "/home/grant/github/pocket-tts/rust-numpy/tests/random_tests.rs",
+        "owner": "rustc",
+        "code": {
+            "value": "E0282",
+            "target": {
+                "$mid": 1,
+                "path": "/diagnostic message [14]",
+                "scheme": "rust-analyzer-diagnostics-view",
+                "query": "14",
+                "fragment": "file:///home/grant/github/pocket-tts/rust-numpy/tests/random_tests.rs"
+            }
+        },
+        "severity": 8,
+        "message": "error[E0282]: type annotations needed\n   --> tests/random_tests.rs:148:17\n    |\n148 |         assert!(val.fract() == 0.0);\n    |                 ^^^ cannot infer type\n\n",
+        "source": "rustc",
+        "startLineNumber": 148,
+        "startColumn": 17,
+        "endLineNumber": 148,
+        "endColumn": 20,
+        "origin": "extHost2"
+    },
+    {
+        "resource": "/home/grant/github/pocket-tts/rust-numpy/tests/random_tests.rs",
+        "owner": "rustc",
+        "code": {
+            "value": "E0425",
+            "target": {
+                "$mid": 1,
+                "path": "/diagnostic message [15]",
+                "scheme": "rust-analyzer-diagnostics-view",
+                "query": "15",
+                "fragment": "file:///home/grant/github/pocket-tts/rust-numpy/tests/random_tests.rs"
+            }
+        },
+        "severity": 8,
+        "message": "error[E0425]: cannot find function `standard_cauchy` in this scope\n   --> tests/random_tests.rs:154:18\n    |\n154 |     let result = standard_cauchy(&[1000]).unwrap();\n    |                  ^^^^^^^^^^^^^^^ not found in this scope\n\n",
+        "source": "rustc",
+        "startLineNumber": 154,
+        "startColumn": 18,
+        "endLineNumber": 154,
+        "endColumn": 33,
+        "origin": "extHost2"
+    },
+    {
+        "resource": "/home/grant/github/pocket-tts/rust-numpy/tests/random_tests.rs",
+        "owner": "rustc",
+        "code": {
+            "value": "E0282",
+            "target": {
+                "$mid": 1,
+                "path": "/diagnostic message [16]",
+                "scheme": "rust-analyzer-diagnostics-view",
+                "query": "16",
+                "fragment": "file:///home/grant/github/pocket-tts/rust-numpy/tests/random_tests.rs"
+            }
+        },
+        "severity": 8,
+        "message": "error[E0282]: type annotations needed for `&_`\n   --> tests/random_tests.rs:159:38\n    |\n159 |     let max_abs = values.iter().map(|&x| x.abs()).fold(0.0_f64, f64::max);\n    |                                      ^^  - type must be known at this point\n    |\n",
+        "source": "rustc",
+        "startLineNumber": 159,
+        "startColumn": 38,
+        "endLineNumber": 159,
+        "endColumn": 40,
+        "relatedInformation": [
+            {
+                "startLineNumber": 159,
+                "startColumn": 42,
+                "endLineNumber": 159,
+                "endColumn": 43,
+                "message": "type must be known at this point",
+                "resource": "/home/grant/github/pocket-tts/rust-numpy/tests/random_tests.rs"
+            },
+            {
+                "startLineNumber": 159,
+                "startColumn": 40,
+                "endLineNumber": 159,
+                "endColumn": 40,
+                "message": "consider giving this closure parameter an explicit type, where the placeholders `_` are specified: `: &_`",
+                "resource": "/home/grant/github/pocket-tts/rust-numpy/tests/random_tests.rs"
+            }
+        ],
+        "origin": "extHost2"
+    },
+    {
+        "resource": "/home/grant/github/pocket-tts/rust-numpy/tests/random_tests.rs",
+        "owner": "rustc",
+        "code": {
+            "value": "E0425",
+            "target": {
+                "$mid": 1,
+                "path": "/diagnostic message [19]",
+                "scheme": "rust-analyzer-diagnostics-view",
+                "query": "19",
+                "fragment": "file:///home/grant/github/pocket-tts/rust-numpy/tests/random_tests.rs"
+            }
+        },
+        "severity": 8,
+        "message": "error[E0425]: cannot find function `standard_exponential` in this scope\n   --> tests/random_tests.rs:165:18\n    |\n165 |     let result = standard_exponential(&[1000]).unwrap();\n    |                  ^^^^^^^^^^^^^^^^^^^^ not found in this scope\n\n",
+        "source": "rustc",
+        "startLineNumber": 165,
+        "startColumn": 18,
+        "endLineNumber": 165,
+        "endColumn": 38,
+        "origin": "extHost2"
+    },
+    {
+        "resource": "/home/grant/github/pocket-tts/rust-numpy/tests/random_tests.rs",
+        "owner": "rustc",
+        "code": {
+            "value": "E0425",
+            "target": {
+                "$mid": 1,
+                "path": "/diagnostic message [20]",
+                "scheme": "rust-analyzer-diagnostics-view",
+                "query": "20",
+                "fragment": "file:///home/grant/github/pocket-tts/rust-numpy/tests/random_tests.rs"
+            }
+        },
+        "severity": 8,
+        "message": "error[E0425]: cannot find function `standard_gamma` in this scope\n   --> tests/random_tests.rs:181:18\n    |\n181 |       let result = standard_gamma(2.0, &[1000]).unwrap();\n    |                    ^^^^^^^^^^^^^^ help: a function with a similar name exists: `standard_normal`\n    |\n   ::: /home/grant/github/pocket-tts/rust-numpy/src/random/mod.rs:178:1\n    |\n178 | / pub fn standard_normal<T>(shape: &[usize]) -> Result<Array<T>, NumPyError>\n179 | | where\n180 | |     T: Clone + PartialOrd + rand_distr::uniform::SampleUniform + Default + 'static + Into<f64> + From<f64>,\n    | |___________________________________________________________________________________________________________- similarly named function `standard_normal` defined here\n\n",
+        "source": "rustc",
+        "startLineNumber": 181,
+        "startColumn": 18,
+        "endLineNumber": 181,
+        "endColumn": 32,
+        "relatedInformation": [
+            {
+                "startLineNumber": 178,
+                "startColumn": 1,
+                "endLineNumber": 180,
+                "endColumn": 108,
+                "message": "similarly named function `standard_normal` defined here",
+                "resource": "/home/grant/github/pocket-tts/rust-numpy/src/random/mod.rs"
+            },
+            {
+                "startLineNumber": 181,
+                "startColumn": 18,
+                "endLineNumber": 181,
+                "endColumn": 32,
+                "message": "a function with a similar name exists: `standard_normal`",
+                "resource": "/home/grant/github/pocket-tts/rust-numpy/tests/random_tests.rs"
+            }
+        ],
+        "origin": "extHost2"
+    },
+    {
+        "resource": "/home/grant/github/pocket-tts/rust-numpy/examples/random_examples.rs",
+        "owner": "rustc",
+        "code": {
+            "value": "deprecated",
+            "target": {
+                "$mid": 1,
+                "path": "/diagnostic message [16]",
+                "scheme": "rust-analyzer-diagnostics-view",
+                "query": "16",
+                "fragment": "file:///home/grant/github/pocket-tts/rust-numpy/examples/random_examples.rs"
+            }
+        },
+        "severity": 4,
+        "message": "warning: use of deprecated module `rust_numpy::random::legacy`: Use modern Generator API instead\n  |\n9 | use rust_numpy::random::legacy;\n  |                         ^^^^^^\n  |\n  = note: `#[warn(deprecated)]` on by default\n\n",
+        "source": "rustc",
+        "startLineNumber": 9,
+        "startColumn": 25,
+        "endLineNumber": 9,
+        "endColumn": 31,
+        "tags": [
+            2
+        ],
+        "origin": "extHost2"
+    },
+    {
+        "resource": "/home/grant/github/pocket-tts/rust-numpy/examples/random_examples.rs",
+        "owner": "rustc",
+        "code": {
+            "value": "deprecated",
+            "target": {
+                "$mid": 1,
+                "path": "/diagnostic message [17]",
+                "scheme": "rust-analyzer-diagnostics-view",
+                "query": "17",
+                "fragment": "file:///home/grant/github/pocket-tts/rust-numpy/examples/random_examples.rs"
+            }
+        },
+        "severity": 4,
+        "message": "warning: use of deprecated function `rust_numpy::random::legacy_random`: Use random() function which uses modern Generator API\n   --> examples/random_examples.rs:161:30\n    |\n161 |     let legacy_arr = legacy::legacy_random::<f64>(&[2, 2], Dtype::Float64 { byteorder: None })?;\n    |                              ^^^^^^^^^^^^^\n\n",
+        "source": "rustc",
+        "startLineNumber": 161,
+        "startColumn": 30,
+        "endLineNumber": 161,
+        "endColumn": 43,
+        "tags": [
+            2
+        ],
+        "origin": "extHost2"
+    },
+    {
+        "resource": "/home/grant/github/pocket-tts/rust-numpy/examples/random_examples.rs",
+        "owner": "rustc",
+        "code": {
+            "value": "deprecated",
+            "target": {
+                "$mid": 1,
+                "path": "/diagnostic message [18]",
+                "scheme": "rust-analyzer-diagnostics-view",
+                "query": "18",
+                "fragment": "file:///home/grant/github/pocket-tts/rust-numpy/examples/random_examples.rs"
+            }
+        },
+        "severity": 4,
+        "message": "warning: use of deprecated function `rust_numpy::random::legacy_randint`: Use randint() function which uses modern Generator API\n   --> examples/random_examples.rs:164:34\n    |\n164 |     let legacy_int_arr = legacy::legacy_randint::<i32>(0, 10, &[2, 2])?;\n    |                                  ^^^^^^^^^^^^^^\n\n",
+        "source": "rustc",
+        "startLineNumber": 164,
+        "startColumn": 34,
+        "endLineNumber": 164,
+        "endColumn": 48,
+        "tags": [
+            2
+        ],
+        "origin": "extHost2"
+    },
+    {
+        "resource": "/home/grant/github/pocket-tts/rust-numpy/examples/random_examples.rs",
+        "owner": "rustc",
+        "code": {
+            "value": "deprecated",
+            "target": {
+                "$mid": 1,
+                "path": "/diagnostic message [19]",
+                "scheme": "rust-analyzer-diagnostics-view",
+                "query": "19",
+                "fragment": "file:///home/grant/github/pocket-tts/rust-numpy/examples/random_examples.rs"
+            }
+        },
+        "severity": 4,
+        "message": "warning: use of deprecated function `rust_numpy::random::seed`: Use default_rng_with_seed(seed) instead for new code\n   --> examples/random_examples.rs:168:13\n    |\n168 |     legacy::seed(12345);\n    |             ^^^^\n\n",
+        "source": "rustc",
+        "startLineNumber": 168,
+        "startColumn": 13,
+        "endLineNumber": 168,
+        "endColumn": 17,
+        "tags": [
+            2
+        ],
+        "origin": "extHost2"
+    },
+    {
+        "resource": "/home/grant/github/pocket-tts/rust-numpy/examples/random_examples.rs",
+        "owner": "rustc",
+        "code": {
+            "value": "deprecated",
+            "target": {
+                "$mid": 1,
+                "path": "/diagnostic message [20]",
+                "scheme": "rust-analyzer-diagnostics-view",
+                "query": "20",
+                "fragment": "file:///home/grant/github/pocket-tts/rust-numpy/examples/random_examples.rs"
+            }
+        },
+        "severity": 4,
+        "message": "warning: use of deprecated function `rust_numpy::random::legacy_random`: Use random() function which uses modern Generator API\n   --> examples/random_examples.rs:169:37\n    |\n169 |     let seeded_legacy_arr = legacy::legacy_random::<f64>(&[2, 2], Dtype::Float64 { byteorder: None })?;\n    |                                     ^^^^^^^^^^^^^\n\n",
+        "source": "rustc",
+        "startLineNumber": 169,
+        "startColumn": 37,
+        "endLineNumber": 169,
+        "endColumn": 50,
+        "tags": [
+            2
+        ],
+        "origin": "extHost2"
+    },
+    {
+        "resource": "/home/grant/github/pocket-tts/rust-numpy/examples/random_examples.rs",
+        "owner": "rustc",
+        "code": {
+            "value": "deprecated",
+            "target": {
+                "$mid": 1,
+                "path": "/diagnostic message [21]",
+                "scheme": "rust-analyzer-diagnostics-view",
+                "query": "21",
+                "fragment": "file:///home/grant/github/pocket-tts/rust-numpy/examples/random_examples.rs"
+            }
+        },
+        "severity": 4,
+        "message": "warning: use of deprecated function `rust_numpy::random::legacy_random`: Use random() function which uses modern Generator API\n   --> examples/random_examples.rs:188:30\n    |\n188 |     let legacy_arr = legacy::legacy_random::<f64>(&[2, 2], Dtype::Float64 { byteorder: None })?;\n    |                              ^^^^^^^^^^^^^\n\n",
+        "source": "rustc",
+        "startLineNumber": 188,
+        "startColumn": 30,
+        "endLineNumber": 188,
+        "endColumn": 43,
+        "tags": [
+            2
+        ],
+        "origin": "extHost2"
+    },
+    {
+        "resource": "/home/grant/github/pocket-tts/rust-numpy/examples/random_examples.rs",
+        "owner": "rustc",
+        "code": {
+            "value": "deprecated",
+            "target": {
+                "$mid": 1,
+                "path": "/diagnostic message [22]",
+                "scheme": "rust-analyzer-diagnostics-view",
+                "query": "22",
+                "fragment": "file:///home/grant/github/pocket-tts/rust-numpy/examples/random_examples.rs"
+            }
+        },
+        "severity": 4,
+        "message": "warning: use of deprecated function `rust_numpy::random::seed`: Use default_rng_with_seed(seed) instead for new code\n   --> examples/random_examples.rs:259:13\n    |\n259 |     legacy::seed(42);\n    |             ^^^^\n\n",
+        "source": "rustc",
+        "startLineNumber": 259,
+        "startColumn": 13,
+        "endLineNumber": 259,
+        "endColumn": 17,
+        "tags": [
+            2
+        ],
+        "origin": "extHost2"
+    },
+    {
+        "resource": "/home/grant/github/pocket-tts/rust-numpy/examples/random_examples.rs",
+        "owner": "rustc",
+        "code": {
+            "value": "deprecated",
+            "target": {
+                "$mid": 1,
+                "path": "/diagnostic message [23]",
+                "scheme": "rust-analyzer-diagnostics-view",
+                "query": "23",
+                "fragment": "file:///home/grant/github/pocket-tts/rust-numpy/examples/random_examples.rs"
+            }
+        },
+        "severity": 4,
+        "message": "warning: use of deprecated function `rust_numpy::random::legacy_random`: Use random() function which uses modern Generator API\n   --> examples/random_examples.rs:260:27\n    |\n260 |     let old_arr = legacy::legacy_random::<f64>(&[2, 2], Dtype::Float64 { byteorder: None })?;\n    |                           ^^^^^^^^^^^^^\n\n",
+        "source": "rustc",
+        "startLineNumber": 260,
+        "startColumn": 27,
+        "endLineNumber": 260,
+        "endColumn": 40,
+        "tags": [
+            2
+        ],
+        "origin": "extHost2"
+    },
+    {
+        "resource": "/home/grant/github/pocket-tts/rust-numpy/src/char.rs",
+        "owner": "rustc",
+        "code": {
+            "value": "unused_imports",
+            "target": {
+                "$mid": 1,
+                "path": "/diagnostic message [0]",
+                "scheme": "rust-analyzer-diagnostics-view",
+                "query": "0",
+                "fragment": "file:///home/grant/github/pocket-tts/rust-numpy/src/char.rs"
+            }
+        },
+        "severity": 4,
+        "message": "warning: unused import: `std::collections::HashMap`\n  |\n2 | use std::collections::HashMap;\n  |     ^^^^^^^^^^^^^^^^^^^^^^^^^\n  |\n  = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default\n\n",
+        "source": "rustc",
+        "startLineNumber": 2,
+        "startColumn": 5,
+        "endLineNumber": 2,
+        "endColumn": 30,
+        "relatedInformation": [
+            {
+                "startLineNumber": 2,
+                "startColumn": 1,
+                "endLineNumber": 3,
+                "endColumn": 1,
+                "message": "remove the whole `use` item",
+                "resource": "/home/grant/github/pocket-tts/rust-numpy/src/char.rs"
+            }
+        ],
+        "tags": [
+            1
+        ],
+        "origin": "extHost2"
+    },
+    {
+        "resource": "/home/grant/github/pocket-tts/rust-numpy/src/char.rs",
+        "owner": "rustc",
+        "code": {
+            "value": "unused_variables",
+            "target": {
+                "$mid": 1,
+                "path": "/diagnostic message [2]",
+                "scheme": "rust-analyzer-diagnostics-view",
+                "query": "2",
+                "fragment": "file:///home/grant/github/pocket-tts/rust-numpy/src/char.rs"
+            }
+        },
+        "severity": 4,
+        "message": "warning: unused variable: `enc`\n  --> src/char.rs:55:9\n   |\n55 |     let enc = encoding.unwrap_or(\"utf-8\");\n   |         ^^^ help: if this is intentional, prefix it with an underscore: `_enc`\n   |\n   = note: `#[warn(unused_variables)]` (part of `#[warn(unused)]`) on by default\n\n",
+        "source": "rustc",
+        "startLineNumber": 55,
+        "startColumn": 9,
+        "endLineNumber": 55,
+        "endColumn": 12,
+        "relatedInformation": [
+            {
+                "startLineNumber": 55,
+                "startColumn": 9,
+                "endLineNumber": 55,
+                "endColumn": 12,
+                "message": "if this is intentional, prefix it with an underscore: `_enc`",
+                "resource": "/home/grant/github/pocket-tts/rust-numpy/src/char.rs"
+            }
+        ],
+        "tags": [
+            1
+        ],
+        "origin": "extHost2"
+    },
+    {
+        "resource": "/home/grant/github/pocket-tts/rust-numpy/src/char.rs",
+        "owner": "rustc",
+        "code": {
+            "value": "unused_variables",
+            "target": {
+                "$mid": 1,
+                "path": "/diagnostic message [4]",
+                "scheme": "rust-analyzer-diagnostics-view",
+                "query": "4",
+                "fragment": "file:///home/grant/github/pocket-tts/rust-numpy/src/char.rs"
+            }
+        },
+        "severity": 4,
+        "message": "warning: unused variable: `enc`\n  --> src/char.rs:79:9\n   |\n79 |     let enc = encoding.unwrap_or(\"utf-8\");\n   |         ^^^ help: if this is intentional, prefix it with an underscore: `_enc`\n\n",
+        "source": "rustc",
+        "startLineNumber": 79,
+        "startColumn": 9,
+        "endLineNumber": 79,
+        "endColumn": 12,
+        "relatedInformation": [
+            {
+                "startLineNumber": 79,
+                "startColumn": 9,
+                "endLineNumber": 79,
+                "endColumn": 12,
+                "message": "if this is intentional, prefix it with an underscore: `_enc`",
+                "resource": "/home/grant/github/pocket-tts/rust-numpy/src/char.rs"
+            }
+        ],
+        "tags": [
+            1
+        ],
+        "origin": "extHost2"
+    },
+    {
+        "resource": "/home/grant/github/pocket-tts/rust-numpy/src/random/generator.rs",
+        "owner": "rustc",
+        "code": {
+            "value": "unused_variables",
+            "target": {
+                "$mid": 1,
+                "path": "/diagnostic message [0]",
+                "scheme": "rust-analyzer-diagnostics-view",
+                "query": "0",
+                "fragment": "file:///home/grant/github/pocket-tts/rust-numpy/src/random/generator.rs"
+            }
+        },
+        "severity": 4,
+        "message": "warning: unused variable: `loc`\n   --> src/random/generator.rs:237:9\n    |\n237 |         loc: f64,\n    |         ^^^ help: if this is intentional, prefix it with an underscore: `_loc`\n\n",
+        "source": "rustc",
+        "startLineNumber": 237,
+        "startColumn": 9,
+        "endLineNumber": 237,
+        "endColumn": 12,
+        "relatedInformation": [
+            {
+                "startLineNumber": 237,
+                "startColumn": 9,
+                "endLineNumber": 237,
+                "endColumn": 12,
+                "message": "if this is intentional, prefix it with an underscore: `_loc`",
+                "resource": "/home/grant/github/pocket-tts/rust-numpy/src/random/generator.rs"
+            }
+        ],
+        "modelVersionId": 1,
+        "tags": [
+            1
+        ],
+        "origin": "extHost2"
+    },
+    {
+        "resource": "/home/grant/github/pocket-tts/rust-numpy/src/random/generator.rs",
+        "owner": "rustc",
+        "code": {
+            "value": "unused_variables",
+            "target": {
+                "$mid": 1,
+                "path": "/diagnostic message [2]",
+                "scheme": "rust-analyzer-diagnostics-view",
+                "query": "2",
+                "fragment": "file:///home/grant/github/pocket-tts/rust-numpy/src/random/generator.rs"
+            }
+        },
+        "severity": 4,
+        "message": "warning: unused variable: `scale`\n   --> src/random/generator.rs:238:9\n    |\n238 |         scale: f64,\n    |         ^^^^^ help: if this is intentional, prefix it with an underscore: `_scale`\n\n",
+        "source": "rustc",
+        "startLineNumber": 238,
+        "startColumn": 9,
+        "endLineNumber": 238,
+        "endColumn": 14,
+        "relatedInformation": [
+            {
+                "startLineNumber": 238,
+                "startColumn": 9,
+                "endLineNumber": 238,
+                "endColumn": 14,
+                "message": "if this is intentional, prefix it with an underscore: `_scale`",
+                "resource": "/home/grant/github/pocket-tts/rust-numpy/src/random/generator.rs"
+            }
+        ],
+        "modelVersionId": 1,
+        "tags": [
+            1
+        ],
+        "origin": "extHost2"
+    },
+    {
+        "resource": "/home/grant/github/pocket-tts/rust-numpy/src/random/generator.rs",
+        "owner": "rustc",
+        "code": {
+            "value": "unused_variables",
+            "target": {
+                "$mid": 1,
+                "path": "/diagnostic message [4]",
+                "scheme": "rust-analyzer-diagnostics-view",
+                "query": "4",
+                "fragment": "file:///home/grant/github/pocket-tts/rust-numpy/src/random/generator.rs"
+            }
+        },
+        "severity": 4,
+        "message": "warning: unused variable: `shape`\n   --> src/random/generator.rs:239:9\n    |\n239 |         shape: &[usize],\n    |         ^^^^^ help: if this is intentional, prefix it with an underscore: `_shape`\n\n",
+        "source": "rustc",
+        "startLineNumber": 239,
+        "startColumn": 9,
+        "endLineNumber": 239,
+        "endColumn": 14,
+        "relatedInformation": [
+            {
+                "startLineNumber": 239,
+                "startColumn": 9,
+                "endLineNumber": 239,
+                "endColumn": 14,
+                "message": "if this is intentional, prefix it with an underscore: `_shape`",
+                "resource": "/home/grant/github/pocket-tts/rust-numpy/src/random/generator.rs"
+            }
+        ],
+        "modelVersionId": 1,
+        "tags": [
+            1
+        ],
+        "origin": "extHost2"
+    },
+    {
+        "resource": "/home/grant/github/pocket-tts/rust-numpy/src/random/generator.rs",
+        "owner": "rustc",
+        "code": {
+            "value": "unused_variables",
+            "target": {
+                "$mid": 1,
+                "path": "/diagnostic message [6]",
+                "scheme": "rust-analyzer-diagnostics-view",
+                "query": "6",
+                "fragment": "file:///home/grant/github/pocket-tts/rust-numpy/src/random/generator.rs"
+            }
+        },
+        "severity": 4,
+        "message": "warning: unused variable: `mean`\n   --> src/random/generator.rs:641:9\n    |\n641 |         mean: &[f64],\n    |         ^^^^ help: if this is intentional, prefix it with an underscore: `_mean`\n\n",
+        "source": "rustc",
+        "startLineNumber": 641,
+        "startColumn": 9,
+        "endLineNumber": 641,
+        "endColumn": 13,
+        "relatedInformation": [
+            {
+                "startLineNumber": 641,
+                "startColumn": 9,
+                "endLineNumber": 641,
+                "endColumn": 13,
+                "message": "if this is intentional, prefix it with an underscore: `_mean`",
+                "resource": "/home/grant/github/pocket-tts/rust-numpy/src/random/generator.rs"
+            }
+        ],
+        "modelVersionId": 1,
+        "tags": [
+            1
+        ],
+        "origin": "extHost2"
+    },
+    {
+        "resource": "/home/grant/github/pocket-tts/rust-numpy/src/random/generator.rs",
+        "owner": "rustc",
+        "code": {
+            "value": "unused_variables",
+            "target": {
+                "$mid": 1,
+                "path": "/diagnostic message [8]",
+                "scheme": "rust-analyzer-diagnostics-view",
+                "query": "8",
+                "fragment": "file:///home/grant/github/pocket-tts/rust-numpy/src/random/generator.rs"
+            }
+        },
+        "severity": 4,
+        "message": "warning: unused variable: `cov`\n   --> src/random/generator.rs:642:9\n    |\n642 |         cov: &[f64],\n    |         ^^^ help: if this is intentional, prefix it with an underscore: `_cov`\n\n",
+        "source": "rustc",
+        "startLineNumber": 642,
+        "startColumn": 9,
+        "endLineNumber": 642,
+        "endColumn": 12,
+        "relatedInformation": [
+            {
+                "startLineNumber": 642,
+                "startColumn": 9,
+                "endLineNumber": 642,
+                "endColumn": 12,
+                "message": "if this is intentional, prefix it with an underscore: `_cov`",
+                "resource": "/home/grant/github/pocket-tts/rust-numpy/src/random/generator.rs"
+            }
+        ],
+        "modelVersionId": 1,
+        "tags": [
+            1
+        ],
+        "origin": "extHost2"
+    },
+    {
+        "resource": "/home/grant/github/pocket-tts/rust-numpy/src/random/generator.rs",
+        "owner": "rustc",
+        "code": {
+            "value": "unused_variables",
+            "target": {
+                "$mid": 1,
+                "path": "/diagnostic message [10]",
+                "scheme": "rust-analyzer-diagnostics-view",
+                "query": "10",
+                "fragment": "file:///home/grant/github/pocket-tts/rust-numpy/src/random/generator.rs"
+            }
+        },
+        "severity": 4,
+        "message": "warning: unused variable: `size`\n   --> src/random/generator.rs:643:9\n    |\n643 |         size: Option<&[usize]>,\n    |         ^^^^ help: if this is intentional, prefix it with an underscore: `_size`\n\n",
+        "source": "rustc",
+        "startLineNumber": 643,
+        "startColumn": 9,
+        "endLineNumber": 643,
+        "endColumn": 13,
+        "relatedInformation": [
+            {
+                "startLineNumber": 643,
+                "startColumn": 9,
+                "endLineNumber": 643,
+                "endColumn": 13,
+                "message": "if this is intentional, prefix it with an underscore: `_size`",
+                "resource": "/home/grant/github/pocket-tts/rust-numpy/src/random/generator.rs"
+            }
+        ],
+        "modelVersionId": 1,
+        "tags": [
+            1
+        ],
+        "origin": "extHost2"
+    },
+    {
+        "resource": "/home/grant/github/pocket-tts/rust-numpy/src/random/generator.rs",
+        "owner": "rustc",
+        "code": {
+            "value": "unused_variables",
+            "target": {
+                "$mid": 1,
+                "path": "/diagnostic message [12]",
+                "scheme": "rust-analyzer-diagnostics-view",
+                "query": "12",
+                "fragment": "file:///home/grant/github/pocket-tts/rust-numpy/src/random/generator.rs"
+            }
+        },
+        "severity": 4,
+        "message": "warning: unused variable: `df`\n   --> src/random/generator.rs:657:9\n    |\n657 |         df: f64,\n    |         ^^ help: if this is intentional, prefix it with an underscore: `_df`\n\n",
+        "source": "rustc",
+        "startLineNumber": 657,
+        "startColumn": 9,
+        "endLineNumber": 657,
+        "endColumn": 11,
+        "relatedInformation": [
+            {
+                "startLineNumber": 657,
+                "startColumn": 9,
+                "endLineNumber": 657,
+                "endColumn": 11,
+                "message": "if this is intentional, prefix it with an underscore: `_df`",
+                "resource": "/home/grant/github/pocket-tts/rust-numpy/src/random/generator.rs"
+            }
+        ],
+        "modelVersionId": 1,
+        "tags": [
+            1
+        ],
+        "origin": "extHost2"
+    },
+    {
+        "resource": "/home/grant/github/pocket-tts/rust-numpy/src/random/generator.rs",
+        "owner": "rustc",
+        "code": {
+            "value": "unused_variables",
+            "target": {
+                "$mid": 1,
+                "path": "/diagnostic message [14]",
+                "scheme": "rust-analyzer-diagnostics-view",
+                "query": "14",
+                "fragment": "file:///home/grant/github/pocket-tts/rust-numpy/src/random/generator.rs"
+            }
+        },
+        "severity": 4,
+        "message": "warning: unused variable: `nonc`\n   --> src/random/generator.rs:658:9\n    |\n658 |         nonc: f64,\n    |         ^^^^ help: if this is intentional, prefix it with an underscore: `_nonc`\n\n",
+        "source": "rustc",
+        "startLineNumber": 658,
+        "startColumn": 9,
+        "endLineNumber": 658,
+        "endColumn": 13,
+        "relatedInformation": [
+            {
+                "startLineNumber": 658,
+                "startColumn": 9,
+                "endLineNumber": 658,
+                "endColumn": 13,
+                "message": "if this is intentional, prefix it with an underscore: `_nonc`",
+                "resource": "/home/grant/github/pocket-tts/rust-numpy/src/random/generator.rs"
+            }
+        ],
+        "modelVersionId": 1,
+        "tags": [
+            1
+        ],
+        "origin": "extHost2"
+    },
+    {
+        "resource": "/home/grant/github/pocket-tts/rust-numpy/src/random/generator.rs",
+        "owner": "rustc",
+        "code": {
+            "value": "unused_variables",
+            "target": {
+                "$mid": 1,
+                "path": "/diagnostic message [16]",
+                "scheme": "rust-analyzer-diagnostics-view",
+                "query": "16",
+                "fragment": "file:///home/grant/github/pocket-tts/rust-numpy/src/random/generator.rs"
+            }
+        },
+        "severity": 4,
+        "message": "warning: unused variable: `shape`\n   --> src/random/generator.rs:659:9\n    |\n659 |         shape: &[usize],\n    |         ^^^^^ help: if this is intentional, prefix it with an underscore: `_shape`\n\n",
+        "source": "rustc",
+        "startLineNumber": 659,
+        "startColumn": 9,
+        "endLineNumber": 659,
+        "endColumn": 14,
+        "relatedInformation": [
+            {
+                "startLineNumber": 659,
+                "startColumn": 9,
+                "endLineNumber": 659,
+                "endColumn": 14,
+                "message": "if this is intentional, prefix it with an underscore: `_shape`",
+                "resource": "/home/grant/github/pocket-tts/rust-numpy/src/random/generator.rs"
+            }
+        ],
+        "modelVersionId": 1,
+        "tags": [
+            1
+        ],
+        "origin": "extHost2"
+    },
+    {
+        "resource": "/home/grant/github/pocket-tts/rust-numpy/src/random/generator.rs",
+        "owner": "rustc",
+        "code": {
+            "value": "unused_variables",
+            "target": {
+                "$mid": 1,
+                "path": "/diagnostic message [18]",
+                "scheme": "rust-analyzer-diagnostics-view",
+                "query": "18",
+                "fragment": "file:///home/grant/github/pocket-tts/rust-numpy/src/random/generator.rs"
+            }
+        },
+        "severity": 4,
+        "message": "warning: unused variable: `dfnum`\n   --> src/random/generator.rs:673:9\n    |\n673 |         dfnum: f64,\n    |         ^^^^^ help: if this is intentional, prefix it with an underscore: `_dfnum`\n\n",
+        "source": "rustc",
+        "startLineNumber": 673,
+        "startColumn": 9,
+        "endLineNumber": 673,
+        "endColumn": 14,
+        "relatedInformation": [
+            {
+                "startLineNumber": 673,
+                "startColumn": 9,
+                "endLineNumber": 673,
+                "endColumn": 14,
+                "message": "if this is intentional, prefix it with an underscore: `_dfnum`",
+                "resource": "/home/grant/github/pocket-tts/rust-numpy/src/random/generator.rs"
+            }
+        ],
+        "modelVersionId": 1,
+        "tags": [
+            1
+        ],
+        "origin": "extHost2"
+    },
+    {
+        "resource": "/home/grant/github/pocket-tts/rust-numpy/src/random/generator.rs",
+        "owner": "rustc",
+        "code": {
+            "value": "unused_variables",
+            "target": {
+                "$mid": 1,
+                "path": "/diagnostic message [20]",
+                "scheme": "rust-analyzer-diagnostics-view",
+                "query": "20",
+                "fragment": "file:///home/grant/github/pocket-tts/rust-numpy/src/random/generator.rs"
+            }
+        },
+        "severity": 4,
+        "message": "warning: unused variable: `dfden`\n   --> src/random/generator.rs:674:9\n    |\n674 |         dfden: f64,\n    |         ^^^^^ help: if this is intentional, prefix it with an underscore: `_dfden`\n\n",
+        "source": "rustc",
+        "startLineNumber": 674,
+        "startColumn": 9,
+        "endLineNumber": 674,
+        "endColumn": 14,
+        "relatedInformation": [
+            {
+                "startLineNumber": 674,
+                "startColumn": 9,
+                "endLineNumber": 674,
+                "endColumn": 14,
+                "message": "if this is intentional, prefix it with an underscore: `_dfden`",
+                "resource": "/home/grant/github/pocket-tts/rust-numpy/src/random/generator.rs"
+            }
+        ],
+        "modelVersionId": 1,
+        "tags": [
+            1
+        ],
+        "origin": "extHost2"
+    },
+    {
+        "resource": "/home/grant/github/pocket-tts/rust-numpy/src/random/generator.rs",
+        "owner": "rustc",
+        "code": {
+            "value": "unused_variables",
+            "target": {
+                "$mid": 1,
+                "path": "/diagnostic message [22]",
+                "scheme": "rust-analyzer-diagnostics-view",
+                "query": "22",
+                "fragment": "file:///home/grant/github/pocket-tts/rust-numpy/src/random/generator.rs"
+            }
+        },
+        "severity": 4,
+        "message": "warning: unused variable: `shape`\n   --> src/random/generator.rs:675:9\n    |\n675 |         shape: &[usize],\n    |         ^^^^^ help: if this is intentional, prefix it with an underscore: `_shape`\n\n",
+        "source": "rustc",
+        "startLineNumber": 675,
+        "startColumn": 9,
+        "endLineNumber": 675,
+        "endColumn": 14,
+        "relatedInformation": [
+            {
+                "startLineNumber": 675,
+                "startColumn": 9,
+                "endLineNumber": 675,
+                "endColumn": 14,
+                "message": "if this is intentional, prefix it with an underscore: `_shape`",
+                "resource": "/home/grant/github/pocket-tts/rust-numpy/src/random/generator.rs"
+            }
+        ],
+        "modelVersionId": 1,
+        "tags": [
+            1
+        ],
+        "origin": "extHost2"
+    },
+    {
+        "resource": "/home/grant/github/pocket-tts/rust-numpy/src/random/generator.rs",
+        "owner": "rustc",
+        "code": {
+            "value": "unused_variables",
+            "target": {
+                "$mid": 1,
+                "path": "/diagnostic message [24]",
+                "scheme": "rust-analyzer-diagnostics-view",
+                "query": "24",
+                "fragment": "file:///home/grant/github/pocket-tts/rust-numpy/src/random/generator.rs"
+            }
+        },
+        "severity": 4,
+        "message": "warning: unused variable: `a`\n   --> src/random/generator.rs:727:32\n    |\n727 |     pub fn power<T>(&mut self, a: f64, shape: &[usize]) -> Result<Array<T>, NumPyError>\n    |                                ^ help: if this is intentional, prefix it with an underscore: `_a`\n\n",
+        "source": "rustc",
+        "startLineNumber": 727,
+        "startColumn": 32,
+        "endLineNumber": 727,
+        "endColumn": 33,
+        "relatedInformation": [
+            {
+                "startLineNumber": 727,
+                "startColumn": 32,
+                "endLineNumber": 727,
+                "endColumn": 33,
+                "message": "if this is intentional, prefix it with an underscore: `_a`",
+                "resource": "/home/grant/github/pocket-tts/rust-numpy/src/random/generator.rs"
+            }
+        ],
+        "modelVersionId": 1,
+        "tags": [
+            1
+        ],
+        "origin": "extHost2"
+    },
+    {
+        "resource": "/home/grant/github/pocket-tts/rust-numpy/src/random/generator.rs",
+        "owner": "rustc",
+        "code": {
+            "value": "unused_variables",
+            "target": {
+                "$mid": 1,
+                "path": "/diagnostic message [26]",
+                "scheme": "rust-analyzer-diagnostics-view",
+                "query": "26",
+                "fragment": "file:///home/grant/github/pocket-tts/rust-numpy/src/random/generator.rs"
+            }
+        },
+        "severity": 4,
+        "message": "warning: unused variable: `shape`\n   --> src/random/generator.rs:727:40\n    |\n727 |     pub fn power<T>(&mut self, a: f64, shape: &[usize]) -> Result<Array<T>, NumPyError>\n    |                                        ^^^^^ help: if this is intentional, prefix it with an underscore: `_shape`\n\n",
+        "source": "rustc",
+        "startLineNumber": 727,
+        "startColumn": 40,
+        "endLineNumber": 727,
+        "endColumn": 45,
+        "relatedInformation": [
+            {
+                "startLineNumber": 727,
+                "startColumn": 40,
+                "endLineNumber": 727,
+                "endColumn": 45,
+                "message": "if this is intentional, prefix it with an underscore: `_shape`",
+                "resource": "/home/grant/github/pocket-tts/rust-numpy/src/random/generator.rs"
+            }
+        ],
+        "modelVersionId": 1,
+        "tags": [
+            1
+        ],
+        "origin": "extHost2"
+    },
+    {
+        "resource": "/home/grant/github/pocket-tts/rust-numpy/src/random/generator.rs",
+        "owner": "rustc",
+        "code": {
+            "value": "unused_variables",
+            "target": {
+                "$mid": 1,
+                "path": "/diagnostic message [28]",
+                "scheme": "rust-analyzer-diagnostics-view",
+                "query": "28",
+                "fragment": "file:///home/grant/github/pocket-tts/rust-numpy/src/random/generator.rs"
+            }
+        },
+        "severity": 4,
+        "message": "warning: unused variable: `mu`\n   --> src/random/generator.rs:740:9\n    |\n740 |         mu: f64,\n    |         ^^ help: if this is intentional, prefix it with an underscore: `_mu`\n\n",
+        "source": "rustc",
+        "startLineNumber": 740,
+        "startColumn": 9,
+        "endLineNumber": 740,
+        "endColumn": 11,
+        "relatedInformation": [
+            {
+                "startLineNumber": 740,
+                "startColumn": 9,
+                "endLineNumber": 740,
+                "endColumn": 11,
+                "message": "if this is intentional, prefix it with an underscore: `_mu`",
+                "resource": "/home/grant/github/pocket-tts/rust-numpy/src/random/generator.rs"
+            }
+        ],
+        "modelVersionId": 1,
+        "tags": [
+            1
+        ],
+        "origin": "extHost2"
+    },
+    {
+        "resource": "/home/grant/github/pocket-tts/rust-numpy/src/random/generator.rs",
+        "owner": "rustc",
+        "code": {
+            "value": "unused_variables",
+            "target": {
+                "$mid": 1,
+                "path": "/diagnostic message [30]",
+                "scheme": "rust-analyzer-diagnostics-view",
+                "query": "30",
+                "fragment": "file:///home/grant/github/pocket-tts/rust-numpy/src/random/generator.rs"
+            }
+        },
+        "severity": 4,
+        "message": "warning: unused variable: `kappa`\n   --> src/random/generator.rs:741:9\n    |\n741 |         kappa: f64,\n    |         ^^^^^ help: if this is intentional, prefix it with an underscore: `_kappa`\n\n",
+        "source": "rustc",
+        "startLineNumber": 741,
+        "startColumn": 9,
+        "endLineNumber": 741,
+        "endColumn": 14,
+        "relatedInformation": [
+            {
+                "startLineNumber": 741,
+                "startColumn": 9,
+                "endLineNumber": 741,
+                "endColumn": 14,
+                "message": "if this is intentional, prefix it with an underscore: `_kappa`",
+                "resource": "/home/grant/github/pocket-tts/rust-numpy/src/random/generator.rs"
+            }
+        ],
+        "modelVersionId": 1,
+        "tags": [
+            1
+        ],
+        "origin": "extHost2"
+    },
+    {
+        "resource": "/home/grant/github/pocket-tts/rust-numpy/src/random/generator.rs",
+        "owner": "rustc",
+        "code": {
+            "value": "unused_variables",
+            "target": {
+                "$mid": 1,
+                "path": "/diagnostic message [32]",
+                "scheme": "rust-analyzer-diagnostics-view",
+                "query": "32",
+                "fragment": "file:///home/grant/github/pocket-tts/rust-numpy/src/random/generator.rs"
+            }
+        },
+        "severity": 4,
+        "message": "warning: unused variable: `shape`\n   --> src/random/generator.rs:742:9\n    |\n742 |         shape: &[usize],\n    |         ^^^^^ help: if this is intentional, prefix it with an underscore: `_shape`\n\n",
+        "source": "rustc",
+        "startLineNumber": 742,
+        "startColumn": 9,
+        "endLineNumber": 742,
+        "endColumn": 14,
+        "relatedInformation": [
+            {
+                "startLineNumber": 742,
+                "startColumn": 9,
+                "endLineNumber": 742,
+                "endColumn": 14,
+                "message": "if this is intentional, prefix it with an underscore: `_shape`",
+                "resource": "/home/grant/github/pocket-tts/rust-numpy/src/random/generator.rs"
+            }
+        ],
+        "modelVersionId": 1,
+        "tags": [
+            1
+        ],
+        "origin": "extHost2"
+    },
+    {
+        "resource": "/home/grant/github/pocket-tts/rust-numpy/src/random/tests.rs",
+        "owner": "rustc",
+        "code": {
+            "value": "unused_must_use",
+            "target": {
+                "$mid": 1,
+                "path": "/diagnostic message [6]",
+                "scheme": "rust-analyzer-diagnostics-view",
+                "query": "6",
+                "fragment": "file:///home/grant/github/pocket-tts/rust-numpy/src/random/tests.rs"
+            }
+        },
+        "severity": 4,
+        "message": "warning: unused `std::result::Result` that must be used\n   --> src/random/tests.rs:203:9\n    |\n203 |         pcg.set_state_bytes(&12345u64.to_le_bytes());\n    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n    |\n    = note: this `Result` may be an `Err` variant, which should be handled\n    = note: `#[warn(unused_must_use)]` (part of `#[warn(unused)]`) on by default\n",
+        "source": "rustc",
+        "startLineNumber": 203,
+        "startColumn": 9,
+        "endLineNumber": 203,
+        "endColumn": 53,
+        "relatedInformation": [
+            {
+                "startLineNumber": 203,
+                "startColumn": 9,
+                "endLineNumber": 203,
+                "endColumn": 9,
+                "message": "use `let _ = ...` to ignore the resulting value: `let _ = `",
+                "resource": "/home/grant/github/pocket-tts/rust-numpy/src/random/tests.rs"
+            }
+        ],
+        "origin": "extHost2"
+    },
+    {
+        "resource": "/home/grant/github/pocket-tts/rust-numpy/src/random/tests.rs",
+        "owner": "rustc",
+        "code": {
+            "value": "unused_variables",
+            "target": {
+                "$mid": 1,
+                "path": "/diagnostic message [0]",
+                "scheme": "rust-analyzer-diagnostics-view",
+                "query": "0",
+                "fragment": "file:///home/grant/github/pocket-tts/rust-numpy/src/random/tests.rs"
+            }
+        },
+        "severity": 4,
+        "message": "warning: unused variable: `seeded_state`\n   --> src/random/tests.rs:209:13\n    |\n209 |         let seeded_state = seeded_pcg.get_state_bytes();\n    |             ^^^^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_seeded_state`\n\n",
+        "source": "rustc",
+        "startLineNumber": 209,
+        "startColumn": 13,
+        "endLineNumber": 209,
+        "endColumn": 25,
+        "relatedInformation": [
+            {
+                "startLineNumber": 209,
+                "startColumn": 13,
+                "endLineNumber": 209,
+                "endColumn": 25,
+                "message": "if this is intentional, prefix it with an underscore: `_seeded_state`",
+                "resource": "/home/grant/github/pocket-tts/rust-numpy/src/random/tests.rs"
+            }
+        ],
+        "tags": [
+            1
+        ],
+        "origin": "extHost2"
+    },
+    {
+        "resource": "/home/grant/github/pocket-tts/rust-numpy/src/random/tests.rs",
+        "owner": "rustc",
+        "code": {
+            "value": "unused_must_use",
+            "target": {
+                "$mid": 1,
+                "path": "/diagnostic message [8]",
+                "scheme": "rust-analyzer-diagnostics-view",
+                "query": "8",
+                "fragment": "file:///home/grant/github/pocket-tts/rust-numpy/src/random/tests.rs"
+            }
+        },
+        "severity": 4,
+        "message": "warning: unused `std::result::Result` that must be used\n   --> src/random/tests.rs:377:9\n    |\n377 |         sfc.set_state_bytes(&12345u64.to_le_bytes());\n    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n    |\n    = note: this `Result` may be an `Err` variant, which should be handled\n",
+        "source": "rustc",
+        "startLineNumber": 377,
+        "startColumn": 9,
+        "endLineNumber": 377,
+        "endColumn": 53,
+        "relatedInformation": [
+            {
+                "startLineNumber": 377,
+                "startColumn": 9,
+                "endLineNumber": 377,
+                "endColumn": 9,
+                "message": "use `let _ = ...` to ignore the resulting value: `let _ = `",
+                "resource": "/home/grant/github/pocket-tts/rust-numpy/src/random/tests.rs"
+            }
+        ],
+        "origin": "extHost2"
+    },
+    {
+        "resource": "/home/grant/github/pocket-tts/rust-numpy/src/random/tests.rs",
+        "owner": "rustc",
+        "code": {
+            "value": "unused_variables",
+            "target": {
+                "$mid": 1,
+                "path": "/diagnostic message [2]",
+                "scheme": "rust-analyzer-diagnostics-view",
+                "query": "2",
+                "fragment": "file:///home/grant/github/pocket-tts/rust-numpy/src/random/tests.rs"
+            }
+        },
+        "severity": 4,
+        "message": "warning: unused variable: `seeded_state`\n   --> src/random/tests.rs:383:13\n    |\n383 |         let seeded_state = seeded_sfc.get_state_bytes();\n    |             ^^^^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_seeded_state`\n\n",
+        "source": "rustc",
+        "startLineNumber": 383,
+        "startColumn": 13,
+        "endLineNumber": 383,
+        "endColumn": 25,
+        "relatedInformation": [
+            {
+                "startLineNumber": 383,
+                "startColumn": 13,
+                "endLineNumber": 383,
+                "endColumn": 25,
+                "message": "if this is intentional, prefix it with an underscore: `_seeded_state`",
+                "resource": "/home/grant/github/pocket-tts/rust-numpy/src/random/tests.rs"
+            }
+        ],
+        "tags": [
+            1
+        ],
+        "origin": "extHost2"
+    },
+    {
+        "resource": "/home/grant/github/pocket-tts/rust-numpy/src/random/tests.rs",
+        "owner": "rustc",
+        "code": {
+            "value": "unused_must_use",
+            "target": {
+                "$mid": 1,
+                "path": "/diagnostic message [10]",
+                "scheme": "rust-analyzer-diagnostics-view",
+                "query": "10",
+                "fragment": "file:///home/grant/github/pocket-tts/rust-numpy/src/random/tests.rs"
+            }
+        },
+        "severity": 4,
+        "message": "warning: unused `std::result::Result` that must be used\n   --> src/random/tests.rs:412:9\n    |\n412 |         pcgdxsm.set_state_bytes(&12345u64.to_le_bytes());\n    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n    |\n    = note: this `Result` may be an `Err` variant, which should be handled\n",
+        "source": "rustc",
+        "startLineNumber": 412,
+        "startColumn": 9,
+        "endLineNumber": 412,
+        "endColumn": 57,
+        "relatedInformation": [
+            {
+                "startLineNumber": 412,
+                "startColumn": 9,
+                "endLineNumber": 412,
+                "endColumn": 9,
+                "message": "use `let _ = ...` to ignore the resulting value: `let _ = `",
+                "resource": "/home/grant/github/pocket-tts/rust-numpy/src/random/tests.rs"
+            }
+        ],
+        "origin": "extHost2"
+    },
+    {
+        "resource": "/home/grant/github/pocket-tts/rust-numpy/src/random/tests.rs",
+        "owner": "rustc",
+        "code": {
+            "value": "unused_variables",
+            "target": {
+                "$mid": 1,
+                "path": "/diagnostic message [4]",
+                "scheme": "rust-analyzer-diagnostics-view",
+                "query": "4",
+                "fragment": "file:///home/grant/github/pocket-tts/rust-numpy/src/random/tests.rs"
+            }
+        },
+        "severity": 4,
+        "message": "warning: unused variable: `seeded_state`\n   --> src/random/tests.rs:418:13\n    |\n418 |         let seeded_state = seeded_pcgdxsm.get_state_bytes();\n    |             ^^^^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_seeded_state`\n\n",
+        "source": "rustc",
+        "startLineNumber": 418,
+        "startColumn": 13,
+        "endLineNumber": 418,
+        "endColumn": 25,
+        "relatedInformation": [
+            {
+                "startLineNumber": 418,
+                "startColumn": 13,
+                "endLineNumber": 418,
+                "endColumn": 25,
+                "message": "if this is intentional, prefix it with an underscore: `_seeded_state`",
+                "resource": "/home/grant/github/pocket-tts/rust-numpy/src/random/tests.rs"
+            }
+        ],
+        "tags": [
+            1
+        ],
+        "origin": "extHost2"
+    },
+    {
+        "resource": "/home/grant/github/pocket-tts/rust-numpy/src/typing/typing_tests.rs",
+        "owner": "rustc",
+        "code": {
+            "value": "unused_imports",
+            "target": {
+                "$mid": 1,
+                "path": "/diagnostic message [0]",
+                "scheme": "rust-analyzer-diagnostics-view",
+                "query": "0",
+                "fragment": "file:///home/grant/github/pocket-tts/rust-numpy/src/typing/typing_tests.rs"
+            }
+        },
+        "severity": 4,
+        "message": "warning: unused import: `super::*`\n  |\n8 |     use super::*;\n  |         ^^^^^^^^\n\n",
+        "source": "rustc",
+        "startLineNumber": 8,
+        "startColumn": 9,
+        "endLineNumber": 8,
+        "endColumn": 17,
+        "relatedInformation": [
+            {
+                "startLineNumber": 8,
+                "startColumn": 5,
+                "endLineNumber": 8,
+                "endColumn": 18,
+                "message": "remove the whole `use` item",
+                "resource": "/home/grant/github/pocket-tts/rust-numpy/src/typing/typing_tests.rs"
+            }
+        ],
+        "tags": [
+            1
+        ],
+        "origin": "extHost2"
+    },
+    {
+        "resource": "/home/grant/github/pocket-tts/rust-numpy/src/typing/typing_tests.rs",
+        "owner": "rustc",
+        "code": {
+            "value": "unused_variables",
+            "target": {
+                "$mid": 1,
+                "path": "/diagnostic message [2]",
+                "scheme": "rust-analyzer-diagnostics-view",
+                "query": "2",
+                "fragment": "file:///home/grant/github/pocket-tts/rust-numpy/src/typing/typing_tests.rs"
+            }
+        },
+        "severity": 4,
+        "message": "warning: unused variable: `int16_arr`\n  --> src/typing/typing_tests.rs:32:13\n   |\n32 |         let int16_arr: Int16Array = Array::from_data(vec![1i16, 2i16, 3i16], vec![3]);\n   |             ^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_int16_arr`\n\n",
+        "source": "rustc",
+        "startLineNumber": 32,
+        "startColumn": 13,
+        "endLineNumber": 32,
+        "endColumn": 22,
+        "relatedInformation": [
+            {
+                "startLineNumber": 32,
+                "startColumn": 13,
+                "endLineNumber": 32,
+                "endColumn": 22,
+                "message": "if this is intentional, prefix it with an underscore: `_int16_arr`",
+                "resource": "/home/grant/github/pocket-tts/rust-numpy/src/typing/typing_tests.rs"
+            }
+        ],
+        "tags": [
+            1
+        ],
+        "origin": "extHost2"
+    },
+    {
+        "resource": "/home/grant/github/pocket-tts/rust-numpy/src/typing/typing_tests.rs",
+        "owner": "rustc",
+        "code": {
+            "value": "unused_variables",
+            "target": {
+                "$mid": 1,
+                "path": "/diagnostic message [4]",
+                "scheme": "rust-analyzer-diagnostics-view",
+                "query": "4",
+                "fragment": "file:///home/grant/github/pocket-tts/rust-numpy/src/typing/typing_tests.rs"
+            }
+        },
+        "severity": 4,
+        "message": "warning: unused variable: `int32_arr`\n  --> src/typing/typing_tests.rs:33:13\n   |\n33 |         let int32_arr: Int32Array = Array::from_data(vec![1i32, 2i32, 3i32], vec![3]);\n   |             ^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_int32_arr`\n\n",
+        "source": "rustc",
+        "startLineNumber": 33,
+        "startColumn": 13,
+        "endLineNumber": 33,
+        "endColumn": 22,
+        "relatedInformation": [
+            {
+                "startLineNumber": 33,
+                "startColumn": 13,
+                "endLineNumber": 33,
+                "endColumn": 22,
+                "message": "if this is intentional, prefix it with an underscore: `_int32_arr`",
+                "resource": "/home/grant/github/pocket-tts/rust-numpy/src/typing/typing_tests.rs"
+            }
+        ],
+        "tags": [
+            1
+        ],
+        "origin": "extHost2"
+    },
+    {
+        "resource": "/home/grant/github/pocket-tts/rust-numpy/src/typing/typing_tests.rs",
+        "owner": "rustc",
+        "code": {
+            "value": "unused_variables",
+            "target": {
+                "$mid": 1,
+                "path": "/diagnostic message [6]",
+                "scheme": "rust-analyzer-diagnostics-view",
+                "query": "6",
+                "fragment": "file:///home/grant/github/pocket-tts/rust-numpy/src/typing/typing_tests.rs"
+            }
+        },
+        "severity": 4,
+        "message": "warning: unused variable: `int64_arr`\n  --> src/typing/typing_tests.rs:34:13\n   |\n34 |         let int64_arr: Int64Array = Array::from_data(vec![1i64, 2i64, 3i64], vec![3]);\n   |             ^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_int64_arr`\n\n",
+        "source": "rustc",
+        "startLineNumber": 34,
+        "startColumn": 13,
+        "endLineNumber": 34,
+        "endColumn": 22,
+        "relatedInformation": [
+            {
+                "startLineNumber": 34,
+                "startColumn": 13,
+                "endLineNumber": 34,
+                "endColumn": 22,
+                "message": "if this is intentional, prefix it with an underscore: `_int64_arr`",
+                "resource": "/home/grant/github/pocket-tts/rust-numpy/src/typing/typing_tests.rs"
+            }
+        ],
+        "tags": [
+            1
+        ],
+        "origin": "extHost2"
+    },
+    {
+        "resource": "/home/grant/github/pocket-tts/rust-numpy/src/typing/typing_tests.rs",
+        "owner": "rustc",
+        "code": {
+            "value": "unused_variables",
+            "target": {
+                "$mid": 1,
+                "path": "/diagnostic message [8]",
+                "scheme": "rust-analyzer-diagnostics-view",
+                "query": "8",
+                "fragment": "file:///home/grant/github/pocket-tts/rust-numpy/src/typing/typing_tests.rs"
+            }
+        },
+        "severity": 4,
+        "message": "warning: unused variable: `uint8_arr`\n  --> src/typing/typing_tests.rs:36:13\n   |\n36 |         let uint8_arr: UInt8Array = Array::from_data(vec![1u8, 2u8, 3u8], vec![3]);\n   |             ^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_uint8_arr`\n\n",
+        "source": "rustc",
+        "startLineNumber": 36,
+        "startColumn": 13,
+        "endLineNumber": 36,
+        "endColumn": 22,
+        "relatedInformation": [
+            {
+                "startLineNumber": 36,
+                "startColumn": 13,
+                "endLineNumber": 36,
+                "endColumn": 22,
+                "message": "if this is intentional, prefix it with an underscore: `_uint8_arr`",
+                "resource": "/home/grant/github/pocket-tts/rust-numpy/src/typing/typing_tests.rs"
+            }
+        ],
+        "tags": [
+            1
+        ],
+        "origin": "extHost2"
+    },
+    {
+        "resource": "/home/grant/github/pocket-tts/rust-numpy/src/typing/typing_tests.rs",
+        "owner": "rustc",
+        "code": {
+            "value": "unused_variables",
+            "target": {
+                "$mid": 1,
+                "path": "/diagnostic message [10]",
+                "scheme": "rust-analyzer-diagnostics-view",
+                "query": "10",
+                "fragment": "file:///home/grant/github/pocket-tts/rust-numpy/src/typing/typing_tests.rs"
+            }
+        },
+        "severity": 4,
+        "message": "warning: unused variable: `uint16_arr`\n  --> src/typing/typing_tests.rs:37:13\n   |\n37 |         let uint16_arr: UInt16Array = Array::from_data(vec![1u16, 2u16, 3u16], vec![3]);\n   |             ^^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_uint16_arr`\n\n",
+        "source": "rustc",
+        "startLineNumber": 37,
+        "startColumn": 13,
+        "endLineNumber": 37,
+        "endColumn": 23,
+        "relatedInformation": [
+            {
+                "startLineNumber": 37,
+                "startColumn": 13,
+                "endLineNumber": 37,
+                "endColumn": 23,
+                "message": "if this is intentional, prefix it with an underscore: `_uint16_arr`",
+                "resource": "/home/grant/github/pocket-tts/rust-numpy/src/typing/typing_tests.rs"
+            }
+        ],
+        "tags": [
+            1
+        ],
+        "origin": "extHost2"
+    },
+    {
+        "resource": "/home/grant/github/pocket-tts/rust-numpy/src/typing/typing_tests.rs",
+        "owner": "rustc",
+        "code": {
+            "value": "unused_variables",
+            "target": {
+                "$mid": 1,
+                "path": "/diagnostic message [12]",
+                "scheme": "rust-analyzer-diagnostics-view",
+                "query": "12",
+                "fragment": "file:///home/grant/github/pocket-tts/rust-numpy/src/typing/typing_tests.rs"
+            }
+        },
+        "severity": 4,
+        "message": "warning: unused variable: `uint32_arr`\n  --> src/typing/typing_tests.rs:38:13\n   |\n38 |         let uint32_arr: UInt32Array = Array::from_data(vec![1u32, 2u32, 3u32], vec![3]);\n   |             ^^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_uint32_arr`\n\n",
+        "source": "rustc",
+        "startLineNumber": 38,
+        "startColumn": 13,
+        "endLineNumber": 38,
+        "endColumn": 23,
+        "relatedInformation": [
+            {
+                "startLineNumber": 38,
+                "startColumn": 13,
+                "endLineNumber": 38,
+                "endColumn": 23,
+                "message": "if this is intentional, prefix it with an underscore: `_uint32_arr`",
+                "resource": "/home/grant/github/pocket-tts/rust-numpy/src/typing/typing_tests.rs"
+            }
+        ],
+        "tags": [
+            1
+        ],
+        "origin": "extHost2"
+    },
+    {
+        "resource": "/home/grant/github/pocket-tts/rust-numpy/src/typing/typing_tests.rs",
+        "owner": "rustc",
+        "code": {
+            "value": "unused_variables",
+            "target": {
+                "$mid": 1,
+                "path": "/diagnostic message [14]",
+                "scheme": "rust-analyzer-diagnostics-view",
+                "query": "14",
+                "fragment": "file:///home/grant/github/pocket-tts/rust-numpy/src/typing/typing_tests.rs"
+            }
+        },
+        "severity": 4,
+        "message": "warning: unused variable: `uint64_arr`\n  --> src/typing/typing_tests.rs:39:13\n   |\n39 |         let uint64_arr: UInt64Array = Array::from_data(vec![1u64, 2u64, 3u64], vec![3]);\n   |             ^^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_uint64_arr`\n\n",
+        "source": "rustc",
+        "startLineNumber": 39,
+        "startColumn": 13,
+        "endLineNumber": 39,
+        "endColumn": 23,
+        "relatedInformation": [
+            {
+                "startLineNumber": 39,
+                "startColumn": 13,
+                "endLineNumber": 39,
+                "endColumn": 23,
+                "message": "if this is intentional, prefix it with an underscore: `_uint64_arr`",
+                "resource": "/home/grant/github/pocket-tts/rust-numpy/src/typing/typing_tests.rs"
+            }
+        ],
+        "tags": [
+            1
+        ],
+        "origin": "extHost2"
+    },
+    {
+        "resource": "/home/grant/github/pocket-tts/rust-numpy/tests/issue_35_verification.rs",
+        "owner": "rustc",
+        "code": {
+            "value": "unused_mut",
+            "target": {
+                "$mid": 1,
+                "path": "/diagnostic message [0]",
+                "scheme": "rust-analyzer-diagnostics-view",
+                "query": "0",
+                "fragment": "file:///home/grant/github/pocket-tts/rust-numpy/tests/issue_35_verification.rs"
+            }
+        },
+        "severity": 4,
+        "message": "warning: variable does not need to be mutable\n  --> tests/issue_35_verification.rs:16:9\n   |\n16 |     let mut iter = NDIter::new(vec![&a, &b]).unwrap();\n   |         ----^^^^\n   |         |\n   |         help: remove this `mut`\n   |\n   = note: `#[warn(unused_mut)]` (part of `#[warn(unused)]`) on by default\n\n",
+        "source": "rustc",
+        "startLineNumber": 16,
+        "startColumn": 9,
+        "endLineNumber": 16,
+        "endColumn": 17,
+        "relatedInformation": [
+            {
+                "startLineNumber": 16,
+                "startColumn": 9,
+                "endLineNumber": 16,
+                "endColumn": 13,
+                "message": "remove this `mut`",
+                "resource": "/home/grant/github/pocket-tts/rust-numpy/tests/issue_35_verification.rs"
+            }
+        ],
+        "origin": "extHost2"
+    },
+    {
+        "resource": "/home/grant/github/pocket-tts/rust-numpy/tests/kernel_registry_tests.rs",
+        "owner": "rustc",
+        "code": {
+            "value": "unused_imports",
+            "target": {
+                "$mid": 1,
+                "path": "/diagnostic message [0]",
+                "scheme": "rust-analyzer-diagnostics-view",
+                "query": "0",
+                "fragment": "file:///home/grant/github/pocket-tts/rust-numpy/tests/kernel_registry_tests.rs"
+            }
+        },
+        "severity": 4,
+        "message": "warning: unused import: `std::sync::Arc`\n  |\n6 | use std::sync::Arc;\n  |     ^^^^^^^^^^^^^^\n  |\n  = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default\n\n",
+        "source": "rustc",
+        "startLineNumber": 6,
+        "startColumn": 5,
+        "endLineNumber": 6,
+        "endColumn": 19,
+        "relatedInformation": [
+            {
+                "startLineNumber": 6,
+                "startColumn": 1,
+                "endLineNumber": 7,
+                "endColumn": 1,
+                "message": "remove the whole `use` item",
+                "resource": "/home/grant/github/pocket-tts/rust-numpy/tests/kernel_registry_tests.rs"
+            }
+        ],
+        "tags": [
+            1
+        ],
+        "origin": "extHost2"
+    },
+    {
+        "resource": "/home/grant/github/pocket-tts/rust-numpy/tests/ndarray_conversion_tests.rs",
+        "owner": "rustc",
+        "code": {
+            "value": "non_snake_case",
+            "target": {
+                "$mid": 1,
+                "path": "/diagnostic message [0]",
+                "scheme": "rust-analyzer-diagnostics-view",
+                "query": "0",
+                "fragment": "file:///home/grant/github/pocket-tts/rust-numpy/tests/ndarray_conversion_tests.rs"
+            }
+        },
+        "severity": 4,
+        "message": "warning: variable `cArray` should have a snake case name\n  --> tests/ndarray_conversion_tests.rs:40:9\n   |\n40 |     let cArray = Array::from_vec(vec![c1]);\n   |         ^^^^^^ help: convert the identifier to snake case: `c_array`\n   |\n   = note: `#[warn(non_snake_case)]` (part of `#[warn(nonstandard_style)]`) on by default\n\n",
+        "source": "rustc",
+        "startLineNumber": 40,
+        "startColumn": 9,
+        "endLineNumber": 40,
+        "endColumn": 15,
+        "relatedInformation": [
+            {
+                "startLineNumber": 40,
+                "startColumn": 9,
+                "endLineNumber": 40,
+                "endColumn": 15,
+                "message": "convert the identifier to snake case: `c_array`",
+                "resource": "/home/grant/github/pocket-tts/rust-numpy/tests/ndarray_conversion_tests.rs"
+            }
+        ],
+        "origin": "extHost2"
+    },
+    {
+        "resource": "/home/grant/github/pocket-tts/rust-numpy/tests/polynomial_verification.rs",
+        "owner": "rustc",
+        "code": {
+            "value": "unused_imports",
+            "target": {
+                "$mid": 1,
+                "path": "/diagnostic message [0]",
+                "scheme": "rust-analyzer-diagnostics-view",
+                "query": "0",
+                "fragment": "file:///home/grant/github/pocket-tts/rust-numpy/tests/polynomial_verification.rs"
+            }
+        },
+        "severity": 4,
+        "message": "warning: unused import: `num_complex::Complex`\n  --> tests/polynomial_verification.rs:20:5\n   |\n20 | use num_complex::Complex;\n   |     ^^^^^^^^^^^^^^^^^^^^\n   |\n   = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default\n\n",
+        "source": "rustc",
+        "startLineNumber": 20,
+        "startColumn": 5,
+        "endLineNumber": 20,
+        "endColumn": 25,
+        "relatedInformation": [
+            {
+                "startLineNumber": 20,
+                "startColumn": 1,
+                "endLineNumber": 21,
+                "endColumn": 1,
+                "message": "remove the whole `use` item",
+                "resource": "/home/grant/github/pocket-tts/rust-numpy/tests/polynomial_verification.rs"
+            }
+        ],
+        "tags": [
+            1
+        ],
+        "origin": "extHost2"
+    },
+    {
+        "resource": "/home/grant/github/pocket-tts/rust-numpy/tests/polynomial_verification.rs",
+        "owner": "rustc",
+        "code": {
+            "value": "dead_code",
+            "target": {
+                "$mid": 1,
+                "path": "/diagnostic message [4]",
+                "scheme": "rust-analyzer-diagnostics-view",
+                "query": "4",
+                "fragment": "file:///home/grant/github/pocket-tts/rust-numpy/tests/polynomial_verification.rs"
+            }
+        },
+        "severity": 4,
+        "message": "warning: constant `ILL_CONDITIONED_TOLERANCE` is never used\n  --> tests/polynomial_verification.rs:27:7\n   |\n27 | const ILL_CONDITIONED_TOLERANCE: f64 = 1e-6;\n   |       ^^^^^^^^^^^^^^^^^^^^^^^^^\n   |\n   = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default\n\n",
+        "source": "rustc",
+        "startLineNumber": 27,
+        "startColumn": 7,
+        "endLineNumber": 27,
+        "endColumn": 32,
+        "tags": [
+            1
+        ],
+        "origin": "extHost2"
+    },
+    {
+        "resource": "/home/grant/github/pocket-tts/rust-numpy/tests/polynomial_verification.rs",
+        "owner": "rustc",
+        "code": {
+            "value": "unused_variables",
+            "target": {
+                "$mid": 1,
+                "path": "/diagnostic message [2]",
+                "scheme": "rust-analyzer-diagnostics-view",
+                "query": "2",
+                "fragment": "file:///home/grant/github/pocket-tts/rust-numpy/tests/polynomial_verification.rs"
+            }
+        },
+        "severity": 4,
+        "message": "warning: unused variable: `coeffs`\n  --> tests/polynomial_verification.rs:56:9\n   |\n56 |     let coeffs = p.coeffs();\n   |         ^^^^^^ help: if this is intentional, prefix it with an underscore: `_coeffs`\n   |\n   = note: `#[warn(unused_variables)]` (part of `#[warn(unused)]`) on by default\n\n",
+        "source": "rustc",
+        "startLineNumber": 56,
+        "startColumn": 9,
+        "endLineNumber": 56,
+        "endColumn": 15,
+        "relatedInformation": [
+            {
+                "startLineNumber": 56,
+                "startColumn": 9,
+                "endLineNumber": 56,
+                "endColumn": 15,
+                "message": "if this is intentional, prefix it with an underscore: `_coeffs`",
+                "resource": "/home/grant/github/pocket-tts/rust-numpy/tests/polynomial_verification.rs"
+            }
+        ],
+        "tags": [
+            1
+        ],
+        "origin": "extHost2"
+    },
+    {
+        "resource": "/home/grant/github/pocket-tts/rust-numpy/tests/random_architecture_tests.rs",
+        "owner": "rustc",
+        "code": {
+            "value": "unused_imports",
+            "target": {
+                "$mid": 1,
+                "path": "/diagnostic message [0]",
+                "scheme": "rust-analyzer-diagnostics-view",
+                "query": "0",
+                "fragment": "file:///home/grant/github/pocket-tts/rust-numpy/tests/random_architecture_tests.rs"
+            }
+        },
+        "severity": 4,
+        "message": "warning: unused import: `rust_numpy::dtype::Dtype`\n  |\n8 | use rust_numpy::dtype::Dtype;\n  |     ^^^^^^^^^^^^^^^^^^^^^^^^\n  |\n  = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default\n\n",
+        "source": "rustc",
+        "startLineNumber": 8,
+        "startColumn": 5,
+        "endLineNumber": 8,
+        "endColumn": 29,
+        "relatedInformation": [
+            {
+                "startLineNumber": 8,
+                "startColumn": 1,
+                "endLineNumber": 9,
+                "endColumn": 1,
+                "message": "remove the whole `use` item",
+                "resource": "/home/grant/github/pocket-tts/rust-numpy/tests/random_architecture_tests.rs"
+            }
+        ],
+        "tags": [
+            1
+        ],
+        "origin": "extHost2"
+    },
+    {
+        "resource": "/home/grant/github/pocket-tts/rust-numpy/tests/type_promotion_rules_tests.rs",
+        "owner": "rustc",
+        "code": {
+            "value": "unused_variables",
+            "target": {
+                "$mid": 1,
+                "path": "/diagnostic message [0]",
+                "scheme": "rust-analyzer-diagnostics-view",
+                "query": "0",
+                "fragment": "file:///home/grant/github/pocket-tts/rust-numpy/tests/type_promotion_rules_tests.rs"
+            }
+        },
+        "severity": 4,
+        "message": "warning: unused variable: `f64_type`\n  --> tests/type_promotion_rules_tests.rs:78:9\n   |\n78 |     let f64_type = Dtype::Float64 { byteorder: None };\n   |         ^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_f64_type`\n   |\n   = note: `#[warn(unused_variables)]` (part of `#[warn(unused)]`) on by default\n\n",
+        "source": "rustc",
+        "startLineNumber": 78,
+        "startColumn": 9,
+        "endLineNumber": 78,
+        "endColumn": 17,
+        "relatedInformation": [
+            {
+                "startLineNumber": 78,
+                "startColumn": 9,
+                "endLineNumber": 78,
+                "endColumn": 17,
+                "message": "if this is intentional, prefix it with an underscore: `_f64_type`",
+                "resource": "/home/grant/github/pocket-tts/rust-numpy/tests/type_promotion_rules_tests.rs"
+            }
+        ],
+        "tags": [
+            1
+        ],
+        "origin": "extHost2"
+    }
+]

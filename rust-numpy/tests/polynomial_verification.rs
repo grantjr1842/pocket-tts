@@ -16,7 +16,7 @@
 //! python scripts/verify_polynomials.py
 
 use ndarray::array;
-use numpy::polynomial::{fit, roots, Polynomial, PolynomialBase};
+use rust_numpy::polynomial::{fit, roots, Polynomial, PolynomialBase};
 use num_complex::Complex;
 use num_traits::Float;
 

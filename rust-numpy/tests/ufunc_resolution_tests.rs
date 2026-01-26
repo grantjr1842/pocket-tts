@@ -1,6 +1,6 @@
-use numpy::dtype::{Casting, Dtype};
-use numpy::math_ufuncs::MathBinaryUfunc;
-use numpy::ufunc::UfuncRegistry;
+use rust_numpy::dtype::{Casting, Dtype};
+use rust_numpy::math_ufuncs::MathBinaryUfunc;
+use rust_numpy::ufunc::UfuncRegistry;
 
 #[test]
 fn test_exact_match_resolution() {

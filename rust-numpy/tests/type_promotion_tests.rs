@@ -1,5 +1,5 @@
-use numpy::dtype::Dtype;
-use numpy::type_promotion::{promote_types, promote_types_bitwise, promote_types_division};
+use rust_numpy::dtype::Dtype;
+use rust_numpy::type_promotion::{promote_types, promote_types_bitwise, promote_types_division};
 
 #[test]
 fn test_promote_types_basic() {

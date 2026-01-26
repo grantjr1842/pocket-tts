@@ -1,8 +1,11 @@
 #[cfg(test)]
 mod tests {
-    use super::*;
     use crate::array::Array;
     use crate::dtype::Dtype;
+    use crate::typing::{
+        NDArray, Int32Array, Float64Array, BoolArray, Complex64Array,
+        DtypeLike, ArrayLike,
+    };
 
     #[test]
     fn test_ndarray_type_alias() {
@@ -94,7 +97,7 @@ mod tests {
     #[test]
     fn test_prelude_exports() {
         // Test that prelude exports work
-        use super::prelude::*;
+        use crate::typing::prelude::*;
 
         // These should all be available
         let _: NDArray<f64> = Array::from_data(vec![1.0], vec![1]);

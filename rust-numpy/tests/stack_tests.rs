@@ -1,5 +1,5 @@
-use numpy::array::Array;
-use numpy::array_extra::{dstack, stack};
+use rust_numpy::array::Array;
+use rust_numpy::array_extra::{dstack, stack};
 
 #[test]
 fn test_stack() {

@@ -65,19 +65,15 @@ impl NumaNode {
 
 /// Strategy for work stealing
 #[derive(Debug, Clone, Copy)]
+#[derive(Default)]
 pub enum StealStrategy {
     /// Random work stealing
     Random,
     /// Steal from most loaded queue
+    #[default]
     MostLoaded,
     /// Steal from least recently stolen
     LeastRecentlyStolen,
-}
-
-impl Default for StealStrategy {
-    fn default() -> Self {
-        Self::MostLoaded
-    }
 }
 
 /// Work queue for thread pool
@@ -228,9 +224,9 @@ impl ThreadPool {
             thread::Builder::new()
                 .name(format!("numpy-worker-{}", thread_id))
                 .spawn(move || {
-                    ThreadPool::worker_loop(thread_id, queue, stealer, stats);
+                    Self::worker_loop(thread_id, queue, stealer, stats);
                 })
-                .map_err(|e| NumPyError::thread_error(&format!("Failed to spawn thread: {}", e)))?;
+                .map_err(|e| NumPyError::thread_error(format!("Failed to spawn thread: {}", e)))?;
         }
 
         Ok(pool)
@@ -258,9 +254,7 @@ impl ThreadPool {
     }
 
     /// Get number of threads in the pool
-    pub fn num_threads(&self) -> usize {
-        self.num_threads
-    }
+    pub const fn num_threads(&self) -> usize { self.num_threads }
 }
 
 impl Default for ThreadPool {
@@ -292,9 +286,7 @@ impl ParallelThresholdTuner {
     }
 
     /// Get minimum size for parallel execution
-    pub fn min_parallel_size(&self) -> usize {
-        self.min_parallel_size
-    }
+    pub const fn min_parallel_size(&self) -> usize { self.min_parallel_size }
 
     /// Record execution time for auto-tuning
     pub fn record_execution(&self, size: usize, duration: Duration) {

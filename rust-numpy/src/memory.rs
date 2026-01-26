@@ -208,9 +208,7 @@ where
     }
 
     /// Get current capacity
-    pub fn capacity(&self) -> usize {
-        self.capacity
-    }
+    pub const fn capacity(&self) -> usize { self.capacity }
 
     /// Reset buffer
     pub fn reset(&mut self) {
@@ -325,7 +323,7 @@ pub mod alignment {
 
     /// Check if pointer is aligned
     pub fn is_aligned<T>(ptr: *const T, alignment: usize) -> bool {
-        (ptr as usize).is_multiple_of(alignment)
+        (ptr as usize) % alignment == 0
     }
 
     /// Allocate aligned memory

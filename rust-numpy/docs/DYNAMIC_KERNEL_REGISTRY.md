@@ -32,7 +32,7 @@ The dynamic kernel registry system allows:
 ### Basic Registration
 
 ```rust
-use numpy::kernel_api::*;
+use rust_numpy::kernel_api::*;
 
 // Register a simple binary kernel
 register_binary_kernel("custom_add", |a: i32, b: i32| a + b)?;
@@ -44,7 +44,7 @@ register_unary_kernel("custom_neg", |a: f64| -a)?;
 ### Performance Hints
 
 ```rust
-use numpy::kernel_registry::PerformanceHint;
+use rust_numpy::kernel_registry::PerformanceHint;
 
 // Register with performance hints for optimization
 register_binary_kernel_with_hint(
@@ -63,7 +63,7 @@ register_binary_kernel_with_hint(
 ### Kernel Execution
 
 ```rust
-use numpy::*;
+use rust_numpy::*;
 
 // Create arrays
 let a = array![1, 2, 3];
@@ -80,7 +80,7 @@ let negated = execute_unary("custom_neg", &c)?;
 ### Registry Builder Pattern
 
 ```rust
-use numpy::kernel_api::*;
+use rust_numpy::kernel_api::*;
 
 // Initialize registry with common kernels
 init_kernel_registry()?;
@@ -127,7 +127,7 @@ println!("Cache entries: {}", stats.cache_entries);
 ### Custom Kernel Implementations
 
 ```rust
-use numpy::kernel_registry::*;
+use rust_numpy::kernel_registry::*;
 use std::sync::Arc;
 
 struct CustomKernel {

@@ -1,5 +1,5 @@
-use numpy::linalg::{det, inv, pinv, solve, trace};
-use numpy::Array;
+use rust_numpy::linalg::{det, inv, pinv, solve, trace};
+use rust_numpy::Array;
 
 #[test]
 fn test_missing_linalg_basic() {

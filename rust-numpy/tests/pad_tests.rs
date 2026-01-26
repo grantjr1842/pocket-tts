@@ -1,11 +1,11 @@
-use numpy::*;
+use rust_numpy::*;
 #[cfg(test)]
 mod tests {
     use super::*;
-    use numpy::array_manipulation::pad;
+    use rust_numpy::array_manipulation::pad;
 
     fn linear_index<T>(array: &Array<T>, indices: &[usize]) -> usize {
-        numpy::strides::compute_linear_index(indices, array.strides()) as usize
+        rust_numpy::strides::compute_linear_index(indices, array.strides()) as usize
     }
 
     #[test]

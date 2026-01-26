@@ -1,12 +1,12 @@
-use numpy::array::Array;
-use numpy::broadcasting::{are_shapes_compatible, broadcast_arrays, broadcast_to};
+use rust_numpy::array::Array;
+use rust_numpy::broadcasting::{are_shapes_compatible, broadcast_arrays, broadcast_to};
 
 // Test advanced broadcasting edge cases to match NumPy behavior exactly
 
 #[test]
 fn test_broadcast_scalar_to_2d() {
     let scalar = Array::from_vec(vec![1i32]);
-    let matrix = Array::from_vec(vec![1i32, 2, 3, 4])
+    let _matrix = Array::from_vec(vec![1i32, 2, 3, 4])
         .reshape(&[2, 2])
         .unwrap();
 
@@ -71,7 +71,7 @@ fn test_broadcast_arrays_multiple() {
 
 #[test]
 fn test_broadcast_edge_case_zero_dimensions() {
-    let a = Array::from_vec(vec![1i32, 2, 3, 4])
+    let _a = Array::from_vec(vec![1i32, 2, 3, 4])
         .reshape(&[2, 2])
         .unwrap();
     let scalar = Array::from_vec(vec![5i32]);

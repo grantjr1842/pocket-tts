@@ -219,7 +219,7 @@ where
         let mut integ_coeffs = Vec::with_capacity(self.coeffs.len() + m);
 
         for _ in 0..m {
-            integ_coeffs.push(k.unwrap_or(T::zero()));
+            integ_coeffs.push(k.unwrap_or_else(|| T::zero()));
         }
 
         for (i, &coeff) in self.coeffs.iter().enumerate() {

@@ -1,0 +1,57 @@
+Check a local package and all of its dependencies for errors
+
+[1m[92mUsage:[0m [1m[96mcargo check[0m [36m[OPTIONS][0m
+
+[1m[92mOptions:[0m
+      [1m[96m--future-incompat-report[0m   Outputs a future incompatibility report at the end of the build
+      [1m[96m--message-format[0m[36m [0m[36m<FMT>[0m     Error format [possible values: human, short, json, json-diagnostic-short,
+                                 json-diagnostic-rendered-ansi, json-render-diagnostics]
+  [1m[96m-v[0m, [1m[96m--verbose[0m[36m...[0m               Use verbose output (-vv very verbose/build.rs output)
+  [1m[96m-q[0m, [1m[96m--quiet[0m                    Do not print cargo log messages
+      [1m[96m--color[0m[36m [0m[36m<WHEN>[0m             Coloring [possible values: auto, always, never]
+      [1m[96m--config[0m[36m [0m[36m<KEY=VALUE|PATH>[0m  Override a configuration value
+  [1m[96m-Z[0m[36m [0m[36m<FLAG>[0m                      Unstable (nightly-only) flags to Cargo, see 'cargo -Z help' for details
+  [1m[96m-h[0m, [1m[96m--help[0m                     Print help
+
+[1m[92mPackage Selection:[0m
+  [1m[96m-p[0m, [1m[96m--package[0m[36m [[0m[36m<SPEC>[0m[36m][0m  Package(s) to check
+      [1m[96m--workspace[0m         Check all packages in the workspace
+      [1m[96m--exclude[0m[36m [0m[36m<SPEC>[0m    Exclude packages from the check
+      [1m[96m--all[0m               Alias for --workspace (deprecated)
+
+[1m[92mTarget Selection:[0m
+      [1m[96m--lib[0m               Check only this package's library
+      [1m[96m--bins[0m              Check all binaries
+      [1m[96m--bin[0m[36m [[0m[36m<NAME>[0m[36m][0m      Check only the specified binary
+      [1m[96m--examples[0m          Check all examples
+      [1m[96m--example[0m[36m [[0m[36m<NAME>[0m[36m][0m  Check only the specified example
+      [1m[96m--tests[0m             Check all targets that have `test = true` set
+      [1m[96m--test[0m[36m [[0m[36m<NAME>[0m[36m][0m     Check only the specified test target
+      [1m[96m--benches[0m           Check all targets that have `bench = true` set
+      [1m[96m--bench[0m[36m [[0m[36m<NAME>[0m[36m][0m    Check only the specified bench target
+      [1m[96m--all-targets[0m       Check all targets
+
+[1m[92mFeature Selection:[0m
+  [1m[96m-F[0m, [1m[96m--features[0m[36m [0m[36m<FEATURES>[0m  Space or comma separated list of features to activate
+      [1m[96m--all-features[0m         Activate all available features
+      [1m[96m--no-default-features[0m  Do not activate the `default` feature
+
+[1m[92mCompilation Options:[0m
+  [1m[96m-j[0m, [1m[96m--jobs[0m[36m [0m[36m<N>[0m                Number of parallel jobs, defaults to # of CPUs.
+      [1m[96m--keep-going[0m              Do not abort the build as soon as there is an error
+  [1m[96m-r[0m, [1m[96m--release[0m                 Check artifacts in release mode, with optimizations
+      [1m[96m--profile[0m[36m [0m[36m<PROFILE-NAME>[0m  Check artifacts with the specified profile
+      [1m[96m--target[0m[36m [[0m[36m<TRIPLE>[0m[36m][0m       Check for the target triple
+      [1m[96m--target-dir[0m[36m [0m[36m<DIRECTORY>[0m  Directory for all generated artifacts
+      [1m[96m--unit-graph[0m              Output build graph in JSON (unstable)
+      [1m[96m--timings[0m[36m[=[0m[36m<FMTS>[0m[36m][0m        Timing output formats (unstable) (comma separated): html, json
+
+[1m[92mManifest Options:[0m
+      [1m[96m--manifest-path[0m[36m [0m[36m<PATH>[0m  Path to Cargo.toml
+      [1m[96m--lockfile-path[0m[36m [0m[36m<PATH>[0m  Path to Cargo.lock (unstable)
+      [1m[96m--ignore-rust-version[0m   Ignore `rust-version` specification in packages
+      [1m[96m--locked[0m                Assert that `Cargo.lock` will remain unchanged
+      [1m[96m--offline[0m               Run without accessing the network
+      [1m[96m--frozen[0m                Equivalent to specifying both --locked and --offline
+
+Run `[96m[1mcargo help check[39m[22m` for more detailed information.

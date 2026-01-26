@@ -1,5 +1,5 @@
-use numpy::array::Array;
-use numpy::iterator::NDIter;
+use rust_numpy::array::Array;
+use rust_numpy::iterator::NDIter;
 
 #[test]
 fn test_nditer_broadcasting_2d() {
@@ -17,7 +17,7 @@ fn test_nditer_broadcasting_2d() {
     assert_eq!(iter.shape(), &[2, 3]);
 
     let mut offsets = Vec::new();
-    while let Some(current_offsets) = iter.next() {
+    for current_offsets in iter {
         offsets.push(current_offsets);
     }
 

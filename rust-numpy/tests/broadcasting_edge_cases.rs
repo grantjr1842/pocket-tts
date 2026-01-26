@@ -1,5 +1,4 @@
-use numpy::strides::compute_broadcast_shape;
-use numpy::Array;
+use rust_numpy::strides::compute_broadcast_shape;
 
 #[test]
 fn test_broadcast_zero_and_one() {

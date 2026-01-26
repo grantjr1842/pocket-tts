@@ -1,6 +1,6 @@
 use num_complex::Complex;
-use numpy::array::Array;
-use numpy::linalg::*;
+use rust_numpy::array::Array;
+use rust_numpy::linalg::*;
 
 #[test]
 fn test_dot_scalar() {

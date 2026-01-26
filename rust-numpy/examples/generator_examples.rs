@@ -3,10 +3,14 @@
 //! This file shows how to use the Generator class with BitGenerator instances
 //! to provide comprehensive random number generation capabilities.
 
-use rust_numpy::prelude::*;
+use rust_numpy::array;
+use rust_numpy::dtype::Dtype;
+use rust_numpy::random::generator::Generator;
+use rust_numpy::random::bit_generator::{PCG64, BitGenerator};
 use rust_numpy::random;
-use rust_numpy::random::{Generator, PCG64};
 use rust_numpy::error::NumPyError;
+use rand::RngCore;
+use rand::Rng;
 
 /// Example 1: Basic Generator creation and usage
 fn example_basic_generator() -> Result<(), NumPyError> {
@@ -16,7 +20,7 @@ fn example_basic_generator() -> Result<(), NumPyError> {
     let mut rng = random::default_rng();
 
     // Generate random numbers
-    let random_arr = rng.random::<f64>(&[3, 4], Dtype::Float64)?;
+    let random_arr = rng.random::<f64>(&[3, 4], Dtype::Float64 { byteorder: None })?;
     println!("Random array shape: {:?}", random_arr.shape());
     println!("Random array length: {}", random_arr.len());
     println!("Random array sample: {:?}", &random_arr.data.as_slice()[0..5]);
@@ -45,8 +49,8 @@ fn example_seeded_generator() -> Result<(), NumPyError> {
     let mut rng2 = random::default_rng_with_seed(seed);
 
     // Generate arrays with same seed
-    let arr1 = rng1.random::<f64>(&[2, 2], Dtype::Float64)?;
-    let arr2 = rng2.random::<f64>(&[2, 2], Dtype::Float64)?;
+    let arr1 = rng1.random::<f64>(&[2, 2], Dtype::Float64 { byteorder: None })?;
+    let arr2 = rng2.random::<f64>(&[2, 2], Dtype::Float64 { byteorder: None })?;
 
     println!("Seeded array 1 sample: {:?}", &arr1.data.as_slice()[0..4]);
     println!("Seeded array 2 sample: {:?}", &arr2.data.as_slice()[0..4]);
@@ -55,7 +59,7 @@ fn example_seeded_generator() -> Result<(), NumPyError> {
     // Manual Generator creation with seeded BitGenerator
     let pcg = PCG64::seed_from_u64(seed);
     let mut manual_rng = Generator::new(Box::new(pcg));
-    let manual_arr = manual_rng.random::<f64>(&[2, 2], Dtype::Float64)?;
+    let manual_arr = manual_rng.random::<f64>(&[2, 2], Dtype::Float64 { byteorder: None })?;
 
     println!("Manual generator sample: {:?}", &manual_arr.data.as_slice()[0..4]);
     println!("Manual generator shape: {:?}", manual_arr.shape());
@@ -122,7 +126,7 @@ fn example_discrete_distributions() -> Result<(), NumPyError> {
     // Bernoulli distribution
     let bern_arr = rng.bernoulli::<f64>(0.7, &[1000])?;
     let bern_mean = bern_arr.data.as_slice().iter().sum::<f64>() / 1000.0;
-    let bern_true_rate = bern_arr.data.as_slice().iter().filter(|&&x| *x == 1.0).count() as f64 / 1000.0;
+    let bern_true_rate = bern_arr.data.as_slice().iter().filter(|&x| *x == 1.0).count() as f64 / 1000.0;
     println!("Bernoulli distribution (p=0.7): mean={:.3}, true_rate={:.3}", bern_mean, bern_true_rate);
 
     // Geometric distribution
@@ -215,25 +219,25 @@ fn example_advanced_distributions() -> Result<(), NumPyError> {
 
     let mut rng = random::default_rng();
 
-    let distributions = vec![
-        ("Log-Normal", || rng.lognormal::<f64>(0.0, 1.0, &[1000])),
-        ("Logistic", || rng.logistic::<f64>(0.0, 1.0, &[1000])),
-        ("Gumbel", || rng.gumbel::<f64>(0.0, 1.0, &[1000])),
-        ("Wald", || rng.wald::<f64>(1.0, 1.0, &[1000])),
-        ("Weibull", || rng.weibull::<f64>(2.0, &[1000])),
-        ("Triangular", || rng.triangular::<f64>(0.0, 0.5, 1.0, &[1000])),
-        ("Pareto", || rng.pareto::<f64>(2.0, &[1000])),
-        ("Zipf", || rng.zipf::<f64>(3.0, &[1000])),
-        ("Standard Cauchy", || rng.standard_cauchy::<f64>(&[1000])),
-        ("Standard Exponential", || rng.standard_exponential::<f64>(&[1000])),
-        ("Standard Gamma", || rng.standard_gamma::<f64>(2.0, &[1000])),
-        ("F-Distribution", || rng.f::<f64>(2.0, 2.0, &[1000])),
-        ("Power", || rng.power::<f64>(2.0, &[1000])),
-        ("von Mises", || rng.vonmises::<f64>(0.0, 1.0, &[1000])),
+    // Test each distribution individually
+    let distributions: &[(&str, Result<rust_numpy::Array<f64>, NumPyError>)] = &[
+        ("Log-Normal", rng.lognormal::<f64>(0.0, 1.0, &[1000])),
+        ("Gumbel", rng.gumbel::<f64>(0.0, 1.0, &[1000])),
+        ("Wald", rng.wald::<f64>(1.0, 1.0, &[1000])),
+        ("Weibull", rng.weibull::<f64>(2.0, &[1000])),
+        ("Triangular", rng.triangular::<f64>(0.0, 0.5, 1.0, &[1000])),
+        ("Pareto", rng.pareto::<f64>(2.0, &[1000])),
+        ("Zipf", rng.zipf::<f64>(3.0, &[1000])),
+        ("Standard Cauchy", rng.standard_cauchy::<f64>(&[1000])),
+        ("Standard Exponential", rng.standard_exponential::<f64>(&[1000])),
+        ("Standard Gamma", rng.standard_gamma::<f64>(2.0, &[1000])),
+        ("F-Distribution", rng.f::<f64>(2.0, 2.0, &[1000])),
+        // ("Power", rng.power::<f64>(2.0, &[1000])),  // TODO: not implemented
+        // ("von Mises", rng.vonmises::<f64>(0.0, 1.0, &[1000])),  // TODO: not implemented
     ];
 
-    for (name, dist_fn) in distributions {
-        match dist_fn() {
+    for (name, result) in distributions {
+        match result {
             Ok(arr) => {
                 let mean = arr.data.as_slice().iter().sum::<f64>() / 1000.0;
                 println!("{}: mean={:.3}", name, mean);
@@ -253,29 +257,55 @@ fn example_error_handling() -> Result<(), NumPyError> {
 
     let mut rng = random::default_rng();
 
-    // Test invalid parameters
-    let error_cases = vec![
-        ("Negative scale (exponential)", || rng.exponential::<f64>(-1.0, &[2, 2])),
-        ("Negative shape (gamma)", || rng.gamma::<f64>(-1.0, 1.0, &[2, 2])),
-        ("Invalid probability (binomial)", || rng.binomial::<f64>(10, -0.5, &[2, 2])),
-        ("Invalid range (integers)", || rng.integers(10, 5, 5))),
-        ("Invalid range (floats)", || rng.random_floats_range(10.0, 5.0, 5))),
-        ("Empty choices", || rng.choice(&Vec::<i32>::new(), 3, false)),
-        ("Too large sample without replacement", || {
-            let small_choices = vec![1, 2];
-            rng.choice(&small_choices, 5, false)
-        }),
-    ];
+    // Test invalid parameters - each evaluated separately
+    let _exponential_err = rng.exponential::<f64>(-1.0, &[2, 2]);
+    let _gamma_err = rng.gamma::<f64>(-1.0, 1.0, &[2, 2]);
+    let _binomial_err = rng.binomial::<f64>(10, -0.5, &[2, 2]);
+    let _integers_err = rng.integers(10, 5, 5);
+    let _floats_err = rng.random_floats_range(10.0, 5.0, 5);
 
-    for (description, error_fn) in error_cases {
-        match error_fn() {
-            Ok(_) => {
-                println!("{}: Unexpected success", description);
-            }
-            Err(e) => {
-                println!("{}: Expected error - {}", description, e);
-            }
-        }
+    // Test empty choices separately (different type)
+    let empty_choices: Vec<i32> = vec![];
+    let _choice_err = rng.choice(&empty_choices, 3, false);
+
+    // Test the "too large sample without replacement" case separately
+    let small_choices = vec![1, 2];
+    let too_large_result = rng.choice(&small_choices, 5, false);
+
+    // Check error results individually
+    match _exponential_err {
+        Ok(_) => println!("exponential with negative lambda: Unexpected success"),
+        Err(e) => println!("exponential with negative lambda: Expected error - {}", e),
+    }
+
+    match _gamma_err {
+        Ok(_) => println!("gamma with negative shape: Unexpected success"),
+        Err(e) => println!("gamma with negative shape: Expected error - {}", e),
+    }
+
+    match _binomial_err {
+        Ok(_) => println!("binomial with invalid p: Unexpected success"),
+        Err(e) => println!("binomial with invalid p: Expected error - {}", e),
+    }
+
+    match _integers_err {
+        Ok(_) => println!("integers with reversed bounds: Unexpected success"),
+        Err(e) => println!("integers with reversed bounds: Expected error - {}", e),
+    }
+
+    match _floats_err {
+        Ok(_) => println!("floats_range with reversed bounds: Unexpected success"),
+        Err(e) => println!("floats_range with reversed bounds: Expected error - {}", e),
+    }
+
+    match _choice_err {
+        Ok(_) => println!("choice with empty array: Unexpected success"),
+        Err(e) => println!("choice with empty array: Expected error - {}", e),
+    }
+
+    match too_large_result {
+        Ok(_) => println!("Too large sample without replacement: Unexpected success"),
+        Err(e) => println!("Too large sample without replacement: Expected error - {}", e),
     }
 
     Ok(())
@@ -294,7 +324,7 @@ fn example_performance() -> Result<(), NumPyError> {
 
     for size in sizes {
         let start = Instant::now();
-        let _ = rng.random::<f64>(&[size], Dtype::Float64)?;
+        let _ = rng.random::<f64>(&[size], Dtype::Float64 { byteorder: None })?;
         let duration = start.elapsed();
         println!("Generated {} floats in {:?}", size, duration);
     }
@@ -312,9 +342,9 @@ fn example_thread_safety() -> Result<(), NumPyError> {
     let handles: Vec<_> = (0..4).map(|i| {
         let mut rng = random::default_rng_with_seed(i);
         thread::spawn(move || {
-            let arr = rng.random::<f64>(&[1000], Dtype::Float64)?;
+            let arr = rng.random::<f64>(&[1000], Dtype::Float64 { byteorder: None })?;
             let mean = arr.data.as_slice().iter().sum::<f64>() / 1000.0;
-            Ok::<f64>(mean)
+            Ok::<f64, NumPyError>(mean)
         })
     }).collect();
 
@@ -346,11 +376,11 @@ fn example_statistical_analysis() -> Result<(), NumPyError> {
     let exp_sample = rng.exponential::<f64>(1.0, &[10000])?;
 
     // Calculate statistics for each distribution
-    let distributions = vec![
-        ("Normal", normal_sample),
-        ("Gamma", gamma_sample),
-        ("Beta", beta_sample),
-        ("Exponential", exp_sample),
+    let distributions: &[(&str, &rust_numpy::Array<f64>)] = &[
+        ("Normal", &normal_sample),
+        ("Gamma", &gamma_sample),
+        ("Beta", &beta_sample),
+        ("Exponential", &exp_sample),
     ];
 
     for (name, sample) in distributions {
@@ -360,8 +390,8 @@ fn example_statistical_analysis() -> Result<(), NumPyError> {
             .map(|x| (x - mean).powi(2))
             .sum::<f64>() / data.len() as f64;
         let std = variance.sqrt();
-        let min = data.iter().fold(f64::INFINITY, |a, &b| a.min(*b));
-        let max = data.iter().fold(f64::NEG_INFINITY, |a, &b| a.max(*b));
+        let min = data.iter().fold(f64::INFINITY, |a, b| a.min(*b));
+        let max = data.iter().fold(f64::NEG_INFINITY, |a, b| a.max(*b));
 
         println!("{}:", name);
         println!("  Mean: {:.6}", mean);
@@ -386,7 +416,7 @@ fn example_bitgenerator_compatibility() -> Result<(), NumPyError> {
 
     for (name, bit_gen) in bit_generators {
         let mut generator = Generator::new(bit_gen);
-        let arr = generator.random::<f64>(&[100], Dtype::Float64)?;
+        let arr = generator.random::<f64>(&[100], Dtype::Float64 { byteorder: None })?;
         let mean = arr.data.as_slice().iter().sum::<f64>() / 100.0;
         println!("{}: mean={:.6}", name, mean);
     }
@@ -465,7 +495,7 @@ mod tests {
     #[test]
     fn test_generator_creation() {
         let mut rng = random::default_rng();
-        let arr = rng.random::<f64>(&[2, 2], Dtype::Float64).unwrap();
+        let arr = rng.random::<f64>(&[2, 2], Dtype::Float64 { byteorder: None }).unwrap();
         assert_eq!(arr.shape(), &[2, 2]);
     }
 
@@ -475,8 +505,8 @@ mod tests {
         let mut rng1 = random::default_rng_with_seed(seed);
         let mut rng2 = random::default_rng_with_seed(seed);
 
-        let arr1 = rng1.random::<f64>(&[2, 2], Dtype::Float64).unwrap();
-        let arr2 = rng2.random::<f64>(&[2, 2], Dtype::Float64).unwrap();
+        let arr1 = rng1.random::<f64>(&[2, 2], Dtype::Float64 { byteorder: None }).unwrap();
+        let arr2 = rng2.random::<f64>(&[2, 2], Dtype::Float64 { byteorder: None }).unwrap();
 
         assert_eq!(arr1.shape(), arr2.shape());
         assert_eq!(arr1.len(), arr2.len());

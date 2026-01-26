@@ -1,6 +1,6 @@
-use numpy::array::Array;
-use numpy::broadcasting::broadcast_to;
-use numpy::strides::compute_broadcast_strides;
+use rust_numpy::array::Array;
+use rust_numpy::broadcasting::broadcast_to;
+use rust_numpy::strides::compute_broadcast_strides;
 
 #[test]
 fn test_broadcast_stride_zero() {
@@ -31,7 +31,7 @@ fn test_broadcast_to_view_semantics() {
 
     // Broadcast to (4, 3)
     // Note: We need to use the public API for broadcasting.
-    // Assuming numpy::broadcasting::broadcast_to is exposed or will be.
+    // Assuming rust_numpy::broadcasting::broadcast_to is exposed or will be.
 
     let b = broadcast_to(&a, &[4, 3]).expect("Broadcast failed");
 

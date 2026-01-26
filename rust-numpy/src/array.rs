@@ -92,6 +92,11 @@ impl<T> Array<T> {
         self.shape.iter().product()
     }
 
+    /// Get array length (alias for size(), following Rust collection conventions)
+    pub fn len(&self) -> usize {
+        self.size()
+    }
+
     /// Get number of dimensions
     pub fn ndim(&self) -> usize {
         self.shape.len()
@@ -946,7 +951,7 @@ impl<T> Array<T> {
 
         let slice = self.as_slice();
         // unsafe reinterpretation
-        let len = slice.len() * std::mem::size_of::<T>();
+        let len = std::mem::size_of_val(slice);
         let ptr = slice.as_ptr() as *const u8;
         let bytes = unsafe { std::slice::from_raw_parts(ptr, len) };
         Ok(bytes.to_vec())

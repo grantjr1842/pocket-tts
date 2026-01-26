@@ -1,0 +1,159 @@
+[
+  {
+    "function": "array",
+    "input": {
+      "object": [
+        1,
+        2,
+        3,
+        4,
+        5
+      ]
+    },
+    "output": {
+      "data": [
+        1,
+        2,
+        3,
+        4,
+        5
+      ],
+      "shape": [
+        5
+      ],
+      "dtype": "int64"
+    }
+  },
+  {
+    "function": "array",
+    "input": {
+      "object": [
+        [
+          1,
+          2,
+          3
+        ],
+        [
+          4,
+          5,
+          6
+        ]
+      ]
+    },
+    "output": {
+      "data": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6
+      ],
+      "shape": [
+        2,
+        3
+      ],
+      "dtype": "int64"
+    }
+  },
+  {
+    "function": "zeros",
+    "input": {
+      "shape": [
+        3,
+        4
+      ]
+    },
+    "output": {
+      "shape": [
+        3,
+        4
+      ],
+      "dtype": "float64",
+      "all_zeros": true
+    }
+  },
+  {
+    "function": "ones",
+    "input": {
+      "shape": [
+        2,
+        3
+      ]
+    },
+    "output": {
+      "shape": [
+        2,
+        3
+      ],
+      "dtype": "float64",
+      "all_ones": true
+    }
+  },
+  {
+    "function": "arange",
+    "input": {
+      "start": 0,
+      "stop": 10,
+      "step": 2
+    },
+    "output": {
+      "data": [
+        0,
+        2,
+        4,
+        6,
+        8
+      ],
+      "shape": [
+        5
+      ],
+      "dtype": "int64"
+    }
+  },
+  {
+    "function": "linspace",
+    "input": {
+      "start": 0,
+      "stop": 1,
+      "num": 5
+    },
+    "output": {
+      "data": [
+        0.0,
+        0.25,
+        0.5,
+        0.75,
+        1.0
+      ],
+      "shape": [
+        5
+      ],
+      "dtype": "float64"
+    }
+  },
+  {
+    "function": "eye",
+    "input": {
+      "N": 3
+    },
+    "output": {
+      "data": [
+        1.0,
+        0.0,
+        0.0,
+        0.0,
+        1.0,
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "shape": [
+        3,
+        3
+      ],
+      "dtype": "float64"
+    }
+  }
+]

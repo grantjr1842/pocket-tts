@@ -99,19 +99,19 @@ pub enum DatetimeUnit {
 impl DatetimeUnit {
     pub fn as_str(&self) -> &'static str {
         match self {
-            DatetimeUnit::Y => "Y",
-            DatetimeUnit::M => "M",
-            DatetimeUnit::W => "W",
-            DatetimeUnit::D => "D",
-            DatetimeUnit::h => "h",
-            DatetimeUnit::m => "m",
-            DatetimeUnit::s => "s",
-            DatetimeUnit::ms => "ms",
-            DatetimeUnit::us => "us",
-            DatetimeUnit::ns => "ns",
-            DatetimeUnit::ps => "ps",
-            DatetimeUnit::fs => "fs",
-            DatetimeUnit::As => "as",
+            Self::Y => "Y",
+            Self::M => "M",
+            Self::W => "W",
+            Self::D => "D",
+            Self::h => "h",
+            Self::m => "m",
+            Self::s => "s",
+            Self::ms => "ms",
+            Self::us => "us",
+            Self::ns => "ns",
+            Self::ps => "ps",
+            Self::fs => "fs",
+            Self::As => "as",
         }
     }
 }
@@ -189,87 +189,87 @@ impl Dtype {
     /// Get the kind of this dtype
     pub fn kind(&self) -> DtypeKind {
         match self {
-            Dtype::Int8 { .. }
-            | Dtype::Int16 { .. }
-            | Dtype::Int32 { .. }
-            | Dtype::Int64 { .. }
-            | Dtype::Intp { .. } => DtypeKind::Integer,
-            Dtype::UInt8 { .. }
-            | Dtype::UInt16 { .. }
-            | Dtype::UInt32 { .. }
-            | Dtype::UInt64 { .. }
-            | Dtype::Uintp { .. } => DtypeKind::Unsigned,
-            Dtype::Float16 { .. }
-            | Dtype::Float32 { .. }
-            | Dtype::Float64 { .. }
-            | Dtype::Float128 { .. } => DtypeKind::Float,
-            Dtype::Complex32 { .. }
-            | Dtype::Complex64 { .. }
-            | Dtype::Complex128 { .. }
-            | Dtype::Complex256 { .. } => DtypeKind::Complex,
-            Dtype::Bool => DtypeKind::Bool,
-            Dtype::String { .. } | Dtype::Unicode { .. } => DtypeKind::String,
-            Dtype::Bytes { .. } => DtypeKind::Bytes,
-            Dtype::Datetime64(_) | Dtype::Timedelta64(_) => DtypeKind::Datetime,
-            Dtype::Object => DtypeKind::Object,
-            Dtype::Struct(_) => DtypeKind::Struct,
-            Dtype::Void { .. } => DtypeKind::Void,
+            Self::Int8 { .. }
+            | Self::Int16 { .. }
+            | Self::Int32 { .. }
+            | Self::Int64 { .. }
+            | Self::Intp { .. } => DtypeKind::Integer,
+            Self::UInt8 { .. }
+            | Self::UInt16 { .. }
+            | Self::UInt32 { .. }
+            | Self::UInt64 { .. }
+            | Self::Uintp { .. } => DtypeKind::Unsigned,
+            Self::Float16 { .. }
+            | Self::Float32 { .. }
+            | Self::Float64 { .. }
+            | Self::Float128 { .. } => DtypeKind::Float,
+            Self::Complex32 { .. }
+            | Self::Complex64 { .. }
+            | Self::Complex128 { .. }
+            | Self::Complex256 { .. } => DtypeKind::Complex,
+            Self::Bool => DtypeKind::Bool,
+            Self::String { .. } | Self::Unicode { .. } => DtypeKind::String,
+            Self::Bytes { .. } => DtypeKind::Bytes,
+            Self::Datetime64(_) | Self::Timedelta64(_) => DtypeKind::Datetime,
+            Self::Object => DtypeKind::Object,
+            Self::Struct(_) => DtypeKind::Struct,
+            Self::Void { .. } => DtypeKind::Void,
         }
     }
 
     /// Get size in bytes
     pub fn itemsize(&self) -> usize {
         match self {
-            Dtype::Int8 { .. } | Dtype::UInt8 { .. } | Dtype::Bool => 1,
-            Dtype::Int16 { .. } | Dtype::UInt16 { .. } | Dtype::Float16 { .. } => 2,
-            Dtype::Int32 { .. }
-            | Dtype::UInt32 { .. }
-            | Dtype::Float32 { .. }
-            | Dtype::Complex32 { .. } => 4,
-            Dtype::Int64 { .. }
-            | Dtype::UInt64 { .. }
-            | Dtype::Float64 { .. }
-            | Dtype::Complex64 { .. } => 8,
-            Dtype::Complex128 { .. } => 16,
-            Dtype::Complex256 { .. } => 32,
-            Dtype::Float128 { .. } => 16,
-            Dtype::Intp { .. } => std::mem::size_of::<isize>(),
-            Dtype::Uintp { .. } => std::mem::size_of::<usize>(),
-            Dtype::String { length } => length.unwrap_or(8),
-            Dtype::Unicode { length } => length.unwrap_or(8) * 4,
-            Dtype::Bytes { length } => *length,
-            Dtype::Datetime64(_) | Dtype::Timedelta64(_) => 8,
-            Dtype::Object => 8,
-            Dtype::Void { size } => *size,
-            Dtype::Struct(fields) => fields.iter().map(|f| f.dtype.itemsize()).sum(),
+            Self::Int8 { .. } | Self::UInt8 { .. } | Self::Bool => 1,
+            Self::Int16 { .. } | Self::UInt16 { .. } | Self::Float16 { .. } => 2,
+            Self::Int32 { .. }
+            | Self::UInt32 { .. }
+            | Self::Float32 { .. }
+            | Self::Complex32 { .. } => 4,
+            Self::Int64 { .. }
+            | Self::UInt64 { .. }
+            | Self::Float64 { .. }
+            | Self::Complex64 { .. } => 8,
+            Self::Complex128 { .. } => 16,
+            Self::Complex256 { .. } => 32,
+            Self::Float128 { .. } => 16,
+            Self::Intp { .. } => std::mem::size_of::<isize>(),
+            Self::Uintp { .. } => std::mem::size_of::<usize>(),
+            Self::String { length } => length.unwrap_or_else(|| 8),
+            Self::Unicode { length } => length.unwrap_or_else(|| 8) * 4,
+            Self::Bytes { length } => *length,
+            Self::Datetime64(_) | Self::Timedelta64(_) => 8,
+            Self::Object => 8,
+            Self::Void { size } => *size,
+            Self::Struct(fields) => fields.iter().map(|f| f.dtype.itemsize()).sum(),
         }
     }
 
     /// Get alignment requirement in bytes
     pub fn alignment(&self) -> usize {
         match self {
-            Dtype::Int8 { .. } | Dtype::UInt8 { .. } | Dtype::Bool => 1,
-            Dtype::Int16 { .. } | Dtype::UInt16 { .. } | Dtype::Float16 { .. } => 2,
-            Dtype::Int32 { .. }
-            | Dtype::UInt32 { .. }
-            | Dtype::Float32 { .. }
-            | Dtype::Complex32 { .. } => 4,
-            Dtype::Int64 { .. }
-            | Dtype::UInt64 { .. }
-            | Dtype::Float64 { .. }
-            | Dtype::Complex64 { .. } => 8,
-            Dtype::Complex128 { .. } => 16,
-            Dtype::Complex256 { .. } => 32,
-            Dtype::Float128 { .. } => 16,
-            Dtype::Intp { .. } => std::mem::align_of::<isize>(),
-            Dtype::Uintp { .. } => std::mem::align_of::<usize>(),
-            Dtype::String { .. } => 8,
-            Dtype::Unicode { .. } => 8,
-            Dtype::Bytes { .. } => 1,
-            Dtype::Datetime64(_) | Dtype::Timedelta64(_) => 8,
-            Dtype::Object => 8,
-            Dtype::Void { .. } => 1,
-            Dtype::Struct(fields) => fields
+            Self::Int8 { .. } | Self::UInt8 { .. } | Self::Bool => 1,
+            Self::Int16 { .. } | Self::UInt16 { .. } | Self::Float16 { .. } => 2,
+            Self::Int32 { .. }
+            | Self::UInt32 { .. }
+            | Self::Float32 { .. }
+            | Self::Complex32 { .. } => 4,
+            Self::Int64 { .. }
+            | Self::UInt64 { .. }
+            | Self::Float64 { .. }
+            | Self::Complex64 { .. } => 8,
+            Self::Complex128 { .. } => 16,
+            Self::Complex256 { .. } => 32,
+            Self::Float128 { .. } => 16,
+            Self::Intp { .. } => std::mem::align_of::<isize>(),
+            Self::Uintp { .. } => std::mem::align_of::<usize>(),
+            Self::String { .. } => 8,
+            Self::Unicode { .. } => 8,
+            Self::Bytes { .. } => 1,
+            Self::Datetime64(_) | Self::Timedelta64(_) => 8,
+            Self::Object => 8,
+            Self::Void { .. } => 1,
+            Self::Struct(fields) => fields
                 .iter()
                 .map(|f| f.dtype.alignment())
                 .max()
@@ -282,37 +282,37 @@ impl Dtype {
         use std::any::TypeId;
         let type_id = TypeId::of::<T>();
         if type_id == TypeId::of::<i8>() {
-            Dtype::Int8 { byteorder: None }
+            Self::Int8 { byteorder: None }
         } else if type_id == TypeId::of::<i16>() {
-            Dtype::Int16 { byteorder: None }
+            Self::Int16 { byteorder: None }
         } else if type_id == TypeId::of::<i32>() {
-            Dtype::Int32 { byteorder: None }
+            Self::Int32 { byteorder: None }
         } else if type_id == TypeId::of::<i64>() {
-            Dtype::Int64 { byteorder: None }
+            Self::Int64 { byteorder: None }
         } else if type_id == TypeId::of::<isize>() {
-            Dtype::Intp { byteorder: None }
+            Self::Intp { byteorder: None }
         } else if type_id == TypeId::of::<u8>() {
-            Dtype::UInt8 { byteorder: None }
+            Self::UInt8 { byteorder: None }
         } else if type_id == TypeId::of::<u16>() {
-            Dtype::UInt16 { byteorder: None }
+            Self::UInt16 { byteorder: None }
         } else if type_id == TypeId::of::<u32>() {
-            Dtype::UInt32 { byteorder: None }
+            Self::UInt32 { byteorder: None }
         } else if type_id == TypeId::of::<u64>() {
-            Dtype::UInt64 { byteorder: None }
+            Self::UInt64 { byteorder: None }
         } else if type_id == TypeId::of::<usize>() {
-            Dtype::Uintp { byteorder: None }
+            Self::Uintp { byteorder: None }
         } else if type_id == TypeId::of::<f32>() {
-            Dtype::Float32 { byteorder: None }
+            Self::Float32 { byteorder: None }
         } else if type_id == TypeId::of::<f64>() {
-            Dtype::Float64 { byteorder: None }
+            Self::Float64 { byteorder: None }
         } else if type_id == TypeId::of::<bool>() {
-            Dtype::Bool
+            Self::Bool
         } else if type_id == TypeId::of::<String>() {
-            Dtype::Unicode { length: None }
+            Self::Unicode { length: None }
         } else if type_id == TypeId::of::<&str>() {
-            Dtype::Unicode { length: None }
+            Self::Unicode { length: None }
         } else {
-            Dtype::Object
+            Self::Object
         }
     }
 
@@ -320,26 +320,26 @@ impl Dtype {
     pub fn from_str(s: &str) -> Result<Self, String> {
         let s = s.strip_prefix("np.").unwrap_or(s);
         match s {
-            "int8" | "i1" => Ok(Dtype::Int8 { byteorder: None }),
-            "int16" | "i2" => Ok(Dtype::Int16 { byteorder: None }),
-            "int32" | "i4" => Ok(Dtype::Int32 { byteorder: None }),
-            "int64" | "i8" => Ok(Dtype::Int64 { byteorder: None }),
-            "intp" | "ip" => Ok(Dtype::Intp { byteorder: None }),
-            "uint8" | "u1" => Ok(Dtype::UInt8 { byteorder: None }),
-            "uint16" | "u2" => Ok(Dtype::UInt16 { byteorder: None }),
-            "uint32" | "u4" => Ok(Dtype::UInt32 { byteorder: None }),
-            "uint64" | "u8" => Ok(Dtype::UInt64 { byteorder: None }),
-            "uintp" | "up" => Ok(Dtype::Uintp { byteorder: None }),
-            "float16" | "f2" => Ok(Dtype::Float16 { byteorder: None }),
-            "float32" | "f4" => Ok(Dtype::Float32 { byteorder: None }),
-            "float64" | "f8" => Ok(Dtype::Float64 { byteorder: None }),
-            "complex32" | "c4" => Ok(Dtype::Complex32 { byteorder: None }),
-            "complex64" | "c8" => Ok(Dtype::Complex64 { byteorder: None }),
-            "complex128" | "c16" => Ok(Dtype::Complex128 { byteorder: None }),
-            "bool" => Ok(Dtype::Bool),
-            "str" => Ok(Dtype::String { length: None }),
-            "unicode" => Ok(Dtype::Unicode { length: None }),
-            "object" => Ok(Dtype::Object),
+            "int8" | "i1" => Ok(Self::Int8 { byteorder: None }),
+            "int16" | "i2" => Ok(Self::Int16 { byteorder: None }),
+            "int32" | "i4" => Ok(Self::Int32 { byteorder: None }),
+            "int64" | "i8" => Ok(Self::Int64 { byteorder: None }),
+            "intp" | "ip" => Ok(Self::Intp { byteorder: None }),
+            "uint8" | "u1" => Ok(Self::UInt8 { byteorder: None }),
+            "uint16" | "u2" => Ok(Self::UInt16 { byteorder: None }),
+            "uint32" | "u4" => Ok(Self::UInt32 { byteorder: None }),
+            "uint64" | "u8" => Ok(Self::UInt64 { byteorder: None }),
+            "uintp" | "up" => Ok(Self::Uintp { byteorder: None }),
+            "float16" | "f2" => Ok(Self::Float16 { byteorder: None }),
+            "float32" | "f4" => Ok(Self::Float32 { byteorder: None }),
+            "float64" | "f8" => Ok(Self::Float64 { byteorder: None }),
+            "complex32" | "c4" => Ok(Self::Complex32 { byteorder: None }),
+            "complex64" | "c8" => Ok(Self::Complex64 { byteorder: None }),
+            "complex128" | "c16" => Ok(Self::Complex128 { byteorder: None }),
+            "bool" => Ok(Self::Bool),
+            "str" => Ok(Self::String { length: None }),
+            "unicode" => Ok(Self::Unicode { length: None }),
+            "object" => Ok(Self::Object),
             _ => {
                 if s.starts_with("dtype[") && s.ends_with(']') {
                     let inner = &s[6..s.len() - 1];
@@ -351,20 +351,20 @@ impl Dtype {
                         .and_then(|s| s.strip_suffix("]"));
                     if let Some(unit_str) = unit {
                         match unit_str {
-                            "Y" => Ok(Dtype::Datetime64(DatetimeUnit::Y)),
-                            "M" => Ok(Dtype::Datetime64(DatetimeUnit::M)),
-                            "W" => Ok(Dtype::Datetime64(DatetimeUnit::W)),
-                            "D" => Ok(Dtype::Datetime64(DatetimeUnit::D)),
-                            "h" => Ok(Dtype::Datetime64(DatetimeUnit::h)),
-                            "m" => Ok(Dtype::Datetime64(DatetimeUnit::m)),
-                            "s" => Ok(Dtype::Datetime64(DatetimeUnit::s)),
-                            "ms" => Ok(Dtype::Datetime64(DatetimeUnit::ms)),
-                            "us" => Ok(Dtype::Datetime64(DatetimeUnit::us)),
-                            "ns" => Ok(Dtype::Datetime64(DatetimeUnit::ns)),
+                            "Y" => Ok(Self::Datetime64(DatetimeUnit::Y)),
+                            "M" => Ok(Self::Datetime64(DatetimeUnit::M)),
+                            "W" => Ok(Self::Datetime64(DatetimeUnit::W)),
+                            "D" => Ok(Self::Datetime64(DatetimeUnit::D)),
+                            "h" => Ok(Self::Datetime64(DatetimeUnit::h)),
+                            "m" => Ok(Self::Datetime64(DatetimeUnit::m)),
+                            "s" => Ok(Self::Datetime64(DatetimeUnit::s)),
+                            "ms" => Ok(Self::Datetime64(DatetimeUnit::ms)),
+                            "us" => Ok(Self::Datetime64(DatetimeUnit::us)),
+                            "ns" => Ok(Self::Datetime64(DatetimeUnit::ns)),
                             _ => Err(format!("Unknown datetime unit: {}", unit_str)),
                         }
                     } else {
-                        Ok(Dtype::Datetime64(DatetimeUnit::ns))
+                        Ok(Self::Datetime64(DatetimeUnit::ns))
                     }
                 } else {
                     Err(format!("Unknown dtype: {}", s))
@@ -376,26 +376,26 @@ impl Dtype {
     /// Convert to string (NumPy compatible)
     pub fn to_string(&self) -> String {
         match self {
-            Dtype::Int8 { .. } => "int8".to_string(),
-            Dtype::Int16 { .. } => "int16".to_string(),
-            Dtype::Int32 { .. } => "int32".to_string(),
-            Dtype::Int64 { .. } => "int64".to_string(),
-            Dtype::UInt8 { .. } => "uint8".to_string(),
-            Dtype::UInt16 { .. } => "uint16".to_string(),
-            Dtype::UInt32 { .. } => "uint32".to_string(),
-            Dtype::UInt64 { .. } => "uint64".to_string(),
-            Dtype::Float16 { .. } => "float16".to_string(),
-            Dtype::Float32 { .. } => "float32".to_string(),
-            Dtype::Float64 { .. } => "float64".to_string(),
-            Dtype::Complex32 { .. } => "complex32".to_string(),
-            Dtype::Complex64 { .. } => "complex64".to_string(),
-            Dtype::Complex128 { .. } => "complex128".to_string(),
-            Dtype::Bool => "bool".to_string(),
-            Dtype::String { .. } => "str".to_string(),
-            Dtype::Unicode { .. } => "unicode".to_string(),
-            Dtype::Object => "object".to_string(),
-            Dtype::Struct(_) => "struct".to_string(),
-            Dtype::Datetime64(unit) => format!(
+            Self::Int8 { .. } => "int8".to_string(),
+            Self::Int16 { .. } => "int16".to_string(),
+            Self::Int32 { .. } => "int32".to_string(),
+            Self::Int64 { .. } => "int64".to_string(),
+            Self::UInt8 { .. } => "uint8".to_string(),
+            Self::UInt16 { .. } => "uint16".to_string(),
+            Self::UInt32 { .. } => "uint32".to_string(),
+            Self::UInt64 { .. } => "uint64".to_string(),
+            Self::Float16 { .. } => "float16".to_string(),
+            Self::Float32 { .. } => "float32".to_string(),
+            Self::Float64 { .. } => "float64".to_string(),
+            Self::Complex32 { .. } => "complex32".to_string(),
+            Self::Complex64 { .. } => "complex64".to_string(),
+            Self::Complex128 { .. } => "complex128".to_string(),
+            Self::Bool => "bool".to_string(),
+            Self::String { .. } => "str".to_string(),
+            Self::Unicode { .. } => "unicode".to_string(),
+            Self::Object => "object".to_string(),
+            Self::Struct(_) => "struct".to_string(),
+            Self::Datetime64(unit) => format!(
                 "datetime64[{}]",
                 match unit {
                     DatetimeUnit::Y => "Y",
@@ -486,33 +486,33 @@ impl Dtype {
     /// Get byte order of this dtype
     pub fn byteorder(&self) -> Option<ByteOrder> {
         match self {
-            Dtype::Int8 { byteorder } => *byteorder,
-            Dtype::Int16 { byteorder } => *byteorder,
-            Dtype::Int32 { byteorder } => *byteorder,
-            Dtype::Int64 { byteorder } => *byteorder,
-            Dtype::Intp { byteorder } => *byteorder,
-            Dtype::UInt8 { byteorder } => *byteorder,
-            Dtype::UInt16 { byteorder } => *byteorder,
-            Dtype::UInt32 { byteorder } => *byteorder,
-            Dtype::UInt64 { byteorder } => *byteorder,
-            Dtype::Uintp { byteorder } => *byteorder,
-            Dtype::Float16 { byteorder } => *byteorder,
-            Dtype::Float32 { byteorder } => *byteorder,
-            Dtype::Float64 { byteorder } => *byteorder,
-            Dtype::Float128 { byteorder } => *byteorder,
-            Dtype::Complex32 { byteorder } => *byteorder,
-            Dtype::Complex64 { byteorder } => *byteorder,
-            Dtype::Complex128 { byteorder } => *byteorder,
-            Dtype::Complex256 { byteorder } => *byteorder,
-            Dtype::Bool => None,
-            Dtype::String { .. } => None,
-            Dtype::Unicode { .. } => None,
-            Dtype::Bytes { .. } => None,
-            Dtype::Datetime64(_) => None,
-            Dtype::Timedelta64(_) => None,
-            Dtype::Object => None,
-            Dtype::Void { .. } => None,
-            Dtype::Struct(_) => None,
+            Self::Int8 { byteorder } => *byteorder,
+            Self::Int16 { byteorder } => *byteorder,
+            Self::Int32 { byteorder } => *byteorder,
+            Self::Int64 { byteorder } => *byteorder,
+            Self::Intp { byteorder } => *byteorder,
+            Self::UInt8 { byteorder } => *byteorder,
+            Self::UInt16 { byteorder } => *byteorder,
+            Self::UInt32 { byteorder } => *byteorder,
+            Self::UInt64 { byteorder } => *byteorder,
+            Self::Uintp { byteorder } => *byteorder,
+            Self::Float16 { byteorder } => *byteorder,
+            Self::Float32 { byteorder } => *byteorder,
+            Self::Float64 { byteorder } => *byteorder,
+            Self::Float128 { byteorder } => *byteorder,
+            Self::Complex32 { byteorder } => *byteorder,
+            Self::Complex64 { byteorder } => *byteorder,
+            Self::Complex128 { byteorder } => *byteorder,
+            Self::Complex256 { byteorder } => *byteorder,
+            Self::Bool => None,
+            Self::String { .. } => None,
+            Self::Unicode { .. } => None,
+            Self::Bytes { .. } => None,
+            Self::Datetime64(_) => None,
+            Self::Timedelta64(_) => None,
+            Self::Object => None,
+            Self::Void { .. } => None,
+            Self::Struct(_) => None,
         }
     }
 }

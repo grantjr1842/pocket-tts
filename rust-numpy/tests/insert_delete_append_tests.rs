@@ -1,5 +1,5 @@
-use numpy::array_manipulation::{append, delete, insert};
-use numpy::Array;
+use rust_numpy::array_manipulation::{append, delete, insert};
+use rust_numpy::Array;
 
 #[test]
 fn test_insert_1d_single() {

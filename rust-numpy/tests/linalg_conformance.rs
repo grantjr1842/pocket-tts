@@ -1,4 +1,4 @@
-// use numpy::linalg;
+// use rust_numpy::linalg;
 
 /*
 #[test]

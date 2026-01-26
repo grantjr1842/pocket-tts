@@ -886,8 +886,8 @@ numpy.testing,numpy.testing.runstring,runstring,missing,not_found,medium
 numpy.testing,numpy.testing.suppress_warnings,suppress_warnings,missing,not_found,medium
 numpy.testing,numpy.testing.tempdir,tempdir,missing,not_found,medium
 numpy.testing,numpy.testing.temppath,temppath,missing,not_found,medium
-numpy.typing,numpy.typing.NBitBase,NBitBase,missing,not_found,low
-numpy.typing,numpy.typing.NDArray,NDArray,missing,not_found,low
+numpy.typing,numpy.typing.NBitBase,NBitBase,present,exported,low
+numpy.typing,numpy.typing.NDArray,NDArray,present,exported,low
 numpy.ndarray Methods,numpy.ndarray.all,all,missing,not_found,critical
 numpy.ndarray Methods,numpy.ndarray.any,any,missing,not_found,critical
 numpy.ndarray Methods,numpy.ndarray.argmax,argmax,missing,not_found,critical

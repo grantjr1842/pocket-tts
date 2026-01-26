@@ -108,9 +108,7 @@ impl CpuFeatures {
     }
 
     /// Check if the CPU supports AVX-512
-    pub fn has_avx512_support(&self) -> bool {
-        self.has_avx512f
-    }
+    pub const fn has_avx512_support(&self) -> bool { self.has_avx512f }
 
     /// Get a human-readable description of CPU features
     pub fn description(&self) -> &'static str {
@@ -139,6 +137,7 @@ static mut CPU_FEATURES_CACHE: Option<CpuFeatures> = None;
 static mut CPU_FEATURES_INIT: std::sync::Once = std::sync::Once::new();
 
 /// Get cached CPU features (detects once and caches the result)
+#[allow(static_mut_refs)]
 pub fn get_cpu_features() -> CpuFeatures {
     unsafe {
         CPU_FEATURES_INIT.call_once(|| {

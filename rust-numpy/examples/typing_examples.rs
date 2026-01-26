@@ -3,8 +3,9 @@
 //! This file shows how to use the NDArray, ArrayLike, and DtypeLike
 //! type annotations for better type safety and IDE support.
 
+use rust_numpy::array;
+use rust_numpy::array::Array;
 use rust_numpy::error::NumPyError;
-use rust_numpy::prelude::*;
 use rust_numpy::typing::prelude::*;
 
 /// Example function using type annotations for arrays
@@ -15,15 +16,15 @@ fn process_numeric_data(
 ) -> Float64Array {
     println!(
         "Processing {} integers, {} floats, {} boolean mask values",
-        integers.len(),
-        floats.len(),
-        mask.len()
+        integers.size(),
+        floats.size(),
+        mask.size()
     );
 
     // Simple example: multiply floats by 2 where mask is true
-    let mut result = floats.clone();
+    let result = floats.clone();
     for (i, &is_valid) in mask.iter().enumerate() {
-        if is_valid && i < result.len() {
+        if is_valid && i < result.size() {
             // Note: This is a simplified example - in real code you'd use proper array operations
             println!(
                 "  Processing index {}: {} -> {}",
@@ -58,7 +59,7 @@ where
 {
     println!("Array shape: {:?}", arr.shape());
     println!("Array dtype: {:?}", arr.dtype);
-    arr.len()
+    arr.size()
 }
 
 fn main() -> Result<(), NumPyError> {
@@ -78,7 +79,7 @@ fn main() -> Result<(), NumPyError> {
     println!("\n2. Processing Data with Type Annotations:");
     let processed =
         process_numeric_data(int_array.clone(), float_array.clone(), bool_array.clone());
-    println!("  Processed array length: {}", processed.len());
+    println!("  Processed array length: {}", processed.size());
 
     // 3. ArrayLike trait examples
     println!("\n3. ArrayLike Trait Examples:");
@@ -94,7 +95,7 @@ fn main() -> Result<(), NumPyError> {
     println!("  From array: {:?}", array_from_array);
 
     // Convert from slice
-    let slice_data = &[1000, 2000, 3000];
+    let slice_data: [i32; 3] = [1000, 2000, 3000];
     let array_from_slice = convert_to_array(slice_data)?;
     println!("  From slice: {:?}", array_from_slice);
 

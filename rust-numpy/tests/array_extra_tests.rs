@@ -1,6 +1,6 @@
 //! Tests for array_extra module functions (trim_zeros, ediff1d, etc.)
 
-use numpy::*;
+use rust_numpy::*;
 
 #[cfg(test)]
 mod tests {

@@ -7,8 +7,8 @@
 
 //! Tests for diagonal and diag functions
 
-use numpy::array_extra::{diag, diagonal};
-use numpy::Array;
+use rust_numpy::array_extra::{diag, diagonal};
+use rust_numpy::Array;
 
 #[test]
 fn test_diagonal_main() {

@@ -1,4 +1,4 @@
-use numpy::*;
+use rust_numpy::*;
 
 #[test]
 fn test_masked_array_basic() {
@@ -50,7 +50,7 @@ fn test_masked_array_binary_op() {
     // Result mask should be mask1 | mask2 = [false, true, true, false]
     // Result data (at unmasked) should be [11.0, _, _, 44.0]
 
-    let res = ma1.binary_op(&ma2, |a, b, w, c| a.add(b, w, c)).unwrap();
+    let res = ma1.binary_op(&ma2, |a, b, w, c| a.add_with_options(b, w, c)).unwrap();
 
     assert_eq!(res.mask().data(), &[false, true, true, false]);
     assert_eq!(res.data().get_multi(&[0]).unwrap(), 11.0);

@@ -1,5 +1,5 @@
-use numpy::statistics::{median, nanmedian, nanpercentile, nanquantile, percentile, quantile};
-use numpy::*;
+use rust_numpy::statistics::{median, nanmedian, nanpercentile, nanquantile, percentile, quantile};
+use rust_numpy::*;
 
 #[cfg(test)]
 mod tests {
@@ -117,7 +117,7 @@ mod tests {
 
 #[test]
 fn test_correlate_basic() {
-    use numpy::statistics::correlate;
+    use rust_numpy::statistics::correlate;
     let a = array![1.0, 2.0, 3.0];
     let v = array![0.0, 1.0, 0.5];
     let result = correlate(&a, &v, "valid").unwrap();
@@ -127,7 +127,7 @@ fn test_correlate_basic() {
 
 #[test]
 fn test_correlate_identical() {
-    use numpy::statistics::correlate;
+    use rust_numpy::statistics::correlate;
     let a = array![1.0, 2.0, 3.0];
     let v = array![1.0, 2.0, 3.0];
     let result = correlate(&a, &v, "valid").unwrap();
@@ -144,7 +144,7 @@ fn test_correlate_identical() {
 
 #[test]
 fn test_nancumsum_basic() {
-    use numpy::array;
+    use rust_numpy::array;
     let arr = array![1.0, f64::NAN, 3.0, f64::NAN, 5.0];
     let result = arr.nancumsum(None).unwrap();
 
@@ -158,7 +158,7 @@ fn test_nancumsum_basic() {
 
 #[test]
 fn test_nancumsum_no_nan() {
-    use numpy::array;
+    use rust_numpy::array;
     let arr = array![1.0, 2.0, 3.0, 4.0];
     let result = arr.nancumsum(None).unwrap();
 
@@ -171,7 +171,7 @@ fn test_nancumsum_no_nan() {
 
 #[test]
 fn test_nancumsum_axis() {
-    use numpy::array2;
+    use rust_numpy::array2;
     let arr = array2![[1.0, f64::NAN, 3.0], [f64::NAN, 5.0, 6.0]];
     let result = arr.nancumsum(Some(1)).unwrap();
 
@@ -188,7 +188,7 @@ fn test_nancumsum_axis() {
 
 #[test]
 fn test_nancumprod_basic() {
-    use numpy::array;
+    use rust_numpy::array;
     let arr = array![2.0, f64::NAN, 3.0, f64::NAN, 4.0];
     let result = arr.nancumprod(None).unwrap();
 
@@ -202,7 +202,7 @@ fn test_nancumprod_basic() {
 
 #[test]
 fn test_nancumprod_no_nan() {
-    use numpy::array;
+    use rust_numpy::array;
     let arr = array![2.0, 3.0, 4.0];
     let result = arr.nancumprod(None).unwrap();
 
@@ -214,7 +214,7 @@ fn test_nancumprod_no_nan() {
 
 #[test]
 fn test_nancumprod_axis() {
-    use numpy::array2;
+    use rust_numpy::array2;
     let arr = array2![[2.0, f64::NAN, 3.0], [f64::NAN, 5.0, 2.0]];
     let result = arr.nancumprod(Some(1)).unwrap();
 
@@ -231,7 +231,7 @@ fn test_nancumprod_axis() {
 
 #[test]
 fn test_nancumsum_all_nan() {
-    use numpy::array;
+    use rust_numpy::array;
     let arr = array![f64::NAN, f64::NAN, f64::NAN];
     let result = arr.nancumsum(None).unwrap();
 
@@ -243,7 +243,7 @@ fn test_nancumsum_all_nan() {
 
 #[test]
 fn test_nancumprod_all_nan() {
-    use numpy::array;
+    use rust_numpy::array;
     let arr = array![f64::NAN, f64::NAN, f64::NAN];
     let result = arr.nancumprod(None).unwrap();
 

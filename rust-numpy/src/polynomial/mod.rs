@@ -77,7 +77,7 @@ static POLY_PRINT_UNICODE: AtomicBool = AtomicBool::new(cfg!(unix));
 /// # Examples
 ///
 /// ```ignore
-/// use numpy::polynomial::set_default_printstyle;
+/// use rust_numpy::polynomial::set_default_printstyle;
 ///
 /// // Use unicode superscripts (default on Unix)
 /// set_default_printstyle("unicode").unwrap();
@@ -95,7 +95,7 @@ pub fn set_default_printstyle(style: &str) -> Result<(), NumPyError> {
             POLY_PRINT_UNICODE.store(false, Ordering::SeqCst);
             Ok(())
         }
-        _ => Err(NumPyError::invalid_value(&format!(
+        _ => Err(NumPyError::invalid_value(format!(
             "Unsupported format string '{}'. Valid options are 'ascii' and 'unicode'",
             style
         ))),

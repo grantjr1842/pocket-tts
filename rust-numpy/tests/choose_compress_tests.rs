@@ -7,8 +7,8 @@
 
 //! Tests for choose and compress functions
 
-use numpy::array_extra::{choose, compress};
-use numpy::Array;
+use rust_numpy::array_extra::{choose, compress};
+use rust_numpy::Array;
 
 #[test]
 fn test_choose_basic() {

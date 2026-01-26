@@ -1,5 +1,5 @@
-use numpy::dtype::Dtype;
-use numpy::type_promotion::TypePromotionRules;
+use rust_numpy::dtype::Dtype;
+use rust_numpy::type_promotion::TypePromotionRules;
 
 #[test]
 fn test_type_promotion_rules_basic() {
@@ -157,8 +157,8 @@ fn test_edge_cases() {
 fn test_datetime_promotion() {
     let rules = TypePromotionRules::new();
 
-    let dt1 = Dtype::Datetime64(numpy::dtype::DatetimeUnit::ns);
-    let dt2 = Dtype::Datetime64(numpy::dtype::DatetimeUnit::us);
+    let dt1 = Dtype::Datetime64(rust_numpy::dtype::DatetimeUnit::ns);
+    let dt2 = Dtype::Datetime64(rust_numpy::dtype::DatetimeUnit::us);
 
     // Datetime promotion should work
     let result = rules.promote_two_types(&dt1, &dt2);
@@ -192,7 +192,7 @@ fn test_all_dtype_kinds_coverage() {
         Dtype::String { length: None },
         Dtype::Unicode { length: None },
         Dtype::Bytes { length: 10 },
-        Dtype::Datetime64(numpy::dtype::DatetimeUnit::ns),
+        Dtype::Datetime64(rust_numpy::dtype::DatetimeUnit::ns),
         Dtype::Object,
     ];
 

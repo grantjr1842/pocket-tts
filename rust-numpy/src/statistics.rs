@@ -1275,7 +1275,7 @@ where
 fn reduce_with_op<T, F>(
     a: &Array<T>,
     axis: Option<&[isize]>,
-    keepdims: bool,
+    _keepdims: bool,
     op: F,
 ) -> Result<Array<T>, NumPyError>
 where

@@ -1,7 +1,4 @@
-use crate::array::Array;
-use crate::dtype::{Dtype, DtypeKind};
 use crate::error::{NumPyError, Result};
-use crate::ufunc::{ArrayView, ArrayViewMut};
 use std::collections::HashMap;
 use std::sync::{Arc, RwLock};
 
@@ -31,21 +28,21 @@ impl UfuncType {
     /// Convert ufunc type to string name
     pub fn as_str(&self) -> &'static str {
         match self {
-            UfuncType::Add => "add",
-            UfuncType::Subtract => "subtract",
-            UfuncType::Multiply => "multiply",
-            UfuncType::Divide => "divide",
-            UfuncType::Negative => "negative",
-            UfuncType::Absolute => "absolute",
-            UfuncType::Greater => "greater",
-            UfuncType::Less => "less",
-            UfuncType::Equal => "equal",
-            UfuncType::NotEqual => "not_equal",
-            UfuncType::LogicalAnd => "logical_and",
-            UfuncType::LogicalOr => "logical_or",
-            UfuncType::LogicalNot => "logical_not",
-            UfuncType::Maximum => "maximum",
-            UfuncType::Minimum => "minimum",
+            Self::Add => "add",
+            Self::Subtract => "subtract",
+            Self::Multiply => "multiply",
+            Self::Divide => "divide",
+            Self::Negative => "negative",
+            Self::Absolute => "absolute",
+            Self::Greater => "greater",
+            Self::Less => "less",
+            Self::Equal => "equal",
+            Self::NotEqual => "not_equal",
+            Self::LogicalAnd => "logical_and",
+            Self::LogicalOr => "logical_or",
+            Self::LogicalNot => "logical_not",
+            Self::Maximum => "maximum",
+            Self::Minimum => "minimum",
         }
     }
 }
@@ -121,26 +118,27 @@ pub struct ErasedUfuncKernel {
 impl ErasedUfuncKernel {
     /// Create a new type-erased kernel
     pub fn new<T: 'static, K: UfuncKernel<T> + 'static>(kernel: K, ufunc_type: UfuncType) -> Self {
+        let name = kernel.name().to_string();
+        let is_vectorized = kernel.is_vectorized();
+        let performance_hint = kernel.performance_hint();
+        let layout_preference = kernel.layout_preference();
+
         Self {
             kernel: Box::new(kernel),
             type_id: std::any::TypeId::of::<T>(),
-            name: kernel.name().to_string(),
+            name,
             ufunc_type,
-            is_vectorized: kernel.is_vectorized(),
-            performance_hint: kernel.performance_hint(),
-            layout_preference: kernel.layout_preference(),
+            is_vectorized,
+            performance_hint,
+            layout_preference,
         }
     }
     
     /// Get the type ID of the kernel
-    pub fn type_id(&self) -> std::any::TypeId {
-        self.type_id
-    }
+    pub const fn type_id(&self) -> std::any::TypeId  { self.type_id }
     
     /// Get the ufunc type
-    pub fn ufunc_type(&self) -> UfuncType {
-        self.ufunc_type
-    }
+    pub const fn ufunc_type(&self) -> UfuncType { self.ufunc_type }
     
     /// Get kernel name
     pub fn name(&self) -> &str {
@@ -148,30 +146,23 @@ impl ErasedUfuncKernel {
     }
     
     /// Check if kernel is vectorized
-    pub fn is_vectorized(&self) -> bool {
-        self.is_vectorized
-    }
+    pub const fn is_vectorized(&self) -> bool { self.is_vectorized }
     
     /// Get performance hint
-    pub fn performance_hint(&self) -> UfuncPerformanceHint {
-        self.performance_hint
-    }
+    pub const fn performance_hint(&self) -> UfuncPerformanceHint { self.performance_hint }
     
     /// Get layout preference
-    pub fn layout_preference(&self) -> ArrayLayoutPreference {
-        self.layout_preference
-    }
+    pub const fn layout_preference(&self) -> ArrayLayoutPreference { self.layout_preference }
     
     /// Downcast kernel to concrete type
+    ///
+    /// TODO: This method needs architectural redesign. We cannot safely cast from
+    /// `dyn Any` to `dyn UfuncKernel<T>` because they have different vtables.
+    /// The kernel storage approach needs to be redesigned to support proper retrieval.
     pub fn downcast_ref<T: 'static>(&self) -> Option<&dyn UfuncKernel<T>> {
-        if self.type_id == std::any::TypeId::of::<T>() {
-            // SAFETY: We checked type ID matches
-            unsafe {
-                Some(&*(self.kernel.as_ref() as *const dyn std::any::Any as *const dyn UfuncKernel<T>))
-            }
-        } else {
-            None
-        }
+        // Cannot safely cast between trait objects with different vtables
+        // This requires redesign of the kernel storage approach
+        None
     }
 }
 
@@ -223,14 +214,25 @@ impl UfuncKernelRegistry {
         Ok(())
     }
     
-    /// Get a kernel for a specific dtype and ufunc type
-    pub fn get<T: 'static>(&self, ufunc_type: UfuncType) -> Option<&dyn UfuncKernel<T>> {
+    /// Get a kernel name for a specific dtype and ufunc type
+    pub fn get_kernel_name<T: 'static>(&self, ufunc_type: UfuncType) -> Option<String> {
         let type_id = std::any::TypeId::of::<T>();
         let kernels = self.kernels.read().ok()?;
-        
-        kernels.get(&(type_id, ufunc_type))?.downcast_ref::<T>()
+
+        kernels.get(&(type_id, ufunc_type)).map(|k| k.name().to_string())
     }
-    
+
+    /// Check if a kernel exists for a specific dtype and ufunc type
+    pub fn has_kernel<T: 'static>(&self, ufunc_type: UfuncType) -> bool {
+        let type_id = std::any::TypeId::of::<T>();
+        let kernels = self.kernels.read().ok();
+
+        match kernels {
+            Some(k) => k.contains_key(&(type_id, ufunc_type)),
+            None => false,
+        }
+    }
+
     /// Find best available kernel for a dtype and ufunc type
     /// This may return a kernel that requires type casting
     pub fn find_best_kernel<T: 'static>(&self, ufunc_type: UfuncType) -> Option<(String, bool)> {
@@ -273,7 +275,7 @@ impl UfuncKernelRegistry {
             }
         });
         
-        if let Some(((_, kernel)) = candidates.first() {
+        if let Some(&(_, kernel)) = candidates.first() {
             let kernel_name = kernel.name().to_string();
             let needs_cast = kernel.type_id() != type_id;
             
@@ -402,23 +404,24 @@ impl Default for UfuncKernelRegistry {
     }
 }
 
-/// Global ufunc kernel registry
+// Global ufunc kernel registry
 lazy_static::lazy_static! {
     pub static ref UFUNC_KERNEL_REGISTRY: Arc<UfuncKernelRegistry> = Arc::new(UfuncKernelRegistry::new());
 }
 
 /// Register a kernel globally
 pub fn register_ufunc_kernel<T: 'static, K: UfuncKernel<T> + 'static>(
-    ufunc_type: UfuncType,
-    kernel: K,
+    _ufunc_type: UfuncType,
+    _kernel: K,
 ) -> Result<()> {
     Err(NumPyError::internal_error("Global registration not yet implemented"))
 }
 
 /// Get a kernel globally
-pub fn get_ufunc_kernel<T: 'static>(ufunc_type: UfuncType) -> Option<&'static dyn UfuncKernel<T>> {
-    UFUNC_KERNEL_REGISTRY.get(ufunc_type)
-}
+/// TODO: This function needs redesign to handle lifetimes properly
+// pub fn get_ufunc_kernel<T: 'static>(ufunc_type: UfuncType) -> Option<&'static dyn UfuncKernel<T>> {
+//     UFUNC_KERNEL_REGISTRY.get(ufunc_type)
+// }
 
 /// Find best kernel globally
 pub fn find_best_ufunc_kernel<T: 'static>(

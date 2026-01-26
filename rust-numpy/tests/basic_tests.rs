@@ -1,4 +1,4 @@
-use numpy::*;
+use rust_numpy::*;
 
 #[cfg(test)]
 mod tests {
@@ -78,7 +78,7 @@ mod tests {
     #[test]
     fn test_strides_computation() {
         let shape = vec![2, 3, 4];
-        let strides = numpy::strides::compute_strides(&shape);
+        let strides = rust_numpy::strides::compute_strides(&shape);
         assert_eq!(strides, vec![12, 4, 1]);
     }
 
@@ -86,17 +86,17 @@ mod tests {
     fn test_broadcast_shape() {
         let shape1 = vec![2, 1, 3];
         let shape2 = vec![1, 4, 1];
-        let broadcast_shape = numpy::broadcasting::compute_broadcast_shape(&shape1, &shape2);
+        let broadcast_shape = rust_numpy::broadcasting::compute_broadcast_shape(&shape1, &shape2);
         assert_eq!(broadcast_shape, vec![2, 4, 3]);
     }
 
     #[test]
     fn test_constants() {
-        assert!((numpy::constants::PI - 3.141592653589793).abs() < 1e-15);
-        assert_eq!(numpy::constants::dtype::INT32_MAX, 2147483647);
-        assert!(numpy::constants::float::EPSILON > 0.0);
-        assert!(numpy::constants::utils::is_nan(numpy::constants::NAN));
-        assert!(numpy::constants::utils::is_infinite(numpy::constants::INF));
+        assert!((rust_numpy::constants::PI - 3.141592653589793).abs() < 1e-15);
+        assert_eq!(rust_numpy::constants::dtype::INT32_MAX, 2147483647);
+        assert!(rust_numpy::constants::float::EPSILON > 0.0);
+        assert!(rust_numpy::constants::utils::is_nan(rust_numpy::constants::NAN));
+        assert!(rust_numpy::constants::utils::is_infinite(rust_numpy::constants::INF));
     }
 
     #[test]
@@ -113,7 +113,7 @@ mod tests {
 
     #[test]
     fn test_ufunc_registry() {
-        use numpy::ufunc::{get_ufunc, UfuncRegistry};
+        use rust_numpy::ufunc::{get_ufunc, UfuncRegistry};
 
         let _registry = UfuncRegistry::new();
         let add_ufunc = get_ufunc("add");
@@ -125,7 +125,7 @@ mod tests {
 
     #[test]
     fn test_memory_manager() {
-        use numpy::memory::MemoryManager;
+        use rust_numpy::memory::MemoryManager;
 
         let data = vec![1, 2, 3, 4, 5];
         let manager = MemoryManager::from_vec(data);
@@ -135,8 +135,8 @@ mod tests {
 
     #[test]
     fn test_version_info() {
-        assert!(!numpy::VERSION.is_empty());
-        assert!(numpy::VERSION.contains('.'));
+        assert!(!rust_numpy::VERSION.is_empty());
+        assert!(rust_numpy::VERSION.contains('.'));
     }
 
     #[test]
@@ -151,7 +151,7 @@ mod tests {
     #[test]
     fn test_unique_basic() {
         let arr = array![3, 1, 2, 1, 3];
-        let result = numpy::set_ops::unique(&arr, false, false, false, None).unwrap();
+        let result = rust_numpy::set_ops::unique(&arr, false, false, false, None).unwrap();
         assert_eq!(result.values.to_vec(), vec![1, 2, 3]);
         assert!(result.indices.is_none());
         assert!(result.inverse.is_none());
@@ -161,7 +161,7 @@ mod tests {
     #[test]
     fn test_unique_indices_inverse_counts() {
         let arr = array![3, 1, 2, 1, 3];
-        let result = numpy::set_ops::unique(&arr, true, true, true, None).unwrap();
+        let result = rust_numpy::set_ops::unique(&arr, true, true, true, None).unwrap();
 
         assert_eq!(result.values.to_vec(), vec![1, 2, 3]);
         assert_eq!(result.indices.unwrap().to_vec(), vec![1, 2, 0]);
@@ -174,7 +174,7 @@ mod tests {
         let data = vec![1, 2, 1, 2, 3, 4];
         let arr = Array::from_shape_vec(vec![3, 2], data);
 
-        let result = numpy::set_ops::unique(&arr, true, true, true, Some(&[0])).unwrap();
+        let result = rust_numpy::set_ops::unique(&arr, true, true, true, Some(&[0])).unwrap();
         assert_eq!(result.values.shape(), &[2, 2]);
         assert_eq!(result.values.to_vec(), vec![1, 2, 3, 4]);
         assert_eq!(result.indices.unwrap().to_vec(), vec![0, 2]);
@@ -241,7 +241,7 @@ mod tests {
         let arr_2d = arr.reshape(&[2, 2]).unwrap();
 
         // Apply a function that calculates mean along axes
-        let result = apply_over_axes(&|a: &Array<f64>, _axis| a.clone(), &arr_2d, &[0]).unwrap();
+        let result = apply_over_axes(|a: &Array<f64>, _axis| a.clone(), &arr_2d, &[0]).unwrap();
 
         // The function just returns the array unchanged, so result should be same shape
         assert_eq!(result.ndim(), 2);

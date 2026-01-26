@@ -19,7 +19,7 @@ use std::io::{BufRead, BufReader, BufWriter, Read, Seek, Write};
 use std::path::Path;
 
 use bytemuck::{cast_slice, Pod};
-use byteorder::{ByteOrder as _, LittleEndian, ReadBytesExt, WriteBytesExt};
+use byteorder::{ByteOrder as _, LittleEndian, WriteBytesExt};
 use zip::{ZipArchive, ZipWriter};
 
 use crate::array::Array;
@@ -148,7 +148,7 @@ where
 }
 
 /// Save array to file (NumPy-compatible)
-pub fn save<T>(file: &str, arr: &Array<T>, allow_pickle: bool, fix_imports: bool) -> Result<()>
+pub fn save<T>(file: &str, arr: &Array<T>, allow_pickle: bool, _fix_imports: bool) -> Result<()>
 where
     T: Clone + Default + Pod + 'static,
     T: std::fmt::Display,
@@ -188,7 +188,7 @@ where
 /// Load array from text file with configurable parsing
 pub fn loadtxt<T>(
     fname: &str,
-    dtype: Option<Dtype>,
+    _dtype: Option<Dtype>,
     comments: &str,
     delimiter: &str,
     converters: Option<Vec<fn(&str) -> T>>,
@@ -196,7 +196,7 @@ pub fn loadtxt<T>(
     usecols: Option<&[usize]>,
     unpack: bool,
     ndmin: isize,
-    encoding: &str,
+    _encoding: &str,
     max_rows: Option<usize>,
 ) -> Result<Array<T>>
 where
@@ -300,7 +300,7 @@ where
 /// Save array to text file with formatting
 pub fn savetxt<T>(
     fname: &str,
-    X: &Array<T>,
+    x: &Array<T>,
     fmt: &str,
     delimiter: &str,
     newline: &str,
@@ -330,8 +330,8 @@ where
         writer.write_all(newline.as_bytes())?;
     }
 
-    let shape = X.shape();
-    let data = X.to_vec();
+    let shape = x.shape();
+    let data = x.to_vec();
 
     match shape.len() {
         0 => {
@@ -342,7 +342,7 @@ where
                 if i > 0 {
                     writer.write_all(delimiter.as_bytes())?;
                 }
-                writer.write_all(fmt.replace("{}", &value.to_string()).as_bytes())?;
+                writer.write_all(fmt.replace("{}", &value.clone().to_string()).as_bytes())?;
             }
         }
         2 => {
@@ -438,7 +438,7 @@ where
     let data_bytes = &buffer[offset_usize..end_offset];
 
     let typed_data: &[T] = cast_slice(data_bytes);
-    let data: Vec<T> = typed_data.iter().cloned().collect();
+    let data: Vec<T> = typed_data.to_vec();
 
     Ok(Array::from_vec(data))
 }
@@ -553,7 +553,7 @@ where
         let zip_writer = ZipWriter::new(file);
         savez_to_zip(zip_writer, args)
     } else {
-        let mut zip_writer = ZipWriter::new(file);
+        let zip_writer = ZipWriter::new(file);
         savez_to_zip(zip_writer, args)
     }
 }
@@ -565,7 +565,6 @@ fn savez_to_zip<T, W: Write + Seek>(
 where
     T: Clone + Default + Pod + 'static,
 {
-    use std::io::Seek;
     use zip::write::FileOptions;
 
     for (name, array) in args {
@@ -695,7 +694,7 @@ where
 
     let data_bytes = &buffer[data_start..data_end];
     let typed_data: &[T] = bytemuck::cast_slice(data_bytes);
-    let data: Vec<T> = typed_data.iter().cloned().collect();
+    let data: Vec<T> = typed_data.to_vec();
 
     Ok(Array::from_shape_vec(shape, data))
 }
@@ -713,12 +712,12 @@ where
         .map_err(|e| NumPyError::io_error(format!("Failed to open file: {}", e)))?;
     let reader = BufReader::new(file);
     let mut archive = ZipArchive::new(reader)
-        .map_err(|e| NumPyError::file_format_error("npz", &e.to_string()))?;
+        .map_err(|e| NumPyError::file_format_error("npz", e.to_string()))?;
 
     for i in 0..archive.len() {
         let mut zip_file = archive
             .by_index(i)
-            .map_err(|e| NumPyError::file_format_error("npz", &e.to_string()))?;
+            .map_err(|e| NumPyError::file_format_error("npz", e.to_string()))?;
         let filename = zip_file.name();
 
         if filename.ends_with(".npy") {
@@ -783,7 +782,7 @@ where
 
     let data_bytes = &buffer[data_start..data_end];
     let typed_data: &[T] = bytemuck::cast_slice(data_bytes);
-    let data: Vec<T> = typed_data.iter().cloned().collect();
+    let data: Vec<T> = typed_data.to_vec();
 
     Ok(Array::from_shape_vec(shape, data))
 }

@@ -1,7 +1,7 @@
 //! Tests for contiguity (C/F) and layout invariants
 //! Per Issue #31: Derive contiguity (C/F) and layout invariants
 
-use numpy::*;
+use rust_numpy::*;
 
 #[test]
 fn test_0d_array_contiguity() {

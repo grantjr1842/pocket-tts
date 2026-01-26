@@ -1,4 +1,4 @@
-use numpy::*;
+use rust_numpy::*;
 
 #[cfg(test)]
 mod tests {
@@ -21,7 +21,7 @@ mod tests {
 
     #[test]
     fn test_slice_creation() {
-        use numpy::slicing::Slice;
+        use rust_numpy::slicing::Slice;
 
         let full_slice = Slice::Full;
         let range_slice = Slice::Range(1, 4);
@@ -34,7 +34,7 @@ mod tests {
 
     #[test]
     fn test_slice_lengths() {
-        use numpy::slicing::Slice;
+        use rust_numpy::slicing::Slice;
 
         let full_slice = Slice::Full;
         let range_slice = Slice::Range(2, 8);
@@ -45,7 +45,7 @@ mod tests {
 
     #[test]
     fn test_multi_slice() {
-        use numpy::slicing::{MultiSlice, Slice};
+        use rust_numpy::slicing::{MultiSlice, Slice};
 
         let multi_slice = MultiSlice::new(vec![
             Slice::Range(1, 4),
@@ -106,18 +106,18 @@ mod tests {
 
     #[test]
     fn test_array_arithmetic_methods() {
-        let a = array![1, 2, 3];
-        let b = array![4, 5, 6];
+        let a = array![1.0f64, 2.0, 3.0];
+        let b = array![4.0, 5.0, 6.0];
 
         // Test method existence - actual execution depends on ufunc implementation
-        let _add_result = a.add(&b, None, numpy::dtype::Casting::Safe);
-        let _sub_result = a.subtract(&b, None, numpy::dtype::Casting::Safe);
-        let _mul_result = a.multiply(&b, None, numpy::dtype::Casting::Safe);
-        let _div_result = a.divide(&b, None, numpy::dtype::Casting::Safe);
+        let _add_result = a.add(&b);
+        let _sub_result = a.subtract(&b, None, rust_numpy::Casting::No);
+        let _mul_result = a.multiply(&b);
+        let _div_result = a.divide(&b, None, rust_numpy::Casting::No);
 
         // Test unary operations
-        let _neg_result = a.negative(None, numpy::dtype::Casting::Safe);
-        let _abs_result = a.abs(None, numpy::dtype::Casting::Safe);
+        let _neg_result = a.negative(None, rust_numpy::Casting::No);
+        let _abs_result = a.abs(None, rust_numpy::Casting::No);
 
         // Test reductions
         let _sum_result = a.sum(None, false);
@@ -144,7 +144,7 @@ mod tests {
 
     #[test]
     fn test_ufunc_ops_trait() {
-        use numpy::ufunc_ops::UfuncOps;
+        use rust_numpy::ufunc_ops::UfuncOps;
 
         let a = 10.0f64;
         let b = 3.0f64;
@@ -190,7 +190,7 @@ mod tests {
 
     #[test]
     fn test_memory_manager() {
-        use numpy::memory::MemoryManager;
+        use rust_numpy::memory::MemoryManager;
 
         let data = vec![1, 2, 3, 4, 5];
         let manager = MemoryManager::from_vec(data);
@@ -203,7 +203,7 @@ mod tests {
 
     #[test]
     fn test_constants_comprehensive() {
-        use numpy::constants::{dtype, float, math, utils};
+        use rust_numpy::constants::{dtype, float, math, utils};
 
         // Test mathematical constants
         assert!((math::PI - 3.141592653589793).abs() < 1e-15);
@@ -249,7 +249,7 @@ mod tests {
 
     #[test]
     fn test_broadcasting_advanced() {
-        use numpy::broadcasting::{are_shapes_compatible, compute_broadcast_shape};
+        use rust_numpy::broadcasting::{are_shapes_compatible, compute_broadcast_shape};
 
         let shape1 = vec![2, 1, 3];
         let shape2 = vec![1, 4, 1];
@@ -329,15 +329,15 @@ fn test_comprehensive_performance() {
     let math_arr: Array<f64> =
         Array::from_vec(vec![2.0, std::f64::consts::PI / 2.0, std::f64::consts::PI]);
     println!("Math arr: {:?}", math_arr.to_vec());
-    let _ = numpy::math_ufuncs::sin(&math_arr).unwrap();
-    let _ = numpy::math_ufuncs::exp(&math_arr).unwrap();
-    // let _ = numpy::math_ufuncs::log(&math_arr).unwrap(); // FIXME: Fails with phantom 0 value
+    let _ = rust_numpy::math_ufuncs::sin(&math_arr).unwrap();
+    let _ = rust_numpy::math_ufuncs::exp(&math_arr).unwrap();
+    // let _ = rust_numpy::math_ufuncs::log(&math_arr).unwrap(); // FIXME: Fails with phantom 0 value
 
     let elapsed = start.elapsed();
     println!("  Math ops: {:?}", elapsed);
 
     // Test advanced broadcasting
-    use numpy::advanced_broadcast;
+    use rust_numpy::advanced_broadcast;
     let a = Array::from_vec(vec![1.0f64, 2.0f64, 3.0f64, 4.0f64, 5.0f64]);
     let repeated = advanced_broadcast::repeat(&a, 3, Some(0)).unwrap();
     assert_eq!(repeated.shape(), vec![15]);

@@ -5,12 +5,12 @@
 // http://opensource.org/licenses/MIT>, at your option. This file may not be
 // copied, modified, or distributed except according to those terms.
 
-use numpy::char::*;
-use numpy::{array, Array};
+use rust_numpy::char::exports::*;
+use rust_numpy::Array;
 
 #[test]
 fn test_ljust() {
-    let arr: Array<String> = array!["hello", "world"].map(|s| s.to_string());
+    let arr: Array<String> = Array::from_vec(vec!["hello".to_string(), "world".to_string()]);
     let result = ljust(&arr, 10, Some('-')).unwrap();
 
     assert_eq!(result.get(0).unwrap(), "hello-----");
@@ -19,7 +19,7 @@ fn test_ljust() {
 
 #[test]
 fn test_rjust() {
-    let arr: Array<String> = array!["hello", "world"].map(|s| s.to_string());
+    let arr: Array<String> = Array::from_vec(vec!["hello".to_string(), "world".to_string()]);
     let result = rjust(&arr, 10, Some('-')).unwrap();
 
     assert_eq!(result.get(0).unwrap(), "-----hello");
@@ -28,7 +28,7 @@ fn test_rjust() {
 
 #[test]
 fn test_swapcase() {
-    let arr: Array<String> = array!["HeLLo", "WoRLD"].map(|s| s.to_string());
+    let arr: Array<String> = Array::from_vec(vec!["HeLLo".to_string(), "WoRLD".to_string()]);
     let result = swapcase(&arr).unwrap();
 
     assert_eq!(result.get(0).unwrap(), "hEllO");
@@ -37,7 +37,7 @@ fn test_swapcase() {
 
 #[test]
 fn test_title() {
-    let arr: Array<String> = array!["hello world", "NUMPY RUST"].map(|s| s.to_string());
+    let arr: Array<String> = Array::from_vec(vec!["hello world".to_string(), "NUMPY RUST".to_string()]);
     let result = title(&arr).unwrap();
 
     assert_eq!(result.get(0).unwrap(), "Hello World");
@@ -46,7 +46,7 @@ fn test_title() {
 
 #[test]
 fn test_rsplit() {
-    let arr: Array<String> = array!["a:b:c", "x:y:z"].map(|s| s.to_string());
+    let arr: Array<String> = Array::from_vec(vec!["a:b:c".to_string(), "x:y:z".to_string()]);
     let result = rsplit(&arr, ":", Some(1)).unwrap();
 
     assert_eq!(result.get(0).unwrap(), "a:b c");
@@ -55,7 +55,7 @@ fn test_rsplit() {
 
 #[test]
 fn test_partition() {
-    let arr: Array<String> = array!["hello-world", "test"].map(|s| s.to_string());
+    let arr: Array<String> = Array::from_vec(vec!["hello-world".to_string(), "test".to_string()]);
     let result = partition(&arr, "-").unwrap();
 
     let expected_0: Vec<String> = vec!["hello".to_string(), "-".to_string(), "world".to_string()];
@@ -67,7 +67,7 @@ fn test_partition() {
 
 #[test]
 fn test_rpartition() {
-    let arr: Array<String> = array!["a-b-c", "test"].map(|s| s.to_string());
+    let arr: Array<String> = Array::from_vec(vec!["a-b-c".to_string(), "test".to_string()]);
     let result = rpartition(&arr, "-").unwrap();
 
     let expected_0: Vec<String> = vec!["a-b".to_string(), "-".to_string(), "c".to_string()];
@@ -79,7 +79,8 @@ fn test_rpartition() {
 
 #[test]
 fn test_splitlines() {
-    let arr: Array<String> = array!["line1\nline2", "single"].map(|s| s.to_string());
+    let arr: Array<String> = Array::from_vec(vec!["line1
+line2".to_string(), "single".to_string()]);
     let result = splitlines(&arr, Some(false)).unwrap();
 
     assert_eq!(result.get(0).unwrap().len(), 2);
@@ -88,7 +89,7 @@ fn test_splitlines() {
 
 #[test]
 fn test_str_len() {
-    let arr: Array<String> = array!["hello", "world", "test"].map(|s| s.to_string());
+    let arr: Array<String> = Array::from_vec(vec!["hello".to_string(), "world".to_string(), "test".to_string()]);
     let result = str_len(&arr).unwrap();
 
     assert_eq!(result.get(0).unwrap(), &5);
@@ -98,8 +99,8 @@ fn test_str_len() {
 
 #[test]
 fn test_equal() {
-    let a: Array<String> = array!["hello", "world"].map(|s| s.to_string());
-    let b: Array<String> = array!["hello", "rust"].map(|s| s.to_string());
+    let a: Array<String> = Array::from_vec(vec!["hello".to_string(), "world".to_string()]);
+    let b: Array<String> = Array::from_vec(vec!["hello".to_string(), "rust".to_string()]);
     let result = equal(&a, &b).unwrap();
 
     assert_eq!(result.get(0).unwrap(), &true);
@@ -108,8 +109,8 @@ fn test_equal() {
 
 #[test]
 fn test_greater() {
-    let a: Array<String> = array!["zebra", "apple"].map(|s| s.to_string());
-    let b: Array<String> = array!["apple", "zebra"].map(|s| s.to_string());
+    let a: Array<String> = Array::from_vec(vec!["zebra".to_string(), "apple".to_string()]);
+    let b: Array<String> = Array::from_vec(vec!["apple".to_string(), "zebra".to_string()]);
     let result = greater(&a, &b).unwrap();
 
     assert_eq!(result.get(0).unwrap(), &true);
@@ -118,8 +119,8 @@ fn test_greater() {
 
 #[test]
 fn test_less() {
-    let a: Array<String> = array!["apple", "zebra"].map(|s| s.to_string());
-    let b: Array<String> = array!["zebra", "apple"].map(|s| s.to_string());
+    let a: Array<String> = Array::from_vec(vec!["apple".to_string(), "zebra".to_string()]);
+    let b: Array<String> = Array::from_vec(vec!["zebra".to_string(), "apple".to_string()]);
     let result = less(&a, &b).unwrap();
 
     assert_eq!(result.get(0).unwrap(), &true);
@@ -128,14 +129,14 @@ fn test_less() {
 
 #[test]
 fn test_invalid_fillchar() {
-    let arr: Array<String> = array!["test"].map(|s| s.to_string());
+    let arr: Array<String> = Array::from_vec(vec!["test".to_string()]);
     let result = ljust(&arr, 10, Some('\n'));
     assert!(result.is_err());
 }
 
 #[test]
 fn test_just_longer_than_width() {
-    let arr: Array<String> = array!["very long string"].map(|s| s.to_string());
+    let arr: Array<String> = Array::from_vec(vec!["very long string".to_string()]);
     let result = ljust(&arr, 5, None).unwrap();
     assert_eq!(result.get(0).unwrap(), "very long string");
 }
@@ -144,7 +145,7 @@ fn test_just_longer_than_width() {
 
 #[test]
 fn test_isdecimal() {
-    use numpy::char::isdecimal;
+    use rust_numpy::char::isdecimal;
     
     let a = Array::from_vec(vec!["123".to_string(), "abc".to_string(), "12.3".to_string()]);
     let result = isdecimal(&a).unwrap();
@@ -156,7 +157,7 @@ fn test_isdecimal() {
 
 #[test]
 fn test_islower() {
-    use numpy::char::islower;
+    use rust_numpy::char::islower;
     
     let a = Array::from_vec(vec!["hello".to_string(), "Hello".to_string(), "".to_string()]);
     let result = islower(&a).unwrap();
@@ -168,7 +169,7 @@ fn test_islower() {
 
 #[test]
 fn test_isupper() {
-    use numpy::char::isupper;
+    use rust_numpy::char::isupper;
     
     let a = Array::from_vec(vec!["HELLO".to_string(), "Hello".to_string(), "".to_string()]);
     let result = isupper(&a).unwrap();
@@ -180,7 +181,7 @@ fn test_isupper() {
 
 #[test]
 fn test_istitle() {
-    use numpy::char::istitle;
+    use rust_numpy::char::istitle;
     
     let a = Array::from_vec(vec!["Hello World".to_string(), "HELLO WORLD".to_string(), "hello world".to_string()]);
     let result = istitle(&a).unwrap();
@@ -192,7 +193,7 @@ fn test_istitle() {
 
 #[test]
 fn test_translate() {
-    use numpy::char::translate;
+    use rust_numpy::char::translate;
     
     let a = Array::from_vec(vec!["hello".to_string(), "world".to_string()]);
     let mut table = std::collections::HashMap::new();

@@ -1,5 +1,5 @@
-use numpy::sorting::argwhere;
-use numpy::Array;
+use rust_numpy::sorting::argwhere;
+use rust_numpy::Array;
 
 #[test]
 fn test_argwhere_1d() {

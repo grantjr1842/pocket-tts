@@ -1,4 +1,4 @@
-use numpy::{Casting, Dtype};
+use rust_numpy::{Casting, Dtype};
 
 #[test]
 fn test_casting_modes() {

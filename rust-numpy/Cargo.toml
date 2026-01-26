@@ -39,7 +39,7 @@ name = "char_additional_tests"
 path = "tests/char_additional_tests.rs"
 
 [lib]
-name = "numpy"
+name = "rust_numpy"
 crate-type = ["cdylib", "rlib"]
 
 [dependencies]

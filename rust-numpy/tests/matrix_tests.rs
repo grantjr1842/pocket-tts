@@ -1,5 +1,5 @@
-use numpy::array::Array;
-use numpy::matrix::Matrix;
+use rust_numpy::array::Array;
+use rust_numpy::matrix::Matrix;
 
 #[test]
 fn test_matrix_creation() {

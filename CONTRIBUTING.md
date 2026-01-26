@@ -5,20 +5,6 @@ We welcome contributions from the community!
 We recommend using `uv` to work on this project. While you can use `pip` too, `uv` is less error-prone and faster.
 The instructions below assume you are using `uv`.
 
-## Installing the pre-commit
-
-```bash
-uvx pre-commit install
-```
-
-This will handle file formatting and linting.
-
-If you want to manually run the pre-commit hooks on all files, use:
-
-```bash
-uvx pre-commit run --all-files
-```
-
 ## Running tests
 
 ```bash

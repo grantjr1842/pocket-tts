@@ -1,5 +1,5 @@
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
-use numpy::*;
+use rust_numpy::*;
 
 fn bench_array_creation(c: &mut Criterion) {
     let mut group = c.benchmark_group("array_creation");
@@ -46,19 +46,19 @@ fn bench_math_ops(c: &mut Criterion) {
 
     group.bench_function("sin", |b| {
         b.iter(|| {
-            let _ = numpy::math_ufuncs::sin(&arr).unwrap();
+            let _ = rust_numpy::math_ufuncs::sin(&arr).unwrap();
         });
     });
 
     group.bench_function("exp", |b| {
         b.iter(|| {
-            let _ = numpy::math_ufuncs::exp(&arr).unwrap();
+            let _ = rust_numpy::math_ufuncs::exp(&arr).unwrap();
         });
     });
 
     group.bench_function("log", |b| {
         b.iter(|| {
-            let _ = numpy::math_ufuncs::log(&arr).unwrap();
+            let _ = rust_numpy::math_ufuncs::log(&arr).unwrap();
         });
     });
 
@@ -75,28 +75,28 @@ fn bench_simd_operations(c: &mut Criterion) {
     #[cfg(target_arch = "x86_64")]
     {
         group.bench_function("sin_simd", |b| {
-            use numpy::simd_ops;
+            use rust_numpy::simd_ops;
             b.iter(|| {
                 let _ = simd_ops::simd_sin_f64(&arr.to_vec());
             });
         });
 
         group.bench_function("cos_simd", |b| {
-            use numpy::simd_ops;
+            use rust_numpy::simd_ops;
             b.iter(|| {
                 let _ = simd_ops::simd_cos_f64(&arr.to_vec());
             });
         });
 
         group.bench_function("exp_simd", |b| {
-            use numpy::simd_ops;
+            use rust_numpy::simd_ops;
             b.iter(|| {
                 let _ = simd_ops::simd_exp_f64(&arr.to_vec());
             });
         });
 
         group.bench_function("log_simd", |b| {
-            use numpy::simd_ops;
+            use rust_numpy::simd_ops;
             b.iter(|| {
                 let _ = simd_ops::simd_log_f64(&arr.to_vec());
             });
@@ -122,7 +122,7 @@ fn bench_parallel_operations(c: &mut Criterion) {
     /*
     #[cfg(feature = "rayon")]
     group.bench_function("sum_parallel", |b| {
-        // use numpy::parallel_ops;
+        // use rust_numpy::parallel_ops;
         b.iter(|| {
             let _ = parallel_ops::parallel_sum(&arr).unwrap();
         });
@@ -138,7 +138,7 @@ fn bench_parallel_operations(c: &mut Criterion) {
     /*
     #[cfg(feature = "rayon")]
     group.bench_function("mean_parallel", |b| {
-        // use numpy::parallel_ops;
+        // use rust_numpy::parallel_ops;
         b.iter(|| {
             let _ = parallel_ops::parallel_mean(&arr).unwrap();
         });
@@ -162,7 +162,7 @@ fn bench_memory_optimizations(c: &mut Criterion) {
     });
 
     group.bench_function("broadcast_scalar_copy", |b| {
-        use numpy::broadcasting;
+        use rust_numpy::broadcasting;
         b.iter(|| {
             let _output = arr.clone();
             let _ = broadcasting::broadcast_to(&scalar_arr, &[10000]).unwrap();
@@ -179,21 +179,21 @@ fn bench_advanced_broadcasting(c: &mut Criterion) {
     let arr = black_box(Array::from_vec((0..1000).map(|i| i as f64).collect()));
 
     group.bench_function("repeat_axis_0", |b| {
-        use numpy::advanced_broadcast;
+        use rust_numpy::advanced_broadcast;
         b.iter(|| {
             let _ = advanced_broadcast::repeat(&arr, 5, Some(0)).unwrap();
         });
     });
 
     group.bench_function("tile_basic", |b| {
-        use numpy::advanced_broadcast;
+        use rust_numpy::advanced_broadcast;
         b.iter(|| {
             let _ = advanced_broadcast::tile(&arr, &[10, 10]).unwrap();
         });
     });
 
     group.bench_function("broadcast_to_large", |b| {
-        use numpy::advanced_broadcast;
+        use rust_numpy::advanced_broadcast;
         b.iter(|| {
             let _ = advanced_broadcast::broadcast_to_enhanced(&arr, &[1000, 10]).unwrap();
         });

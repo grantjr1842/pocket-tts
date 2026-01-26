@@ -1,6 +1,6 @@
 use num_complex::Complex64;
-use numpy::fft::{fft2, fftn, fftshift, ifft2, ifftn, ifftshift, irfftn, rfftn};
-use numpy::*;
+use rust_numpy::fft::{fft2, fftn, fftshift, ifft2, ifftn, ifftshift, irfftn, rfftn};
+use rust_numpy::*;
 
 #[test]
 fn test_fftn_2d_basic() {

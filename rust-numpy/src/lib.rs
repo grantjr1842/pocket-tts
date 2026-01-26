@@ -287,6 +287,7 @@ pub use performance_metrics::{
     Bottleneck, BottleneckType, MemoryTracker, OptimizationRecommendation, PerformanceMetrics,
     PerformanceReport,
 };
+pub use polynomial::exports::*;
 pub use profiler::{
     disable_profiling, enable_profiling, get_performance_report, init_profiler,
     is_profiling_enabled, print_profiler_summary, profile, profile_with_elements, Profiler,

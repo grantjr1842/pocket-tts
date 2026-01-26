@@ -1,5 +1,5 @@
 use half::f16;
-use numpy::{Array, Dtype};
+use rust_numpy::{Array, Dtype};
 use std::mem;
 
 #[test]

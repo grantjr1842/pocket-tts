@@ -3,7 +3,7 @@
 // This module provides comprehensive tests to verify rust-numpy's
 // compatibility with NumPy's API, behavior, and numerical accuracy.
 
-use numpy::array::Array;
+use rust_numpy::array::Array;
 
 /// Test result structure for conformance tests
 #[derive(Debug, Clone, PartialEq)]
@@ -65,7 +65,7 @@ mod tests {
     );
 
     conformance_test!(test_arange, "arange should create evenly spaced values", {
-        let arr = numpy::array_creation::arange(0.0, 5.0, None).unwrap();
+        let arr = rust_numpy::array_creation::arange(0.0, 5.0, None).unwrap();
         assert_eq!(arr.to_vec(), vec![0.0f32, 1.0, 2.0, 3.0, 4.0]);
     });
 
@@ -95,7 +95,7 @@ mod tests {
         {
             let scalar = Array::from_vec(vec![2.0f64]);
             let _arr = Array::<f64>::zeros(vec![3, 4]);
-            let broadcasted = numpy::broadcasting::broadcast_to(&scalar, &[3, 4]).unwrap();
+            let broadcasted = rust_numpy::broadcasting::broadcast_to(&scalar, &[3, 4]).unwrap();
             assert_eq!(broadcasted.shape(), vec![3, 4]);
             assert_eq!(broadcasted.to_vec(), vec![2.0; 12]);
         }
@@ -127,7 +127,7 @@ mod tests {
         {
             use std::f64::consts::PI;
             let arr = Array::from_vec(vec![0.0f64, PI / 2.0]);
-            let result = numpy::math_ufuncs::sin(&arr).unwrap();
+            let result = rust_numpy::math_ufuncs::sin(&arr).unwrap();
             assert!((result.to_vec()[0] - 0.0).abs() < 1e-10);
             assert!((result.to_vec()[1] - 1.0).abs() < 1e-10);
         }
@@ -138,7 +138,7 @@ mod tests {
         "Exp function should produce correct values",
         {
             let arr = Array::from_vec(vec![0.0f64, 1.0, 2.0]);
-            let result = numpy::math_ufuncs::exp(&arr).unwrap();
+            let result = rust_numpy::math_ufuncs::exp(&arr).unwrap();
             assert!((result.to_vec()[0] - 1.0).abs() < 1e-10);
             assert!((result.to_vec()[1] - std::f64::consts::E).abs() < 1e-10);
             assert!((result.to_vec()[2] - std::f64::consts::E.powi(2)).abs() < 1e-10);
@@ -150,7 +150,7 @@ mod tests {
         "Repeat should duplicate array elements",
         {
             let arr = Array::from_vec(vec![1.0f64, 2.0f64]);
-            let result = numpy::advanced_broadcast::repeat(&arr, 2, None).unwrap();
+            let result = rust_numpy::advanced_broadcast::repeat(&arr, 2, None).unwrap();
             assert_eq!(result.shape(), vec![4]);
             assert_eq!(result.to_vec(), vec![1.0, 1.0, 2.0, 2.0]);
         }
@@ -158,7 +158,7 @@ mod tests {
 
     conformance_test!(test_tile_basic, "Tile should repeat array pattern", {
         let arr = Array::from_vec(vec![1.0, 2.0f64]);
-        let result = numpy::advanced_broadcast::tile(&arr, &[2]).unwrap();
+        let result = rust_numpy::advanced_broadcast::tile(&arr, &[2]).unwrap();
         assert_eq!(result.shape(), vec![4]);
         assert_eq!(result.to_vec(), vec![1.0, 2.0, 1.0, 2.0]);
     });
@@ -167,8 +167,8 @@ mod tests {
         test_dtype_int64,
         "Int64 dtype should preserve large values",
         {
-            let arr = Array::from_vec(vec![1i64, 2i64, 3i64, std::i64::MAX - 1]);
-            assert_eq!(arr.to_vec(), vec![1i64, 2i64, 3i64, std::i64::MAX - 1]);
+            let arr = Array::from_vec(vec![1i64, 2i64, 3i64, i64::MAX - 1]);
+            assert_eq!(arr.to_vec(), vec![1i64, 2i64, 3i64, i64::MAX - 1]);
         }
     );
 
@@ -178,9 +178,9 @@ mod tests {
         {
             let arr = Array::from_vec(vec![
                 1.0f64,
-                std::f64::INFINITY,
-                std::f64::NEG_INFINITY,
-                std::f64::NAN,
+                f64::INFINITY,
+                f64::NEG_INFINITY,
+                f64::NAN,
             ]);
             let data = arr.to_vec();
             assert!(data[0].is_finite(), "1.0 should be finite");
@@ -208,7 +208,7 @@ mod tests {
             let arr2 = Array::<f64>::zeros(vec![3, 2]);
             let transposed = arr1.transpose();
             // This should work (2x3 -> 3x2)
-            let res = transposed.add(&arr2, None, numpy::dtype::Casting::Safe);
+            let res = transposed.add(&arr2);
             assert!(res.is_ok(), "Addition failed: {:?}", res.err());
         }
     );
@@ -218,7 +218,7 @@ mod tests {
         "Clip should constrain values to range",
         {
             let arr = Array::from_vec(vec![0.0f64, 5.0, 10.0, 15.0]);
-            let clipped = numpy::array_creation::clip(&arr, Some(2.0), Some(12.0)).unwrap();
+            let clipped = rust_numpy::array_creation::clip(&arr, Some(2.0), Some(12.0)).unwrap();
             let data = clipped.to_vec();
             assert!(data[0] == 2.0); // Min value applied
             assert!(data[1] == 5.0);
@@ -234,7 +234,7 @@ mod tests {
         {
             let arr1 = Array::from_vec(vec![5i32, 3i32, 7i32]);
             let arr2 = Array::from_vec(vec![3i32, 5i32, 1i32]);
-            let result = numpy::bitwise::bitwise_and(&arr1, &arr2).unwrap();
+            let result = rust_numpy::bitwise::bitwise_and(&arr1, &arr2).unwrap();
             assert_eq!(result.to_vec(), vec![1i32, 1i32, 1i32]);
         }
     );
@@ -245,7 +245,7 @@ mod tests {
         {
             let arr1 = Array::from_vec(vec![5i32, 3i32, 7i32]);
             let arr2 = Array::from_vec(vec![3i32, 5i32, 1i32]);
-            let result = numpy::bitwise::bitwise_or(&arr1, &arr2).unwrap();
+            let result = rust_numpy::bitwise::bitwise_or(&arr1, &arr2).unwrap();
             assert_eq!(result.to_vec(), vec![7i32, 7i32, 7i32]);
         }
     );
@@ -256,14 +256,14 @@ mod tests {
         {
             let arr1 = Array::from_vec(vec![5i32, 3i32, 7i32]);
             let arr2 = Array::from_vec(vec![3i32, 5i32, 1i32]);
-            let result = numpy::bitwise::bitwise_xor(&arr1, &arr2).unwrap();
+            let result = rust_numpy::bitwise::bitwise_xor(&arr1, &arr2).unwrap();
             assert_eq!(result.to_vec(), vec![6i32, 6i32, 6i32]);
         }
     );
 
     conformance_test!(test_bitwise_not, "Bitwise NOT should invert bits", {
         let arr = Array::from_vec(vec![5i32, 0i32, -1i32]);
-        let result = numpy::bitwise::invert(&arr).unwrap();
+        let result = rust_numpy::bitwise::invert(&arr).unwrap();
         assert_eq!(result.to_vec(), vec![-6i32, -1i32, 0i32]);
     });
 
@@ -273,7 +273,7 @@ mod tests {
         {
             let arr = Array::from_vec(vec![1i32, 2i32, 3i32]);
             let shift = Array::from_vec(vec![1i32, 2i32, 3i32]);
-            let result = numpy::bitwise::left_shift(&arr, &shift).unwrap();
+            let result = rust_numpy::bitwise::left_shift(&arr, &shift).unwrap();
             assert_eq!(result.to_vec(), vec![2i32, 8i32, 24i32]);
         }
     );
@@ -284,7 +284,7 @@ mod tests {
         {
             let arr = Array::from_vec(vec![8i32, 16i32, 32i32]);
             let shift = Array::from_vec(vec![1i32, 2i32, 3i32]);
-            let result = numpy::bitwise::right_shift(&arr, &shift).unwrap();
+            let result = rust_numpy::bitwise::right_shift(&arr, &shift).unwrap();
             assert_eq!(result.to_vec(), vec![4i32, 4i32, 4i32]);
         }
     );
@@ -295,7 +295,7 @@ mod tests {
         {
             let arr = Array::from_vec(vec![-8i32, -16i32, -32i32]);
             let shift = Array::from_vec(vec![1i32, 2i32, 3i32]);
-            let result = numpy::bitwise::right_shift(&arr, &shift).unwrap();
+            let result = rust_numpy::bitwise::right_shift(&arr, &shift).unwrap();
             assert_eq!(result.to_vec(), vec![-4i32, -4i32, -4i32]);
         }
     );
@@ -307,7 +307,7 @@ mod tests {
         {
             let arr1 = Array::from_vec(vec![1i32, 2i32, 3i32, 4i32, 5i32]);
             let arr2 = Array::from_vec(vec![3i32, 4i32, 5i32, 6i32, 7i32]);
-            let result = numpy::set_ops::intersect1d(&arr1, &arr2, false, false).unwrap();
+            let result = rust_numpy::set_ops::intersect1d(&arr1, &arr2, false, false).unwrap();
             assert_eq!(result.values.to_vec(), vec![3i32, 4i32, 5i32]);
         }
     );
@@ -318,7 +318,7 @@ mod tests {
         {
             let arr1 = Array::from_vec(vec![1i32, 2i32, 3i32]);
             let arr2 = Array::from_vec(vec![3i32, 4i32, 5i32]);
-            let result = numpy::set_ops::union1d(&arr1, &arr2).unwrap();
+            let result = rust_numpy::set_ops::union1d(&arr1, &arr2).unwrap();
             assert_eq!(result.to_vec(), vec![1i32, 2i32, 3i32, 4i32, 5i32]);
         }
     );
@@ -329,7 +329,7 @@ mod tests {
         {
             let arr1 = Array::from_vec(vec![1i32, 2i32, 3i32, 4i32, 5i32]);
             let arr2 = Array::from_vec(vec![3i32, 4i32, 5i32]);
-            let result = numpy::set_ops::setdiff1d(&arr1, &arr2, false).unwrap();
+            let result = rust_numpy::set_ops::setdiff1d(&arr1, &arr2, false).unwrap();
             assert_eq!(result.to_vec(), vec![1i32, 2i32]);
         }
     );
@@ -340,7 +340,7 @@ mod tests {
         {
             let arr1 = Array::from_vec(vec![1i32, 2i32, 3i32, 4i32]);
             let arr2 = Array::from_vec(vec![3i32, 4i32, 5i32, 6i32]);
-            let result = numpy::set_ops::setxor1d(&arr1, &arr2, false).unwrap();
+            let result = rust_numpy::set_ops::setxor1d(&arr1, &arr2, false).unwrap();
             assert_eq!(result.to_vec(), vec![1i32, 2i32, 5i32, 6i32]);
         }
     );
@@ -348,20 +348,20 @@ mod tests {
     conformance_test!(test_in1d_basic, "In1d should test membership in array", {
         let arr = Array::from_vec(vec![1i32, 2i32, 3i32, 4i32, 5i32]);
         let test = Array::from_vec(vec![2i32, 4i32, 6i32]);
-        let result = numpy::set_ops::in1d(&test, &arr, false).unwrap();
+        let result = rust_numpy::set_ops::in1d(&test, &arr, false).unwrap();
         assert_eq!(result.to_vec(), vec![true, true, false]);
     });
 
     conformance_test!(test_isin_basic, "Isin should test membership in array", {
         let arr = Array::from_vec(vec![1i32, 2i32, 3i32, 4i32, 5i32]);
         let test = Array::from_vec(vec![2i32, 4i32, 6i32]);
-        let result = numpy::set_ops::isin(&test, &arr, false, false).unwrap();
+        let result = rust_numpy::set_ops::isin(&test, &arr, false, false).unwrap();
         assert_eq!(result.to_vec(), vec![true, true, false]);
     });
 
     conformance_test!(test_unique_basic, "Unique should return unique elements", {
         let arr = Array::from_vec(vec![1i32, 2i32, 2i32, 3i32, 3i32, 3i32]);
-        let result = numpy::set_ops::unique(&arr, false, false, false, None).unwrap();
+        let result = rust_numpy::set_ops::unique(&arr, false, false, false, None).unwrap();
         assert_eq!(result.values.to_vec(), vec![1i32, 2i32, 3i32]);
     });
 
@@ -370,7 +370,7 @@ mod tests {
         "Unique with counts should return element frequencies",
         {
             let arr = Array::from_vec(vec![1i32, 2i32, 2i32, 3i32, 3i32, 3i32]);
-            let result = numpy::set_ops::unique(&arr, false, false, true, None).unwrap();
+            let result = rust_numpy::set_ops::unique(&arr, false, false, true, None).unwrap();
             assert_eq!(result.values.to_vec(), vec![1i32, 2i32, 3i32]);
             assert_eq!(
                 result.counts.as_ref().unwrap().to_vec(),
@@ -384,7 +384,7 @@ mod tests {
         "Unique with inverse should reconstruct original array",
         {
             let arr = Array::from_vec(vec![1i32, 2i32, 2i32, 3i32, 3i32, 3i32]);
-            let result = numpy::set_ops::unique(&arr, false, true, false, None).unwrap();
+            let result = rust_numpy::set_ops::unique(&arr, false, true, false, None).unwrap();
             assert_eq!(result.values.to_vec(), vec![1i32, 2i32, 3i32]);
             assert_eq!(
                 result.inverse.as_ref().unwrap().to_vec(),
@@ -399,20 +399,20 @@ mod tests {
         "L1 norm should compute sum of absolute values",
         {
             let arr = Array::from_vec(vec![1.0f64, -2.0, 3.0, -4.0]);
-            let result = numpy::norm(&arr, Some("1"), None::<&[isize]>, false).unwrap();
+            let result = rust_numpy::norm(&arr, Some("1"), None::<&[isize]>, false).unwrap();
             assert_eq!(result.to_vec(), vec![10.0]); // |1| + |-2| + |3| + |-4| = 10
         }
     );
 
     conformance_test!(test_norm_l2, "L2 norm should compute Euclidean norm", {
         let arr = Array::from_vec(vec![3.0f64, 4.0]);
-        let result = numpy::norm(&arr, Some("2"), None::<&[isize]>, false).unwrap();
+        let result = rust_numpy::norm(&arr, Some("2"), None::<&[isize]>, false).unwrap();
         assert!((result.to_vec()[0] - 5.0).abs() < 1e-10); // sqrt(3^2 + 4^2) = 5
     });
 
     conformance_test!(test_norm_l3, "L3 norm should compute cubic norm", {
         let arr = Array::from_vec(vec![1.0f64, 2.0, 2.0]);
-        let result = numpy::norm(&arr, Some("3"), None::<&[isize]>, false).unwrap();
+        let result = rust_numpy::norm(&arr, Some("3"), None::<&[isize]>, false).unwrap();
         // (|1|^3 + |2|^3 + |2|^3)^(1/3) = (1 + 8 + 8)^(1/3) = 17^(1/3) ≈ 2.571
         assert!((result.to_vec()[0] - 2.571).abs() < 1e-3);
     });
@@ -422,7 +422,7 @@ mod tests {
         "Frobenius norm should compute sqrt of sum of squares",
         {
             let arr = Array::from_vec(vec![1.0f64, 2.0, 3.0]);
-            let result = numpy::norm(&arr, Some("fro"), None::<&[isize]>, false).unwrap();
+            let result = rust_numpy::norm(&arr, Some("fro"), None::<&[isize]>, false).unwrap();
             // sqrt(1^2 + 2^2 + 3^2) = sqrt(14) ≈ 3.742
             assert!((result.to_vec()[0] - 3.742).abs() < 1e-3);
         }
@@ -433,7 +433,7 @@ mod tests {
         "Nuclear norm should compute sum of singular values",
         {
             let arr = Array::from_vec(vec![1.0f64, 2.0, 3.0]);
-            let result = numpy::norm(&arr, Some("nuc"), None::<&[isize]>, false).unwrap();
+            let result = rust_numpy::norm(&arr, Some("nuc"), None::<&[isize]>, false).unwrap();
             // Nuclear norm is approximated by Frobenius norm for now
             // sqrt(1^2 + 2^2 + 3^2) = sqrt(14) ≈ 3.742
             assert!((result.to_vec()[0] - 3.742).abs() < 1e-3);
@@ -445,7 +445,7 @@ mod tests {
         "Default norm should use Frobenius norm for vectors",
         {
             let arr = Array::from_vec(vec![3.0f64, 4.0]);
-            let result = numpy::norm(&arr, None, None::<&[isize]>, false).unwrap();
+            let result = rust_numpy::norm(&arr, None, None::<&[isize]>, false).unwrap();
             // Default is Frobenius norm: sqrt(3^2 + 4^2) = 5
             assert!((result.to_vec()[0] - 5.0).abs() < 1e-10);
         }
