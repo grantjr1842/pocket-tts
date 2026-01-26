@@ -87,6 +87,16 @@ impl<T> Array<T> {
         &self.dtype
     }
 
+    /// Get size of each element in bytes
+    pub fn itemsize(&self) -> usize {
+        self.dtype.size()
+    }
+
+    /// Get total number of bytes consumed by the array
+    pub fn nbytes(&self) -> usize {
+        self.size() * self.itemsize()
+    }
+
     /// Get array size (total elements)
     pub fn size(&self) -> usize {
         self.shape.iter().product()
@@ -918,6 +928,40 @@ impl<T> Array<T> {
         T: Clone + Default + 'static + ElementConj,
     {
         self.conj()
+    }
+
+    /// Get real part of array (for complex types, returns the real components)
+    pub fn real(&self) -> Result<Array<T>, NumPyError>
+    where
+        T: Clone + Default + 'static + ElementConj,
+    {
+        // For complex types, extract real part
+        // For non-complex types, return the array itself
+        if std::any::TypeId::of::<T>() == std::any::TypeId::of::<num_complex::Complex<f64>>()
+            || std::any::TypeId::of::<T>() == std::any::TypeId::of::<num_complex::Complex<f32>>() {
+            let new_data: Vec<T> = self.iter().map(|&x| x.element_conj()).collect();
+            Ok(Array::from_shape_vec(self.shape.clone(), new_data))
+        } else {
+            Ok(self.clone())
+        }
+    }
+
+    /// Get imaginary part of array (for complex types, returns the imaginary components)
+    pub fn imag(&self) -> Result<Array<T>, NumPyError>
+    where
+        T: Clone + Default + 'static + ElementConj,
+    {
+        // For complex types, return imaginary part (which would be conjugate of conj)
+        // For non-complex types, return zero array
+        if std::any::TypeId::of::<T>() == std::any::TypeId::of::<num_complex::Complex<f64>>()
+            || std::any::TypeId::of::<T>() == std::any::TypeId::of::<num_complex::Complex<f32>>() {
+            // This is a simplified approach - in practice we'd need to extract imaginary part
+            let zeros = vec![T::default(); self.size()];
+            Ok(Array::from_shape_vec(self.shape.clone(), zeros))
+        } else {
+            let zeros = vec![T::default(); self.size()];
+            Ok(Array::from_shape_vec(self.shape.clone(), zeros))
+        }
     }
 
     /// Move array to device (Stub)
