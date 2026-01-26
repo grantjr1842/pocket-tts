@@ -97,48 +97,6 @@
 #![allow(clippy::redundant_closure_for_method_calls)] // 25 warnings - closure for method calls
 #![allow(clippy::map_unwrap_or)] // 7 warnings - map().unwrap_or() pattern
 #![allow(clippy::single_match_else)] // 4 warnings - match with single pattern and else
-// Additional allows for remaining warnings
-#![allow(clippy::missing_const_for_fn)] // 136 warnings - getters could be const but not required
-#![allow(clippy::use_self)] // 119 warnings - already fixed most, remaining are edge cases
-#![allow(clippy::or_fun_call)] // 46 warnings - or_fun_call style preference
-#![allow(clippy::unnecessary_map_or)] // 16 warnings - map_or style preference
-#![allow(clippy::redundant_closure)] // 26 warnings - closure style preference
-// Additional allows for numerical computing patterns
-#![allow(clippy::redundant_clone)] // 7 warnings - clone needed for API consistency
-#![allow(clippy::significant_drop_tightening)] // 7 warnings - temporary with significant Drop
-#![allow(clippy::manual_flatten)] // 4 warnings - flatten pattern style
-#![allow(clippy::manual_try_fold)] // 3 warnings - try_fold implementation
-// Note: This lint doesn't exist in this version of clippy
-// #![allow(clippy::derivable_trait)]
-#![allow(clippy::eq_op)] // 3 warnings - equal operation comparison
-#![allow(clippy::case_sensitive_file_extension_comparisons)] // 2 warnings - file extension comparison
-// Note: These lints don't exist in this version of clippy
-// #![allow(clippy::unused_nested_bindings)]
-// #![allow(clippy::implied_bounds_in_associated_item)]
-#![allow(clippy::get_first)] // 1 warning - get() vs get_first() preference
-#![allow(clippy::seek_to_start_instead_of_rewind)] // 1 warning - seek(0) vs rewind()
-#![allow(clippy::nonminimal_bool)] // 1 warning - nonminimal boolean expression
-#![allow(clippy::let_and_return)] // 1 warning - let and return pattern
-// Additional allows for lifetime and borrowing patterns
-#![allow(clippy::needless_lifetimes)] // 6 warnings - explicit lifetimes for clarity
-// Allows for performance-related optimizations
-#![allow(clippy::suboptimal_flops)] // 10 warnings - multiply and add expressions
-#![allow(clippy::imprecise_flops)] // 3 warnings - ln(1 + x) computations
-#![allow(clippy::unnecessary_sort_by)] // 1 warning - sort_by_key vs sort_by
-// Allows for HashMap and collection patterns
-#![allow(clippy::implicit_hasher)] // 1 warning - HashMap parameter generalization
-#![allow(clippy::collection_is_never_read)] // 2 warnings - collection initialization
-// Other miscellaneous allows
-#![allow(clippy::manual_assert)] // 1 warning - panic! in if-then statement
-#![allow(clippy::unreachable)] // 1 warning - unreachable code
-#![allow(clippy::redundant_pub_crate)] // 1 warning - redundant pub(crate)
-#![allow(clippy::missing_trait_methods)] // 1 warning - missing trait method implementations
-// Note: This lint doesn't exist in this version of clippy
-// #![allow(clippy::derive_partial_eq_without_eq)]
-#![allow(clippy::struct_excessive_bools)] // 1 warning - more than 3 bools in struct
-#![allow(clippy::needless_pass_by_ref_mut)] // 1 warning - mutable reference not used mutably
-// Note: if_blocks_same doesn't exist, using different lint name
-// #![allow(clippy::if_blocks_same)]
 #![allow(clippy::manual_midpoint)] // 3 warnings - manual midpoint implementation
 #![allow(clippy::items_after_statements)] // 3 warnings - items after statements
 #![allow(clippy::if_not_else)] // 3 warnings - if !x else pattern
@@ -159,7 +117,6 @@ pub mod array;
 pub mod array_creation;
 pub mod array_extra;
 pub mod array_manipulation;
-pub mod array_methods;
 pub mod bitwise;
 pub mod broadcasting;
 pub mod char;
@@ -178,7 +135,6 @@ pub mod error;
 pub mod fft;
 #[cfg(test)]
 mod fft_tests;
-pub mod io;
 pub mod iterator;
 pub mod kernel_api;
 pub mod kernels;
@@ -212,7 +168,6 @@ pub mod type_promotion;
 pub mod ufunc;
 pub mod utils;
 pub mod ufunc_ops;
-pub mod window;
 pub mod dynamic_kernel_registry;
 
 #[cfg(test)]
@@ -276,14 +231,11 @@ pub use char::exports::{
     index as char_index, isalnum, isalpha, isdigit, isnumeric, isspace, join, lower, lstrip,
     multiply as char_multiply, replace, rfind, rindex, rstrip, split as char_split, startswith,
     strip, upper, zfill,
-    // Comparison functions
-    add, equal, greater, greater_equal, less, less_equal,
 };
 pub use dist::{cdist, pdist, squareform};
 pub use dtype::{Casting, Dtype, DtypeKind};
 pub use error::{NumPyError, Result};
 pub use linalg::norm;
-pub use polynomial::{set_default_printstyle, Polynomial, PolynomialBase, fit, roots, val, deriv, integ, companion, domain};
 pub use performance_metrics::{
     Bottleneck, BottleneckType, MemoryTracker, OptimizationRecommendation, PerformanceMetrics,
     PerformanceReport,
@@ -303,18 +255,6 @@ pub use statistics::{
     nanvar, percentile, ptp, quantile, std, var,
 };
 pub use type_promotion::{promote_types, TypePromotionRules};
-
-// Broadcasting functions
-pub use broadcasting::{broadcast_arrays, broadcast_to};
-
-// Datetime functions
-pub use datetime::{busday_count, busday_offset, datetime_as_string, datetime_data};
-
-// I/O functions
-pub use io::{fromfile, fromstring, load, loadtxt, save, savetxt, savez, savez_compressed};
-
-// Window functions
-pub use window::{bartlett, blackman, hamming, hanning};
 // Complex utility functions
 pub use kernel_api::{
     execute_binary, execute_unary, init_kernel_registry, register_binary_kernel,
@@ -350,48 +290,6 @@ pub use math_ufuncs::{
     // Sign and absolute value functions
     sign,
     signbit,
-    // Additional math functions
-    sin,
-    cos,
-    tan,
-    arcsin,
-    arccos,
-    arctan,
-    hypot,
-    degrees,
-    radians,
-    sinh,
-    cosh,
-    tanh,
-    arcsinh,
-    arccosh,
-    arctanh,
-    exp,
-    exp2,
-    expm1,
-    log,
-    log2,
-    log10,
-    log1p,
-    logaddexp,
-    logaddexp2,
-    round_,
-    around,
-    rint,
-    floor,
-    ceil,
-    trunc,
-    fix,
-    isnan,
-    isinf,
-    isfinite,
-    isneginf,
-    isposinf,
-    sinc,
-    i0,
-    heaviside,
-    convolve,
-    unwrap,
 };
 pub use ufunc_ops::UfuncEngine;
 // Advanced ufunc features
@@ -416,12 +314,6 @@ pub use ufunc::{
 pub use array_creation::{
     array, array2string, array_repr, array_str, asanyarray, asarray, asarray_chkfinite,
     ascontiguousarray, asfortranarray, asmatrix, copy, copyto,
-};
-
-// Array method wrappers
-pub use array_methods::{
-    divide, minimum, nancumprod, nancumsum, negative,
-    resize, subtract, take, transpose,
 };
 
 // Reduction functions
