@@ -630,15 +630,32 @@ impl<T> Array<T> {
     /// Sort array in-place or return a sorted copy
     pub fn sort(&mut self, axis: Option<isize>, kind: &str, order: &str) -> Result<Self, NumPyError>
     where
-        T: Clone + PartialOrd + crate::comparison_ufuncs::ComparisonOps<T> + Default + Send + Sync + 'static,
+        T: Clone
+            + PartialOrd
+            + crate::comparison_ufuncs::ComparisonOps<T>
+            + Default
+            + Send
+            + Sync
+            + 'static,
     {
         crate::sorting::sort(self, axis, kind, order)
     }
 
     /// Return indices that would sort the array
-    pub fn argsort(&self, axis: Option<isize>, kind: &str, order: &str) -> Result<Array<isize>, NumPyError>
+    pub fn argsort(
+        &self,
+        axis: Option<isize>,
+        kind: &str,
+        order: &str,
+    ) -> Result<Array<isize>, NumPyError>
     where
-        T: Clone + PartialOrd + crate::comparison_ufuncs::ComparisonOps<T> + Default + Send + Sync + 'static,
+        T: Clone
+            + PartialOrd
+            + crate::comparison_ufuncs::ComparisonOps<T>
+            + Default
+            + Send
+            + Sync
+            + 'static,
     {
         crate::sorting::argsort(self, axis, kind, order)
     }
@@ -651,7 +668,13 @@ impl<T> Array<T> {
         sorter: Option<&Array<isize>>,
     ) -> Result<Array<isize>, NumPyError>
     where
-        T: Clone + PartialOrd + crate::comparison_ufuncs::ComparisonOps<T> + Default + Send + Sync + 'static,
+        T: Clone
+            + PartialOrd
+            + crate::comparison_ufuncs::ComparisonOps<T>
+            + Default
+            + Send
+            + Sync
+            + 'static,
     {
         crate::sorting::searchsorted(self, v, side, sorter)
     }
@@ -665,7 +688,13 @@ impl<T> Array<T> {
         order: &str,
     ) -> Result<Array<isize>, NumPyError>
     where
-        T: Clone + PartialOrd + crate::comparison_ufuncs::ComparisonOps<T> + Default + Send + Sync + 'static,
+        T: Clone
+            + PartialOrd
+            + crate::comparison_ufuncs::ComparisonOps<T>
+            + Default
+            + Send
+            + Sync
+            + 'static,
     {
         crate::sorting::argpartition(self, kth, axis, kind, order)
     }
@@ -679,7 +708,13 @@ impl<T> Array<T> {
         order: &str,
     ) -> Result<Self, NumPyError>
     where
-        T: Clone + PartialOrd + crate::comparison_ufuncs::ComparisonOps<T> + Default + Send + Sync + 'static,
+        T: Clone
+            + PartialOrd
+            + crate::comparison_ufuncs::ComparisonOps<T>
+            + Default
+            + Send
+            + Sync
+            + 'static,
     {
         crate::sorting::partition(self, kth, axis, kind, order)
     }
@@ -817,7 +852,11 @@ impl<T> Array<T> {
 
             let mut result_data = Vec::new();
             for i in 0..diag_size {
-                let row = if offset >= 0 { i } else { i.saturating_sub(offset.unsigned_abs()) };
+                let row = if offset >= 0 {
+                    i
+                } else {
+                    i.saturating_sub(offset.unsigned_abs())
+                };
                 let col = if offset >= 0 { i + offset as usize } else { i };
 
                 if row < rows && col < cols {
@@ -1023,17 +1062,37 @@ impl<T> Array<T> {
     }
 
     /// Variance of array elements
-    pub fn var(&self, axis: Option<&[isize]>, ddof: usize, keepdims: bool) -> Result<Self, NumPyError>
+    pub fn var(
+        &self,
+        axis: Option<&[isize]>,
+        ddof: usize,
+        keepdims: bool,
+    ) -> Result<Self, NumPyError>
     where
-        T: Clone + Default + std::ops::Add<Output = T> + std::ops::Mul<Output = T> + From<f64> + 'static,
+        T: Clone
+            + Default
+            + std::ops::Add<Output = T>
+            + std::ops::Mul<Output = T>
+            + From<f64>
+            + 'static,
     {
         crate::reductions::var(self, axis, ddof, keepdims)
     }
 
     /// Standard deviation of array elements
-    pub fn std(&self, axis: Option<&[isize]>, ddof: usize, keepdims: bool) -> Result<Self, NumPyError>
+    pub fn std(
+        &self,
+        axis: Option<&[isize]>,
+        ddof: usize,
+        keepdims: bool,
+    ) -> Result<Self, NumPyError>
     where
-        T: Clone + Default + std::ops::Add<Output = T> + std::ops::Mul<Output = T> + From<f64> + 'static,
+        T: Clone
+            + Default
+            + std::ops::Add<Output = T>
+            + std::ops::Mul<Output = T>
+            + From<f64>
+            + 'static,
     {
         crate::reductions::std(self, axis, ddof, keepdims)
     }
@@ -1191,3 +1250,329 @@ impl ElementConj for num_complex::Complex<f32> {
         self.conj()
     }
 }
+
+// --- Additional ndarray methods ---
+
+impl<T> Array<T> {
+    /// Return the maximum element of the array
+    pub fn max(&self) -> Option<&T>
+    where
+        T: PartialOrd,
+    {
+        self.iter().max()
+    }
+
+    /// Return the minimum element of the array
+    pub fn min(&self) -> Option<&T>
+    where
+        T: PartialOrd,
+    {
+        self.iter().min()
+    }
+
+    /// Return the sum of all elements in the array
+    pub fn sum(&self) -> T
+    where
+        T: std::ops::Add<Output = T> + Clone + Default,
+    {
+        self.iter().cloned().fold(T::default(), |acc, x| acc + x)
+    }
+
+    /// Return the product of all elements in the array
+    pub fn prod(&self) -> T
+    where
+        T: std::ops::Mul<Output = T> + Clone + Default + num_traits::One,
+    {
+        self.iter().cloned().fold(T::one(), |acc, x| acc * x)
+    }
+
+    /// Return the mean of all elements in the array
+    pub fn mean(&self) -> f64
+    where
+        T: Clone + Into<f64>,
+    {
+        if self.size() == 0 {
+            return f64::NAN;
+        }
+        let sum: f64 = self.iter().cloned().map(|x| x.into()).sum();
+        sum / self.size() as f64
+    }
+
+    /// Return the standard deviation of all elements in the array
+    pub fn std(&self) -> f64
+    where
+        T: Clone + Into<f64>,
+    {
+        if self.size() <= 1 {
+            return f64::NAN;
+        }
+        let mean = self.mean();
+        let variance = self
+            .iter()
+            .cloned()
+            .map(|x| {
+                let x_f64 = x.into();
+                (x_f64 - mean).powi(2)
+            })
+            .sum::<f64>()
+            / (self.size() - 1) as f64;
+        variance.sqrt()
+    }
+
+    /// Return the variance of all elements in the array
+    pub fn var(&self) -> f64
+    where
+        T: Clone + Into<f64>,
+    {
+        if self.size() <= 1 {
+            return f64::NAN;
+        }
+        let mean = self.mean();
+        self.iter()
+            .cloned()
+            .map(|x| {
+                let x_f64 = x.into();
+                (x_f64 - mean).powi(2)
+            })
+            .sum::<f64>()
+            / (self.size() - 1) as f64
+    }
+
+    /// Return True if all elements evaluate to True
+    pub fn all(&self) -> bool
+    where
+        T: Into<bool>,
+    {
+        self.iter().all(|&x| x.into())
+    }
+
+    /// Return True if any element evaluates to True
+    pub fn any(&self) -> bool
+    where
+        T: Into<bool>,
+    {
+        self.iter().any(|&x| x.into())
+    }
+
+    /// Return the peak-to-peak (max - min) value of the array
+    pub fn ptp(&self) -> Option<f64>
+    where
+        T: PartialOrd + Clone + Into<f64>,
+    {
+        if self.size() == 0 {
+            return None;
+        }
+        let max_val = self.max()?.into();
+        let min_val = self.min()?.into();
+        Some(max_val - min_val)
+    }
+
+    /// Round elements to the given number of decimal places
+    pub fn round(&self, decimals: usize) -> Result<Array<f64>, NumPyError>
+    where
+        T: Clone + Into<f64>,
+    {
+        let factor = 10_f64.powi(decimals as i32);
+        let rounded_data: Vec<f64> = self
+            .iter()
+            .cloned()
+            .map(|x| {
+                let x_f64 = x.into();
+                (x_f64 * factor).round() / factor
+            })
+            .collect();
+        Ok(Array::from_shape_vec(self.shape.clone(), rounded_data))
+    }
+
+    /// Return a flattened copy of the array
+    pub fn flatten(&self) -> Array<T>
+    where
+        T: Clone,
+    {
+        let flat_data: Vec<T> = self.iter().cloned().collect();
+        Array::from_shape_vec(vec![flat_data.len()], flat_data)
+    }
+
+    /// Return a flattened view of the array (when possible)
+    pub fn ravel(&self) -> Array<T>
+    where
+        T: Clone,
+    {
+        // For simplicity, return a flattened copy
+        // In a full implementation, this would return a view when possible
+        self.flatten()
+    }
+
+    /// Remove single-dimensional entries from the shape
+    pub fn squeeze(&self) -> Array<T>
+    where
+        T: Clone,
+    {
+        let new_shape: Vec<usize> = self
+            .shape
+            .iter()
+            .filter(|&&dim| dim != 1)
+            .cloned()
+            .collect();
+
+        if new_shape.is_empty() {
+            // Return a scalar-like array
+            Array::from_shape_vec(vec![1], vec![self.get(0).cloned().unwrap_or_default()])
+        } else {
+            let flat_data: Vec<T> = self.iter().cloned().collect();
+            Array::from_shape_vec(new_shape, flat_data)
+        }
+    }
+
+    /// Return the indices that would sort the array
+    pub fn argsort(&self) -> Result<Array<usize>, NumPyError>
+    where
+        T: PartialOrd + Clone,
+    {
+        let mut indices: Vec<usize> = (0..self.size()).collect();
+        let values: Vec<T> = self.iter().cloned().collect();
+
+        indices.sort_by(|&a, &b| {
+            values[a]
+                .partial_cmp(&values[b])
+                .unwrap_or(std::cmp::Ordering::Equal)
+        });
+
+        Ok(Array::from_shape_vec(self.shape.clone(), indices))
+    }
+
+    /// Sort the array in-place
+    pub fn sort(&mut self) -> Result<(), NumPyError>
+    where
+        T: PartialOrd + Clone,
+    {
+        // For simplicity, we'll work with the flattened data
+        let mut flat_data: Vec<T> = self.iter().cloned().collect();
+        flat_data.sort();
+
+        // Update the array with sorted data
+        *self = Array::from_shape_vec(self.shape.clone(), flat_data);
+        Ok(())
+    }
+
+    /// Convert the array to a Rust vector (1D only)
+    pub fn tolist(&self) -> Vec<T>
+    where
+        T: Clone,
+    {
+        self.iter().cloned().collect()
+    }
+
+    /// Return the indices of the maximum element
+    pub fn argmax(&self) -> Option<usize>
+    where
+        T: PartialOrd,
+    {
+        if self.size() == 0 {
+            return None;
+        }
+
+        let mut max_idx = 0;
+        let mut max_val = self.get(0)?;
+
+        for (i, val) in self.iter().enumerate() {
+            if val > max_val {
+                max_val = val;
+                max_idx = i;
+            }
+        }
+
+        Some(max_idx)
+    }
+
+    /// Return the indices of the minimum element
+    pub fn argmin(&self) -> Option<usize>
+    where
+        T: PartialOrd,
+    {
+        if self.size() == 0 {
+            return None;
+        }
+
+        let mut min_idx = 0;
+        let mut min_val = self.get(0)?;
+
+        for (i, val) in self.iter().enumerate() {
+            if val < min_val {
+                min_val = val;
+                min_idx = i;
+            }
+        }
+
+        Some(min_idx)
+    }
+
+    /// Return the sum along the diagonal
+    pub fn trace(&self) -> T
+    where
+        T: std::ops::Add<Output = T> + Clone + Default,
+    {
+        if self.ndim() < 2 {
+            return T::default();
+        }
+
+        let min_dim = *self.shape.iter().min().unwrap_or(&1);
+        let mut sum = T::default();
+
+        for i in 0..min_dim {
+            if let Some(val) = self.get_diagonal_element(i) {
+                sum = sum + val.clone();
+            }
+        }
+
+        sum
+    }
+
+    /// Return the cumulative sum of the array
+    pub fn cumsum(&self) -> Array<T>
+    where
+        T: std::ops::Add<Output = T> + Clone + Default,
+    {
+        let mut cumsum_data = Vec::with_capacity(self.size());
+        let mut running_sum = T::default();
+
+        for val in self.iter() {
+            running_sum = running_sum + val.clone();
+            cumsum_data.push(running_sum.clone());
+        }
+
+        Array::from_shape_vec(self.shape.clone(), cumsum_data)
+    }
+
+    /// Return the cumulative product of the array
+    pub fn cumprod(&self) -> Array<T>
+    where
+        T: std::ops::Mul<Output = T> + Clone + Default + num_traits::One,
+    {
+        let mut cumprod_data = Vec::with_capacity(self.size());
+        let mut running_prod = T::one();
+
+        for val in self.iter() {
+            running_prod = running_prod * val.clone();
+            cumprod_data.push(running_prod.clone());
+        }
+
+        Array::from_shape_vec(self.shape.clone(), cumprod_data)
+    }
+
+    /// Helper method to get diagonal element
+    fn get_diagonal_element(&self, idx: usize) -> Option<&T> {
+        // Simplified diagonal access for 2D arrays
+        if self.ndim() == 2 {
+            let row_stride = self.strides[0] as usize;
+            let col_stride = self.strides[1] as usize;
+            let linear_idx = self.offset + idx * (row_stride + col_stride);
+            self.data.get(linear_idx)
+        } else {
+            None
+        }
+    }
+}
+
+#[cfg(test)]
+mod additional_tests;
