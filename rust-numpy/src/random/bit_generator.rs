@@ -478,6 +478,277 @@ impl RngCore for Philox {
     }
 }
 
+/// SFC64 BitGenerator
+///
+/// SFC64 is a simple, fast counter-based PRNG with good statistical properties.
+/// It's designed by Chris Doty-Humphrey and is part of the PractRand test suite.
+#[derive(Debug, Clone)]
+pub struct SFC64 {
+    state: [u64; 4],
+    counter: u64,
+}
+
+impl SFC64 {
+    /// Create a new SFC64 instance with a random seed
+    pub fn new() -> Self {
+        let seed = rand::random::<u64>();
+        Self::seed_from_u64(seed)
+    }
+
+    /// Create a new SFC64 instance with a specific 64-bit seed
+    pub fn seed_from_u64(seed: u64) -> Self {
+        let mut state = [seed; 4];
+        // Mix the seed to improve quality
+        for i in 1..4 {
+            state[i] = state[i].wrapping_mul(0x9E3779B97F4A7C15)
+                .wrapping_add(0xBF58476D1CE4E5B9)
+                .wrapping_add(state[i - 1] << 6)
+                .wrapping_add(state[i - 1] >> 2);
+        }
+        Self { state, counter: 0 }
+    }
+
+    /// Create a new SFC64 instance from a seed slice
+    pub fn from_seed_slice(seed: &[u32]) -> Self {
+        let mut state = [0u64; 4];
+        for (i, &word) in seed.iter().enumerate().take(4) {
+            state[i] = word as u64;
+        }
+        Self { state, counter: 0 }
+    }
+
+    /// SFC64 state transition function
+    fn next_state(&mut self) -> u64 {
+        let a = self.state[0];
+        let b = self.state[1];
+        let c = self.state[2];
+        let d = self.state[3].wrapping_add(self.counter);
+
+        self.state[0] = c;
+        self.state[1] = b.wrapping_mul(0x9E3779B97F4A7C15);
+        self.state[2] = c.wrapping_add(c);
+        self.state[3] = a ^ b ^ d;
+        self.counter += 1;
+
+        // Final mixing
+        a.wrapping_add(b).wrapping_add(self.state[3])
+    }
+}
+
+impl BitGenerator for SFC64 {
+    fn name(&self) -> &'static str {
+        "SFC64"
+    }
+
+    fn version(&self) -> &'static str {
+        "1.0.0"
+    }
+
+    fn seed_u64(&mut self, seed: u64) {
+        *self = Self::seed_from_u64(seed);
+    }
+
+    fn seed_u32_slice(&mut self, seed: &[u32]) {
+        *self = Self::from_seed_slice(seed);
+    }
+
+    fn next_u64(&mut self) -> u64 {
+        self.next_state()
+    }
+
+    fn branch(&mut self, _count: usize) -> Vec<Box<dyn BitGenerator>> {
+        vec![Box::new(self.clone())]
+    }
+
+    fn jump(&mut self, _iter: u64) {
+        // SFC64 doesn't support efficient jumping yet
+    }
+
+    fn state(&self) -> Vec<u64> {
+        let mut state = self.state.to_vec();
+        state.push(self.counter);
+        state
+    }
+
+    fn state_bytes(&self) -> Vec<u8> {
+        self.state.iter().fold(Vec::new(), |mut acc, &s| {
+            acc.extend_from_slice(&s.to_le_bytes());
+            acc.extend_from_slice(&self.counter.to_le_bytes());
+            acc
+        })
+    }
+
+    fn copy(&mut self, _state: &[u64]) {
+        // Not implemented
+    }
+
+    fn set_stream(&mut self, _stream: u64) {
+        // SFC64 doesn't support streams
+    }
+}
+
+impl RngCore for SFC64 {
+    fn next_u32(&mut self) -> u32 {
+        self.next_u64() as u32
+    }
+
+    fn next_u64(&mut self) -> u64 {
+        self.next_state()
+    }
+
+    fn fill_bytes(&mut self, dest: &mut [u8]) {
+        for chunk in dest.chunks_mut(8) {
+            let val = self.next_u64();
+            chunk.copy_from_slice(&val.to_le_bytes());
+        }
+    }
+
+    fn try_fill_bytes(&mut self, dest: &mut [u8]) -> Result<(), rand::Error> {
+        self.fill_bytes(dest);
+        Ok(())
+    }
+}
+
+/// PCG64DXSM BitGenerator
+///
+/// PCG64DXSM is an enhanced version of PCG64 with better statistical properties
+/// and stronger avalanche effect. DXSM stands for "DXSM multiply".
+#[derive(Debug, Clone)]
+pub struct PCG64DXSM {
+    state: u128,
+    inc: u128,
+}
+
+impl PCG64DXSM {
+    /// Create a new PCG64DXSM instance with a random seed
+    pub fn new() -> Self {
+        let seed = rand::random::<u64>();
+        Self::seed_from_u64(seed)
+    }
+
+    /// Create a new PCG64DXSM instance with a specific 64-bit seed
+    pub fn seed_from_u64(seed: u64) -> Self {
+        Self {
+            state: seed as u128,
+            inc: (seed as u128).wrapping_mul(2).wrapping_add(1),
+        }
+    }
+
+    /// Create a new PCG64DXSM instance from a seed slice
+    pub fn from_seed_slice(seed: &[u32]) -> Self {
+        let mut state = 0u128;
+        let mut inc = 1u128;
+        for (i, &word) in seed.iter().enumerate() {
+            let word = word as u128;
+            if i % 2 == 0 {
+                state = state.wrapping_mul(6364136223846793005)
+                    .wrapping_add(word | 1);
+            } else {
+                inc = inc.wrapping_mul(6364136223846793005)
+                    .wrapping_add(word | 1);
+            }
+        }
+        Self { state, inc: inc | 1 }
+    }
+
+    /// PCG64DXSM state transition using DXSM multiply
+    fn next_state(&mut self) -> u64 {
+        self.state = self
+            .state
+            .wrapping_mul(0x9E3779B97F4A7C15_DA942042E4DD58B5u128)
+            .wrapping_add(self.inc);
+        let x = ((self.state >> 64) as u64).wrapping_add((self.state >> 122) as u64);
+        ((x ^ (x >> 64)) as u64)
+    }
+}
+
+impl BitGenerator for PCG64DXSM {
+    fn name(&self) -> &'static str {
+        "PCG64DXSM"
+    }
+
+    fn version(&self) -> &'static str {
+        "1.0.0"
+    }
+
+    fn seed_u64(&mut self, seed: u64) {
+        *self = Self::seed_from_u64(seed);
+    }
+
+    fn seed_u32_slice(&mut self, seed: &[u32]) {
+        *self = Self::from_seed_slice(seed);
+    }
+
+    fn next_u64(&mut self) -> u64 {
+        self.next_state()
+    }
+
+    fn branch(&mut self, _count: usize) -> Vec<Box<dyn BitGenerator>> {
+        vec![Box::new(self.clone())]
+    }
+
+    fn jump(&mut self, iter: u64) {
+        // PCG64DXSM jumping using multiplier^iter
+        let mut multiplier = 0x9E3779B97F4A7C15_DA942042E4DD58B5u128;
+        let mut result = 1u128;
+        let mut current = self.state;
+
+        let mut i = iter;
+        while i > 0 {
+            if i & 1 == 1 {
+                result = result.wrapping_mul(multiplier);
+            }
+            multiplier = multiplier.wrapping_mul(multiplier);
+            i >>= 1;
+        }
+        self.state = result.wrapping_mul(current);
+    }
+
+    fn state(&self) -> Vec<u64> {
+        vec![self.state as u64, (self.state >> 64) as u64, self.inc as u64, (self.inc >> 64) as u64]
+    }
+
+    fn state_bytes(&self) -> Vec<u8> {
+        let mut bytes = Vec::with_capacity(32);
+        bytes.extend_from_slice(&self.state.to_le_bytes());
+        bytes.extend_from_slice(&self.inc.to_le_bytes());
+        bytes
+    }
+
+    fn copy(&mut self, state: &[u64]) {
+        if state.len() >= 4 {
+            self.state = (state[0] as u128) | ((state[1] as u128) << 64);
+            self.inc = (state[2] as u128) | ((state[3] as u128) << 64);
+        }
+    }
+
+    fn set_stream(&mut self, stream: u64) {
+        self.inc = (stream | 1) as u128;
+    }
+}
+
+impl RngCore for PCG64DXSM {
+    fn next_u32(&mut self) -> u32 {
+        self.next_u64() as u32
+    }
+
+    fn next_u64(&mut self) -> u64 {
+        self.next_state()
+    }
+
+    fn fill_bytes(&mut self, dest: &mut [u8]) {
+        for chunk in dest.chunks_mut(8) {
+            let val = self.next_u64();
+            chunk.copy_from_slice(&val.to_le_bytes());
+        }
+    }
+
+    fn try_fill_bytes(&mut self, dest: &mut [u8]) -> Result<(), rand::Error> {
+        self.fill_bytes(dest);
+        Ok(())
+    }
+}
+
 /// Factory functions for creating BitGenerator instances
 pub mod factory {
     use super::*;
@@ -486,8 +757,10 @@ pub mod factory {
     pub fn create_bitgenerator(name: &str) -> Result<Box<dyn BitGenerator>, String> {
         match name {
             "PCG64" => Ok(Box::new(PCG64::new())),
+            "PCG64DXSM" => Ok(Box::new(PCG64DXSM::new())),
             "MT19937" => Ok(Box::new(MT19937::new())),
             "Philox" => Ok(Box::new(Philox::new())),
+            "SFC64" => Ok(Box::new(SFC64::new())),
             _ => Err(format!("Unknown BitGenerator: {}", name)),
         }
     }
@@ -499,15 +772,17 @@ pub mod factory {
     ) -> Result<Box<dyn BitGenerator>, String> {
         match name {
             "PCG64" => Ok(Box::new(PCG64::seed_from_u64(seed))),
+            "PCG64DXSM" => Ok(Box::new(PCG64DXSM::seed_from_u64(seed))),
             "MT19937" => Ok(Box::new(MT19937::seed_from_u64(seed))),
             "Philox" => Ok(Box::new(Philox::seed_from_u64(seed))),
+            "SFC64" => Ok(Box::new(SFC64::seed_from_u64(seed))),
             _ => Err(format!("Unknown BitGenerator: {}", name)),
         }
     }
 
     /// Get list of available BitGenerator names
     pub fn available_bitgenerators() -> Vec<&'static str> {
-        vec!["PCG64", "MT19937", "Philox"]
+        vec!["PCG64", "PCG64DXSM", "MT19937", "Philox", "SFC64"]
     }
 
     /// Get the default BitGenerator (PCG64)
