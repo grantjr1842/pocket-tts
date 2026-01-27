@@ -322,7 +322,10 @@ pub use broadcasting::{broadcast_arrays, broadcast_to};
 pub use datetime::{busday_count, busday_offset, datetime_as_string, datetime_data};
 
 // I/O functions
-pub use io::{fromfile, fromstring, load, loadtxt, save, savetxt, savez, savez_compressed};
+pub use io::{
+    detect_file_format, frombuffer, fromfile, fromstring, load, loadtxt, save, savetxt, savez,
+    savez_compressed, tofile,
+};
 
 // Window functions
 pub use window::{bartlett, blackman, hamming, hanning, kaiser};
