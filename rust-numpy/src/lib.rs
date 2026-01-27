@@ -278,12 +278,15 @@ pub use array::Array;
 pub use array_manipulation::{apply_along_axis, apply_over_axes, expand_dims, Vectorize};
 pub use bitwise::*;
 pub use char::exports::{
-    add as char_add, capitalize, center, count as char_count, endswith, expandtabs, find,
-    index as char_index, isalnum, isalpha, isdigit, isnumeric, isspace, join, lower, lstrip,
-    multiply as char_multiply, replace, rfind, rindex, rstrip, split as char_split, startswith,
-    strip, upper, zfill,
+    add as char_add, capitalize, center, count as char_count, decode, encode, endswith, expandtabs,
+    find, index as char_index, isalnum, isalpha, isdecimal, isdigit, islower, istitle, isnumeric,
+    isspace, isupper, join, lower, lstrip, mod as char_mod, multiply as char_multiply, replace,
+    rfind, rindex, rsplit, rstrip, split as char_split, startswith, str_len, strip, translate,
+    upper, zfill,
     // Comparison functions
     add, equal, greater, greater_equal, less, less_equal,
+    // Character testing
+    isdecimal, islower, istitle, isupper,
 };
 pub use dist::{cdist, pdist, squareform};
 pub use dtype::{Casting, Dtype, DtypeKind};
