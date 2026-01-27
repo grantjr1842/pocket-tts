@@ -294,7 +294,10 @@ pub use linalg::{
     matrix_transpose, multi_dot, norm, outer, pinv, qr, slogdet, solve, svd, svdvals,
     tensor_inv, tensor_solve, tensordot, trace, vdot, vecdot, vector_norm, LinAlgError,
 };
-pub use polynomial::{set_default_printstyle, Polynomial, PolynomialBase, fit, roots, val, deriv, integ, companion, domain};
+pub use polynomial::{
+    set_default_printstyle, Polynomial, PolynomialBase, companion, deriv, domain, fit, integ,
+    poly, polyadd, polydiv, polymul, polysub, roots, val,
+};
 pub use performance_metrics::{
     Bottleneck, BottleneckType, MemoryTracker, OptimizationRecommendation, PerformanceMetrics,
     PerformanceReport,
