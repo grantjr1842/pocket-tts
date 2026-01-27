@@ -232,7 +232,12 @@ pub use crate::typing::{
     // Void,
 };
 pub use array::Array;
-pub use array_manipulation::{apply_along_axis, apply_over_axes, expand_dims, Vectorize};
+pub use array_manipulation::{
+    append, apply_along_axis, apply_over_axes, atleast_1d, atleast_2d, atleast_3d, delete,
+    empty_like, expand_dims, eye, flatten, flip, full_like, identity, insert, meshgrid, moveaxis,
+    ones_like, pad, repeat, reshape, roll, rollaxis, rot90, ravel, squeeze, swapaxes, tile,
+    zeros_like, Vectorize,
+};
 pub use bitwise::*;
 pub use char::exports::{
     add as char_add, capitalize, center, count as char_count, endswith, expandtabs, find,
@@ -267,6 +272,7 @@ pub use reductions::{
     all, all_bool, any, any_bool, argmax, argmin, cumprod, cumsum, max, mean, min, prod, sum,
 };
 pub use set_ops::exports::*;
+pub use sorting::exports::*;
 pub use statistics::{
     average, bincount, corrcoef, cov, digitize, histogram, histogram2d, histogramdd, median,
     nanmax, nanmean, nanmedian, nanmin, nanpercentile, nanprod, nanquantile, nanstd, nansum,
@@ -330,8 +336,9 @@ pub use ufunc::{
 
 // Array creation and conversion functions
 pub use array_creation::{
-    array, array2string, array_repr, array_str, asanyarray, asarray, asarray_chkfinite,
-    ascontiguousarray, asfortranarray, asmatrix, copy, copyto,
+    arange, array, array2string, array_repr, array_str, asanyarray, asarray,
+    asarray_chkfinite, ascontiguousarray, asfortranarray, asmatrix, clip, copy, copyto,
+    frombuffer, fromfunction, fromiter, full, linspace, logspace, geomspace, min, log, vander,
 };
 
 // Reduction functions
