@@ -10,6 +10,8 @@
 use crate::array::Array;
 use crate::dtype::{Dtype, DtypeKind};
 use crate::error::{NumPyError, Result};
+use crate::kernels::UfuncType;
+use crate::ufunc::{ArrayView, ArrayViewMut};
 use std::any::{Any, TypeId};
 use std::collections::HashMap;
 
@@ -65,6 +67,11 @@ pub trait Kernel: Send + Sync {
     fn is_vectorized(&self) -> bool {
         false
     }
+
+    /// Get performance hint for this kernel
+    fn performance_hint(&self) -> PerformanceHint {
+        PerformanceHint::General
+    }
 }
 
 /// Kernel registry for type-based kernel dispatch
@@ -72,7 +79,7 @@ pub trait Kernel: Send + Sync {
 /// This registry stores and manages dtype-specific kernels using TypeId
 /// for efficient lookup and dispatch.
 pub struct KernelRegistry {
-    kernels: HashMap<(TypeId, crate::ufunc::UfuncType), Box<dyn Any>>,
+    kernels: HashMap<(TypeId, UfuncType), Box<dyn Any + Send + Sync>>,
 }
 
 impl KernelRegistry {
@@ -88,11 +95,7 @@ impl KernelRegistry {
     /// # Arguments
     /// * `ufunc` - Type of ufunc (add, multiply, etc.)
     /// * `kernel` - Kernel implementation to register
-    pub fn register<T, K>(&mut self, ufunc: crate::ufunc::UfuncType, kernel: K)
-    where
-        T: 'static,
-        K: Kernel<T> + 'static,
-    {
+    pub fn register<T: 'static>(&mut self, ufunc: UfuncType, kernel: impl Kernel + 'static) {
         let type_id = TypeId::of::<T>();
         self.kernels.insert((type_id, ufunc), Box::new(kernel));
     }
@@ -105,13 +108,10 @@ impl KernelRegistry {
     ///
     /// # Returns
     /// * `Some(kernel)` if found, `None` otherwise
-    pub fn get<T>(&self, ufunc: crate::ufunc::UfuncType, dtype: TypeId) -> Option<&dyn Kernel<T>>
-    where
-        T: 'static,
-    {
+    pub fn get<T: 'static>(&self, ufunc: UfuncType) -> Option<&dyn Kernel> {
         self.kernels
             .get(&(TypeId::of::<T>(), ufunc))
-            .and_then(|k| k.downcast_ref())
+            .and_then(|k| k.downcast_ref::<dyn Kernel>())
     }
 
     /// Get all registered kernels for a ufunc type
@@ -121,16 +121,93 @@ impl KernelRegistry {
     ///
     /// # Returns
     /// * Vector of kernel references that match the ufunc type
-    pub fn get_all(&self, ufunc: crate::ufunc::UfuncType) -> Vec<&dyn Kernel<T>>
-    where
-        T: 'static,
-    {
+    pub fn get_all(&self, ufunc: UfuncType) -> Vec<&dyn Kernel> {
         self.kernels
             .iter()
-            .filter(|((type_id, ufunc_type), _)| ufunc_type == *ufunc_type)
-            .map(|(_, kernel)| kernel.downcast_ref())
+            .filter(|((_, ufunc_type), _)| ufunc_type == &ufunc)
+            .map(|(_, kernel)| kernel.downcast_ref::<dyn Kernel>())
             .collect()
     }
+}
+
+/// Performance hint for kernel optimization
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum PerformanceHint {
+    /// Kernel is vectorized (SIMD)
+    Vectorized,
+    /// Kernel is memory bandwidth bound
+    MemoryBound,
+    /// Kernel is compute bound
+    ComputeBound,
+    /// No specific optimization hints
+    General,
+}
+
+/// Statistics about the kernel registry
+#[derive(Debug, Clone)]
+pub struct RegistryStats {
+    /// Total number of registered kernels
+    pub total_kernels: usize,
+    /// Number of kernels by ufunc type
+    pub kernels_by_type: HashMap<String, usize>,
+}
+
+/// Global kernel registry instance
+static GLOBAL_REGISTRY: std::sync::OnceLock<std::sync::RwLock<KernelRegistry>> =
+    std::sync::OnceLock::new();
+
+/// Get the global kernel registry
+fn get_global_registry() -> &'static std::sync::RwLock<KernelRegistry> {
+    GLOBAL_REGISTRY.get_or_init(|| std::sync::RwLock::new(KernelRegistry::new()))
+}
+
+/// Get the global kernel registry (public API)
+pub fn get_kernel_registry() -> std::sync::RwLockReadGuard<'static, KernelRegistry> {
+    get_global_registry().read().unwrap()
+}
+
+/// Register a kernel in the global registry
+pub fn register_kernel<T: 'static>(
+    kernel: impl Kernel + 'static,
+    ufunc: UfuncType,
+) -> Result<()> {
+    let mut registry = get_global_registry().write().unwrap();
+    registry.register::<T>(ufunc, kernel);
+    Ok(())
+}
+
+/// Find a kernel in the global registry
+pub fn find_kernel<T: 'static>(ufunc: UfuncType) -> Option<std::sync::RwLockReadGuard<'static, dyn Kernel>> {
+    let registry = get_global_registry().read().unwrap();
+    registry.get::<T>(ufunc).map(|k| std::sync::RwLockReadGuard::map(k, |kernel| *kernel))
+}
+
+/// Get statistics about the global registry
+pub fn get_registry_stats() -> RegistryStats {
+    let registry = get_global_registry().read().unwrap();
+    let mut stats = RegistryStats {
+        total_kernels: 0,
+        kernels_by_type: HashMap::new(),
+    };
+    // Count kernels by type
+    for ((_, ufunc_type), _) in &registry.kernels {
+        let count = stats.kernels_by_type.entry(ufunc_type.as_str().to_string()).or_insert(0);
+        *count += 1;
+    }
+    stats.total_kernels = registry.kernels.len();
+    stats
+}
+
+/// List all registered kernels
+pub fn list_kernels() -> Vec<(UfuncType, String)> {
+    let registry = get_global_registry().read().unwrap();
+    let mut kernels = Vec::new();
+    for ((_, ufunc_type), kernel_any) in &registry.kernels {
+        if let Some(kernel) = kernel_any.downcast_ref::<dyn Kernel>() {
+            kernels.push((*ufunc_type, kernel.name().to_string()));
+        }
+    }
+    kernels
 }
 
 #[cfg(test)]
@@ -142,11 +219,11 @@ mod tests {
         let mut registry = KernelRegistry::new();
 
         // Test that we can register and retrieve kernels
-        assert!(registry.get::<f64>(crate::ufunc::UfuncType::Add).is_none());
+        assert!(registry.get::<f64>(UfuncType::Add).is_none());
 
         // Register a test kernel
         struct TestAddKernel;
-        impl Kernel<f64> for TestAddKernel {
+        impl Kernel for TestAddKernel {
             fn name(&self) -> &str {
                 "test_add"
             }
@@ -173,10 +250,10 @@ mod tests {
             }
         }
 
-        registry.register::<f64, TestAddKernel>(crate::ufunc::UfuncType::Add, TestAddKernel);
+        registry.register::<f64>(UfuncType::Add, TestAddKernel);
 
         // Verify registration
-        let kernel = registry.get::<f64>(crate::ufunc::UfuncType::Add);
+        let kernel = registry.get::<f64>(UfuncType::Add);
         assert!(kernel.is_some());
         assert_eq!(kernel.unwrap().name(), "test_add");
     }
@@ -186,11 +263,11 @@ mod tests {
         let mut registry = KernelRegistry::new();
 
         // Register kernels for different types
-        registry.register::<f64, TestAddKernel>(crate::ufunc::UfuncType::Add, TestAddKernel);
-        registry.register::<f32, TestAddKernel>(crate::ufunc::UfuncType::Add, TestAddKernel);
+        registry.register::<f64>(UfuncType::Add, TestAddKernel);
+        registry.register::<f32>(UfuncType::Add, TestAddKernel);
 
         // Verify we can retrieve all kernels for Add ufunc
-        let add_kernels = registry.get_all(crate::ufunc::UfuncType::Add);
+        let add_kernels = registry.get_all(UfuncType::Add);
         assert_eq!(add_kernels.len(), 2);
 
         // Verify type safety

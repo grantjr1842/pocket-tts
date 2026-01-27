@@ -215,6 +215,13 @@ pub mod ufunc_ops;
 pub mod window;
 pub mod dynamic_kernel_registry;
 
+// Additional type modules for NumPy compatibility
+pub mod scalar;
+pub mod object;
+pub mod void;
+pub mod string;
+pub mod bytes;
+
 #[cfg(test)]
 mod kernel_tests;
 
