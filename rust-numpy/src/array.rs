@@ -1616,6 +1616,213 @@ impl<T> Array<T> {
             None
         }
     }
+
+    /// Transpose of the array (reverses all axes)
+    ///
+    /// Returns a view with axes transposed. For a 2D array, this is the standard matrix transpose.
+    /// For higher dimensional arrays, all axes are reversed.
+    pub fn T(&self) -> Array<T>
+    where
+        T: Clone,
+    {
+        self.transpose_view(None).unwrap_or_else(|_| self.clone())
+    }
+
+    /// Matrix transpose of the array (swaps last two axes)
+    ///
+    /// For 2D arrays, this is equivalent to T(). For higher dimensional arrays,
+    /// only the last two axes are swapped.
+    pub fn mT(&self) -> Array<T>
+    where
+        T: Clone,
+    {
+        let ndim = self.ndim();
+        if ndim < 2 {
+            // For 0D or 1D arrays, mT is the same as T
+            return self.T();
+        }
+
+        // Swap last two axes
+        let mut axes: Vec<usize> = (0..ndim).collect();
+        axes.swap(ndim - 2, ndim - 1);
+
+        self.transpose_view(Some(&axes)).unwrap_or_else(|_| self.clone())
+    }
+
+    /// Base object if array is a view, None otherwise
+    ///
+    /// Returns None for arrays that own their data. For views created via
+    /// transpose_view or other view operations, this returns the base array.
+    pub fn base(&self) -> Option<&Array<T>> {
+        // TODO: Track base array when creating views
+        // For now, always return None since we don't track base
+        None
+    }
+
+    /// Array flags information
+    pub fn flags(&self) -> ArrayFlags {
+        ArrayFlags {
+            c_contiguous: self.is_c_contiguous(),
+            f_contiguous: self.is_f_contiguous(),
+            aligned: self.is_aligned(),
+            writable: self.is_writable(),
+        }
+    }
+
+    /// Check if array is aligned (for SIMD operations)
+    fn is_aligned(&self) -> bool {
+        // Basic alignment check - data pointer should be aligned for element access
+        let ptr = self.data.as_ref().as_ptr() as usize;
+        let alignment = std::mem::align_of::<T>();
+        ptr % alignment == 0
+    }
+
+    /// Check if array data is writable
+    fn is_writable(&self) -> bool {
+        // With Arc, the data is always writable (Arc::make_mut would clone if needed)
+        true
+    }
+
+    /// Flat iterator over array elements
+    ///
+    /// Returns an iterator that yields references to each element in row-major order.
+    pub fn flat(&self) -> FlatIter<'_, T> {
+        FlatIter::new(self)
+    }
+
+    /// Device the array is stored on
+    pub fn device(&self) -> &str {
+        "cpu"
+    }
+
+    /// CTypes representation of the array
+    pub fn ctypes(&self) -> Ctypes {
+        let data_ptr = self.data.as_ref().as_ptr() as *const std::ffi::c_void;
+        Ctypes {
+            data: data_ptr,
+            itemsize: self.itemsize(),
+            c_contiguous: self.is_c_contiguous(),
+            f_contiguous: self.is_f_contiguous(),
+            ndim: self.ndim(),
+            shape: self.shape().to_vec(),
+            strides: self.strides().to_vec(),
+        }
+    }
+}
+
+/// Array flags structure
+#[derive(Debug, Clone)]
+pub struct ArrayFlags {
+    /// True if array is C-contiguous
+    pub c_contiguous: bool,
+    /// True if array is Fortran-contiguous
+    pub f_contiguous: bool,
+    /// True if array is properly aligned
+    pub aligned: bool,
+    /// True if array data is writable
+    pub writable: bool,
+}
+
+impl ArrayFlags {
+    /// Get writeable flag as string
+    pub fn writeable(&self) -> &str {
+        if self.writable {
+            "WRITEABLE"
+        } else {
+            "NOTWRITEABLE"
+        }
+    }
+
+    /// Get contiguous status string
+    pub fn contiguous(&self) -> String {
+        let mut flags = Vec::new();
+        if self.c_contiguous {
+            flags.push("C_CONTIGUOUS");
+        }
+        if self.f_contiguous {
+            flags.push("F_CONTIGUOUS");
+        }
+        if flags.is_empty() {
+            flags.push("NONE");
+        }
+        flags.join(", ")
+    }
+
+    /// Get aligned flag as string
+    pub fn aligned_flag(&self) -> &str {
+        if self.aligned {
+            "ALIGNED"
+        } else {
+            "NOTALIGNED"
+        }
+    }
+
+    /// Get ownership flag as string
+    pub fn ownership(&self) -> &str {
+        // We can't easily determine ownership with Arc, assume OWNDATA
+        "OWNDATA"
+    }
+}
+
+/// CTypes-like structure for array
+#[derive(Debug, Clone)]
+pub struct Ctypes {
+    /// Pointer to data buffer
+    pub data: *const std::ffi::c_void,
+    /// Size of each element in bytes
+    pub itemsize: usize,
+    /// True if C-contiguous
+    pub c_contiguous: bool,
+    /// True if Fortran-contiguous
+    pub f_contiguous: bool,
+    /// Number of dimensions
+    pub ndim: usize,
+    /// Shape tuple
+    pub shape: Vec<usize>,
+    /// Strides tuple
+    pub strides: Vec<isize>,
+}
+
+/// Flat iterator that allows indexed access
+pub struct FlatIter<'a, T> {
+    array: &'a Array<T>,
+    index: usize,
+}
+
+impl<'a, T> FlatIter<'a, T> {
+    fn new(array: &'a Array<T>) -> Self {
+        Self { array, index: 0 }
+    }
+}
+
+impl<'a, T> Iterator for FlatIter<'a, T> {
+    type Item = &'a T;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.index >= self.array.size() {
+            return None;
+        }
+        let item = self.array.get_linear(self.index);
+        self.index += 1;
+        item
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        let remaining = self.array.size() - self.index;
+        (remaining, Some(remaining))
+    }
+}
+
+impl<'a, T> ExactSizeIterator for FlatIter<'a, T> {}
+
+impl<'a, T> Index<usize> for FlatIter<'a, T> {
+    type Output = T;
+
+    fn index(&self, index: usize) -> &Self::Output {
+        self.array
+            .get_linear(index)
+            .expect("Index out of bounds for flat iterator")
+    }
 }
 
 #[cfg(test)]

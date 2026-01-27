@@ -236,7 +236,7 @@ where
 
         // Try kernel registry for type-specific optimization
         if let (Some(kernel), _) = crate::kernel_registry::get_kernel_registry()
-            .and_then(|registry| registry.get::<T>(crate::ufunc::UfuncType::Add))
+            .and_then(|registry| registry.get::<T>(crate::kernels::UfuncType::Add))
         {
             kernel.execute(&[in0, in1], &mut [output])?;
         } else {

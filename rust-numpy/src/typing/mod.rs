@@ -247,7 +247,7 @@ pub mod aliases {
 
     /// Integer type alias
     /// Represents NumPy integer types
-    pub type Integer = crate::scalar::Integer;
+    pub type Integer = crate::scalar::Int;
 
     /// Floating type alias
     /// Represents NumPy floating types
