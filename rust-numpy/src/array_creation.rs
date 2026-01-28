@@ -502,6 +502,103 @@ where
     Ok(Array::from_data(data, shape.to_vec()))
 }
 
+/// Construct an array of indices.
+///
+/// Returns a tuple of arrays, one for each dimension of `a`, containing
+/// the indices of the elements of `a` along that dimension.
+///
+/// # Arguments
+/// * `shape` - Shape of the output array
+/// * `dtype` - Desired data type (defaults to usize)
+pub fn indices(shape: &[usize]) -> Result<Array<usize>> {
+    let ndim = shape.len();
+    if ndim == 0 {
+        return Ok(Array::from_vec(vec![]));
+    }
+
+    let mut result_shape = shape.to_vec();
+    result_shape.insert(0, ndim); // Prepend dimension for indices
+
+    let total_size: usize = result_shape.iter().product();
+    let mut data = vec![0usize; total_size];
+
+    // Fill in indices for each dimension
+    let mut index_base = 0usize;
+    for dim in 0..ndim {
+        let dim_size = shape[dim];
+        let stride: usize = result_shape[1..]
+            .iter()
+            .take(dim)
+            .product();
+        let block_size: usize = result_shape[dim + 1..]
+            .iter()
+            .product();
+
+        for i in 0..dim_size {
+            for block_idx in 0..block_size {
+                let pos = index_base + i * stride + block_idx;
+                if pos < total_size {
+                    data[pos] = i;
+                }
+            }
+        }
+        index_base += dim_size * stride * block_size;
+    }
+
+    Ok(Array::from_shape_vec(result_shape, data)?)
+}
+
+/// Compute the indices to access the main diagonal of an n-dimensional array.
+pub fn diag_indices(n: usize, ndim: usize) -> Vec<Array<usize>> {
+    let mut indices = Vec::with_capacity(ndim);
+    for dim in 0..ndim {
+        let mut idx = Array::zeros(vec![n]);
+        for i in 0..n {
+            idx[i] = i;
+        }
+        indices.push(idx);
+    }
+    indices
+}
+
+/// Return the indices for the lower-triangle of an (n, m) array.
+pub fn tril_indices(n: usize, k: isize, m: Option<usize>) -> (Array<usize>, Array<usize>) {
+    let m = m.unwrap_or(n);
+    let mut row = Vec::new();
+    let mut col = Vec::new();
+
+    let k = k as isize;
+    for i in 0..n {
+        for j in 0..m {
+            if j <= i + k {
+                row.push(i);
+                col.push(j);
+            }
+        }
+    }
+
+    (Array::from_vec(row), Array::from_vec(col))
+}
+
+/// Return the indices for the upper-triangle of an (n, m) array.
+pub fn triu_indices(n: usize, k: isize, m: Option<usize>) -> (Array<usize>, Array<usize>) {
+    let m = m.unwrap_or(n);
+    let mut row = Vec::new();
+    let mut col = Vec::new();
+
+    let k = k as isize;
+    for i in 0..n {
+        for j in 0..m {
+            if j >= i + k {
+                row.push(i);
+                col.push(j);
+            }
+        }
+    }
+
+    (Array::from_vec(row), Array::from_vec(col))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
