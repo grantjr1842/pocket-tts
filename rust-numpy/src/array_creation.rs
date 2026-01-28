@@ -400,6 +400,108 @@ where
     Ok(())
 }
 
+/// Return a new array of given shape and type, without initializing entries.
+/// Similar to np.empty.
+pub fn empty<T>(shape: &[usize]) -> Result<Array<T>>
+where
+    T: Clone + Default + 'static,
+{
+    let size: usize = shape.iter().product();
+    // Create uninitialized memory (using Default for safety)
+    let data: Vec<T> = (0..size).map(|_| T::default()).collect();
+    Ok(Array::from_data(data, shape.to_vec()))
+}
+
+/// Return a new array with the same shape and type as a given array, without initializing entries.
+/// Similar to np.empty_like.
+pub fn empty_like<T>(prototype: &Array<T>) -> Result<Array<T>>
+where
+    T: Clone + Default + 'static,
+{
+    let shape = prototype.shape();
+    let size: usize = shape.iter().product();
+    let data: Vec<T> = (0..size).map(|_| T::default()).collect();
+    Ok(Array::from_data(data, shape.to_vec()))
+}
+
+/// Return a new array of given shape and type, filled with fill_value.
+/// Similar to np.ones.
+pub fn ones<T>(shape: &[usize]) -> Result<Array<T>>
+where
+    T: Clone + Default + num_traits::One + 'static,
+{
+    let size: usize = shape.iter().product();
+    let data: Vec<T> = (0..size).map(|_| T::one()).collect();
+    Ok(Array::from_data(data, shape.to_vec()))
+}
+
+/// Return an array of ones with the same shape and type as a given array.
+/// Similar to np.ones_like.
+pub fn ones_like<T>(prototype: &Array<T>) -> Result<Array<T>>
+where
+    T: Clone + Default + num_traits::One + 'static,
+{
+    let shape = prototype.shape();
+    let size: usize = shape.iter().product();
+    let data: Vec<T> = (0..size).map(|_| T::one()).collect();
+    Ok(Array::from_data(data, shape.to_vec()))
+}
+
+/// Return a new array of given shape and type, filled with zeros.
+/// Similar to np.zeros.
+pub fn zeros<T>(shape: &[usize]) -> Result<Array<T>>
+where
+    T: Clone + Default + num_traits::Zero + 'static,
+{
+    let size: usize = shape.iter().product();
+    let data: Vec<T> = (0..size).map(|_| T::zero()).collect();
+    Ok(Array::from_data(data, shape.to_vec()))
+}
+
+/// Return an array of zeros with the same shape and type as a given array.
+/// Similar to np.zeros_like.
+pub fn zeros_like<T>(prototype: &Array<T>) -> Result<Array<T>>
+where
+    T: Clone + Default + num_traits::Zero + 'static,
+{
+    let shape = prototype.shape();
+    let size: usize = shape.iter().product();
+    let data: Vec<T> = (0..size).map(|_| T::zero()).collect();
+    Ok(Array::from_data(data, shape.to_vec()))
+}
+
+/// Return the identity array.
+/// Similar to np.identity.
+pub fn identity<T>(n: usize) -> Result<Array<T>>
+where
+    T: Clone + Default + num_traits::One + num_traits::Zero + PartialEq + 'static,
+{
+    if n == 0 {
+        return Err(NumPyError::invalid_value("identity: n must be positive"));
+    }
+
+    let size = n * n;
+    let mut data = Vec::with_capacity(size);
+    for i in 0..n {
+        for j in 0..n {
+            data.push(if i == j { T::one() } else { T::zero() });
+        }
+    }
+    Ok(Array::from_shape_vec(vec![n, n], data))
+}
+
+/// Return a full array with the same shape and type as a given array.
+/// Similar to np.full_like.
+pub fn full_like<T>(prototype: &Array<T>, fill_value: T) -> Result<Array<T>>
+where
+    T: Clone + Default + 'static,
+{
+    let shape = prototype.shape();
+    let size: usize = shape.iter().product();
+    let data: Vec<T> = (0..size).map(|_| fill_value.clone()).collect();
+    Ok(Array::from_data(data, shape.to_vec()))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

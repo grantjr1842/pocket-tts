@@ -279,6 +279,21 @@ pub use statistics::{
     nanvar, percentile, ptp, quantile, std, var,
 };
 pub use type_promotion::{promote_types, TypePromotionRules};
+<<<<<<< Updated upstream
+=======
+
+// Broadcasting functions
+pub use broadcasting::{broadcast_arrays, broadcast_to};
+
+// Datetime functions
+pub use datetime::{busday_count, busday_offset, datetime_as_string, datetime_data};
+
+// I/O functions
+pub use io::{fromfile, fromstring, load, loadtxt, save, savetxt, savez, savez_compressed, fromregex, from_dlpack, genfromtxt};
+
+// Window functions
+pub use window::{bartlett, blackman, hamming, hanning, kaiser};
+
 // Complex utility functions
 pub use dynamic_kernel_registry::{DynamicKernelRegistry, RegistryStats};
 pub use kernel_api::{
@@ -336,9 +351,23 @@ pub use ufunc::{
 
 // Array creation and conversion functions
 pub use array_creation::{
+<<<<<<< Updated upstream
     arange, array, array2string, array_repr, array_str, asanyarray, asarray,
     asarray_chkfinite, ascontiguousarray, asfortranarray, asmatrix, clip, copy, copyto,
     frombuffer, fromfunction, fromiter, full, linspace, logspace, geomspace, min, log, vander,
+=======
+    array, array2string, array_repr, array_str, asanyarray, asarray, asarray_chkfinite,
+    ascontiguousarray, asfortranarray, asmatrix, copy, copyto,
+    // Array creation functions
+    arange, clip, empty, empty_like, frombuffer, fromfunction, fromiter, full, full_like,
+    geomspace, identity, linspace, logspace, ones, ones_like, vander, zeros, zeros_like,
+};
+
+// Array method wrappers
+pub use array_methods::{
+    divide, minimum, nancumprod, nancumsum, negative,
+    resize, subtract, take, transpose,
+>>>>>>> Stashed changes
 };
 
 // Reduction functions
