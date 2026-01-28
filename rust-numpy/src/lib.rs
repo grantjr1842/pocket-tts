@@ -221,6 +221,7 @@ pub mod object;
 pub mod void;
 pub mod string;
 pub mod bytes;
+pub mod dtype_constructors;
 
 #[cfg(test)]
 mod kernel_tests;
@@ -289,7 +290,16 @@ pub use char::exports::{
     isdecimal, islower, istitle, isupper,
 };
 pub use dist::{cdist, pdist, squareform};
-pub use dtype::{Casting, Dtype, DtypeKind};
+pub use dtype::{Casting, Dtype, DtypeKind, DatetimeUnit, TimedeltaUnit};
+pub use dtype_constructors::{
+    // Type constructors - these return Dtype instances
+    bytes_, cdouble, clongdouble, complex256, csingle, datetime64,
+    float128, float16, float32, float64, long, longlong, short, timedelta64, ulong, ulonglong,
+    ushort,
+    // Type checking functions
+    is_bool, is_complexfloating, is_floating, is_generic, is_integer, is_number, is_object,
+    is_signedinteger, is_string, is_unsignedinteger, is_void,
+};
 pub use error::{NumPyError, Result};
 pub use linalg::{
     cholesky, cond, cross, det, diagonal, dot, dot_nd, eig, eigh, eigvals, eigvalsh, einsum,
