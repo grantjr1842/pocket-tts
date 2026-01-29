@@ -172,6 +172,9 @@ pub mod ufunc_ops;
 pub mod utils;
 pub mod window;
 
+// Dynamic kernel registry
+pub mod dynamic_kernel_registry;
+
 // Additional type modules for NumPy compatibility
 pub mod bytes;
 pub mod object;
@@ -187,7 +190,6 @@ pub use crate::array_extra::exports::*;
 pub use crate::comparison_ufuncs::exports::*;
 pub use crate::fft::*;
 pub use crate::matrix::exports::*;
-pub use crate::modules::ma::exports::*;
 pub use crate::modules::testing::exports::*;
 pub use crate::typing::{
     dtype,
@@ -246,7 +248,10 @@ pub use char::exports::{
     strip, upper, zfill,
 };
 pub use dist::{cdist, pdist, squareform};
-pub use dtype::{Casting, Dtype, DtypeKind};
+pub use dtype::{
+    Casting, Dtype, DtypeKind, float32, float64, int16, int32, int64, int8, intp, uint16, uint32,
+    uint64, uint8, uintp,
+};
 pub use error::{NumPyError, Result};
 pub use linalg::norm;
 pub use performance_metrics::{
@@ -267,6 +272,13 @@ pub use statistics::{
     nanmax, nanmean, nanmedian, nanmin, nanpercentile, nanprod, nanquantile, nanstd, nansum,
     nanvar, percentile, ptp, quantile, std, var,
 };
+pub use random::{
+    default_rng, default_rng_with_seed, beta, binomial, chisquare, dirichlet, exponential,
+    gamma, gumbel, geometric, legacy_rng, lognormal, multinomial, normal,
+    randint, random, standard_normal, uniform,
+};
+pub use random::bit_generator::{BitGenerator, MT19937, PCG64};
+pub use random::generator::Generator;
 pub use type_promotion::{promote_types, TypePromotionRules};
 // Complex utility functions
 pub use dynamic_kernel_registry::{DynamicKernelRegistry, RegistryStats};
@@ -281,6 +293,13 @@ pub use math_ufuncs::{
     absolute,
     acos,
     acosh,
+    arccos,
+    arccosh,
+    arcsin,
+    arcsinh,
+    arctan,
+    arctan2,
+    arctanh,
     angle,
     angle32,
     asin,
@@ -292,17 +311,51 @@ pub use math_ufuncs::{
     conj32,
     conjugate,
     conjugate32,
+    convolve,
     copysign,
+    correlate,
+    cos,
+    cosh,
+    degrees,
+    exp,
+    exp2,
+    expm1,
     fabs,
+    fix,
+    floor,
+    heaviside,
+    hypot,
+    i0,
     imag,
     imag32,
+    isfinite,
+    isinf,
+    isnan,
+    isneginf,
+    isposinf,
+    log,
+    log10,
+    log1p,
+    log2,
+    logaddexp,
+    logaddexp2,
+    radians,
     real,
     real32,
     real_if_close,
     real_if_close32,
-    // Sign and absolute value functions
+    rint,
+    round_,
     sign,
     signbit,
+    sin,
+    sinc,
+    sinh,
+    sqrt,
+    tan,
+    tanh,
+    trunc,
+    unwrap,
 };
 pub use ufunc_ops::UfuncEngine;
 // Advanced ufunc features
