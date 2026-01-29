@@ -204,11 +204,29 @@ pub mod void;
 mod kernel_tests;
 
 // Re-export key types for convenience
-pub use crate::array_extra::exports::*;
-pub use crate::comparison_ufuncs::exports::*;
-pub use crate::fft::*;
-pub use crate::matrix::exports::*;
-pub use crate::modules::testing::exports::*;
+pub use crate::array_extra::exports::{
+    SplitArg, concatenate, stack, vstack, hstack, dstack, array_split, split, hsplit, vsplit,
+    dsplit, interp, clip, trim_zeros, ediff1d, diff, gradient, diagonal, diag, triu, tril,
+    column_stack, row_stack, block, put, putmask, place, put_along_axis, vander, choose,
+};
+pub use crate::comparison_ufuncs::exports::{
+    ComparisonUfunc, LogicalUnaryUfunc, ExtremaUfunc, ComparisonOps, LogicalOps, LogicalUnaryOps,
+    isclose, allclose, array_equal, array_equiv,
+};
+pub use crate::fft::{
+    FFTNorm, fft, ifft, fftshift, ifftshift, fftfreq, rfftfreq, rfft, irfft, fftn, ifftn,
+    rfftn, irfftn, fft2, ifft2, rfft2, irfft2, hfft, ihfft,
+};
+pub use crate::matrix::exports::{
+    Matrix,
+};
+pub use crate::modules::testing::exports::{
+    assert_array_equal, assert_equal, assert_array_almost_equal, assert_almost_equal,
+    assert_approx_equal, assert_allclose, assert_array_almost_nulp, assert_array_almost_equal_nulp,
+    assert_array_max_ulp, assert_array_less, assert_array_compare, assert_array_shape_equal,
+    assert_string_equal, assert_raises, assert_raises_regex, assert_warns, assert_no_warnings,
+    assert_no_gc_cycles,
+};
 pub use crate::typing::{
     dtype,
     // Prelude exports
@@ -258,7 +276,11 @@ pub use array_manipulation::{
     expand_dims, eye, flatten, flip, insert, moveaxis, pad, ravel, repeat, reshape, roll, rollaxis,
     rot90, squeeze, swapaxes, tile, Vectorize,
 };
-pub use bitwise::*;
+pub use bitwise::{
+    BitwiseOps, BitwiseBinaryUfunc, BitwiseUnaryUfunc, BitwiseShiftUfunc, EnhancedLogicalUfunc,
+    bitwise_and, bitwise_or, bitwise_xor, bitwise_not, invert, left_shift, right_shift,
+    logical_and, logical_or, logical_xor, logical_not, register_bitwise_ufuncs,
+};
 pub use char::exports::{
     add as char_add, capitalize, center, count as char_count, endswith, expandtabs, find,
     index as char_index, isalnum, isalpha, isdigit, isnumeric, isspace, join, lower, lstrip,
@@ -286,6 +308,8 @@ pub use rec::{array as rec_array, fromarrays, fromrecords, RecArray};
 pub use reductions::{
     all, all_bool, any, any_bool, argmax, argmin, cumprod, cumsum, max, mean, min, prod, sum,
 };
+pub use set_ops::exports::{
+    SetElement, UniqueResult, unique, in1d, intersect1d, union1d, setdiff1d, setxor1d, isin, SetOps,
 pub use set_ops::exports::*;
 pub use statistics::{
     amax, amin, average, bincount, corrcoef, cov, digitize, histogram, histogram2d, histogramdd,
@@ -433,7 +457,11 @@ pub type Int = i64;
 pub type Complex = num_complex::Complex<f64>;
 
 // Re-export common constants
-pub use constants::*;
+pub use constants::{
+    RoundingMode, ComparisonKind, ReductionMode, Order, SortKind, SearchMode, ClipMode,
+    DEFAULT_ALIGNMENT, MAX_DIMS, MAX_ELEMENTS, EPSILON, EPSILON_F32, MAX, MIN, MIN_POSITIVE,
+    E, INF, NAN, NEG_INF, PI, TAU, NEWAXIS,
+};
 /// Create array macro for convenient array creation
 #[macro_export]
 macro_rules! array {
