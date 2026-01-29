@@ -11,6 +11,7 @@
 //! with missing or invalid data, similar to NumPy's `numpy.ma` module.
 
 use crate::array::Array;
+use crate::array_manipulation::append as array_append;
 use crate::dtype::Casting;
 use crate::error::{NumPyError, Result};
 use std::fmt::Debug;
@@ -60,6 +61,11 @@ where
     /// Return the data array.
     pub fn data(&self) -> &Array<T> {
         &self.data
+    }
+
+    /// Return a mutable reference to the data array.
+    pub fn data_mut(&mut self) -> &mut Array<T> {
+        &mut self.data
     }
 
     /// Return the mask array.
@@ -362,15 +368,15 @@ where
     }
 
     /// Return a flattened copy of the MaskedArray.
-    pub fn flatten(&self) -> Self {
-        let flat_data = self.data.flatten();
-        let flat_mask = self.mask.flatten();
-        Self {
+    pub fn flatten(&self) -> Result<Self> {
+        let flat_data = self.data.flatten("C")?;
+        let flat_mask = self.mask.flatten("C")?;
+        Ok(Self {
             data: flat_data,
             mask: flat_mask,
             fill_value: self.fill_value.clone(),
             _hardmask: self._hardmask,
-        }
+        })
     }
 
     /// Return a reshaped copy of the MaskedArray.
@@ -382,8 +388,8 @@ where
             ));
         }
 
-        let reshaped_data = Array::from_shape_vec(new_shape.clone(), self.data.data().to_vec())?;
-        let reshaped_mask = Array::from_shape_vec(new_shape, self.mask.data().to_vec())?;
+        let reshaped_data = Array::from_shape_vec(new_shape.clone(), self.data.data().to_vec());
+        let reshaped_mask = Array::from_shape_vec(new_shape, self.mask.data().to_vec());
 
         Ok(Self {
             data: reshaped_data,
@@ -394,16 +400,16 @@ where
     }
 
     /// Remove single-dimensional entries from the shape.
-    pub fn squeeze(&self) -> Self {
-        let squeezed_data = self.data.squeeze();
-        let squeezed_mask = self.mask.squeeze();
+    pub fn squeeze(&self, axis: Option<&[isize]>) -> Result<Self> {
+        let squeezed_data = self.data.squeeze(axis)?;
+        let squeezed_mask = self.mask.squeeze(axis)?;
 
-        Self {
+        Ok(Self {
             data: squeezed_data,
             mask: squeezed_mask,
             fill_value: self.fill_value.clone(),
             _hardmask: self._hardmask,
-        }
+        })
     }
 
     /// Return the transposed MaskedArray.
@@ -418,8 +424,9 @@ where
 
     /// Take elements from the MaskedArray along an axis.
     pub fn take(&self, indices: &[usize], axis: Option<usize>) -> Result<Self> {
-        let taken_data = self.data.take(indices, axis)?;
-        let taken_mask = self.mask.take(indices, axis)?;
+        let indices_array = Array::from_data(indices.to_vec(), vec![indices.len()]);
+        let taken_data = self.data.take(&indices_array, axis)?;
+        let taken_mask = self.mask.take(&indices_array, axis)?;
 
         Ok(Self {
             data: taken_data,
@@ -760,39 +767,39 @@ where
 }
 
 /// Create an empty masked array with the given shape
-pub fn empty<T>(shape: &[usize]) -> Result<MaskedArray<T>>
+pub fn empty<T>(shape: &[usize]) -> MaskedArray<T>
 where
     T: Clone + Debug + Default + 'static,
 {
-    let data = Array::from_shape_vec(shape.to_vec(), vec![T::default(); shape.iter().product()])?;
-    Ok(MaskedArray::from_data(data))
+    let data = Array::from_shape_vec(shape.to_vec(), vec![T::default(); shape.iter().product()]);
+    MaskedArray::from_data(data)
 }
 
 /// Create a masked array filled with zeros
-pub fn zeros<T>(shape: &[usize]) -> Result<MaskedArray<T>>
+pub fn zeros<T>(shape: &[usize]) -> MaskedArray<T>
 where
     T: Clone + Debug + Default + 'static,
 {
-    let data = Array::zeros(shape.to_vec())?;
-    Ok(MaskedArray::from_data(data))
+    let data = Array::zeros(shape.to_vec());
+    MaskedArray::from_data(data)
 }
 
 /// Create a masked array filled with ones
-pub fn ones<T>(shape: &[usize]) -> Result<MaskedArray<T>>
+pub fn ones<T>(shape: &[usize]) -> MaskedArray<T>
 where
-    T: Clone + Debug + Default + 'static,
+    T: Clone + Debug + Default + num_traits::One + 'static,
 {
-    let data = Array::ones(shape.to_vec())?;
-    Ok(MaskedArray::from_data(data))
+    let data = Array::ones(shape.to_vec());
+    MaskedArray::from_data(data)
 }
 
 /// Create a masked array filled with a fill value
-pub fn full<T>(shape: &[usize], fill_value: T) -> Result<MaskedArray<T>>
+pub fn full<T>(shape: &[usize], fill_value: T) -> MaskedArray<T>
 where
     T: Clone + Debug + Default + 'static,
 {
-    let data = Array::from_shape_vec(shape.to_vec(), vec![fill_value; shape.iter().product()])?;
-    Ok(MaskedArray::from_data(data))
+    let data = Array::from_shape_vec(shape.to_vec(), vec![fill_value; shape.iter().product()]);
+    MaskedArray::from_data(data)
 }
 
 /// Create a full-like masked array
@@ -812,12 +819,18 @@ where
 }
 
 /// Get the mask of a masked array
-pub fn getmask<T>(ma: &MaskedArray<T>) -> &Array<bool> {
+pub fn getmask<T>(ma: &MaskedArray<T>) -> &Array<bool>
+where
+    T: Clone + Debug + Default + 'static,
+{
     ma.mask()
 }
 
 /// Get the mask of a masked array, or an array of False if no mask exists
-pub fn getmaskarray<T>(ma: &MaskedArray<T>) -> Array<bool> {
+pub fn getmaskarray<T>(ma: &MaskedArray<T>) -> Array<bool>
+where
+    T: Clone + Debug + Default + 'static,
+{
     ma.mask().clone()
 }
 
@@ -924,7 +937,7 @@ where
 /// Test if all masked array elements evaluate to True
 pub fn all<T>(ma: &MaskedArray<T>) -> bool
 where
-    T: Into<bool>,
+    T: Into<bool> + Clone + Debug + Default + 'static,
 {
     ma.all()
 }
@@ -932,7 +945,7 @@ where
 /// Test if any masked array element evaluates to True
 pub fn any<T>(ma: &MaskedArray<T>) -> bool
 where
-    T: Into<bool>,
+    T: Into<bool> + Clone + Debug + Default + 'static,
 {
     ma.any()
 }
@@ -940,7 +953,7 @@ where
 /// Sum of masked array elements
 pub fn sum<T>(ma: &MaskedArray<T>) -> Result<T>
 where
-    T: std::iter::Sum + Clone,
+    T: std::iter::Sum + Clone + Debug + Default + 'static,
 {
     ma.sum()
 }
@@ -948,7 +961,7 @@ where
 /// Mean of masked array elements
 pub fn mean<T>(ma: &MaskedArray<T>) -> Result<T>
 where
-    T: std::iter::Sum + Clone + num_traits::FromPrimitive + std::ops::Div<Output = T> + Default,
+    T: std::iter::Sum + Clone + num_traits::FromPrimitive + std::ops::Div<Output = T> + Default + Debug + 'static,
 {
     ma.mean()
 }
@@ -998,7 +1011,7 @@ where
 /// Maximum of masked array elements
 pub fn max<T>(ma: &MaskedArray<T>) -> Option<T>
 where
-    T: Clone + PartialOrd,
+    T: Clone + PartialOrd + Debug + Default + 'static,
 {
     ma.max().cloned()
 }
@@ -1006,7 +1019,7 @@ where
 /// Minimum of masked array elements
 pub fn min<T>(ma: &MaskedArray<T>) -> Option<T>
 where
-    T: Clone + PartialOrd,
+    T: Clone + PartialOrd + Debug + Default + 'static,
 {
     ma.min().cloned()
 }
@@ -1014,7 +1027,7 @@ where
 /// Product of masked array elements
 pub fn prod<T>(ma: &MaskedArray<T>) -> T
 where
-    T: std::ops::Mul<Output = T> + Clone + Default + num_traits::One,
+    T: std::ops::Mul<Output = T> + Clone + Default + num_traits::One + Debug + 'static,
 {
     ma.prod()
 }
@@ -1022,7 +1035,7 @@ where
 /// Cumulative sum of masked array elements
 pub fn cumsum<T>(ma: &MaskedArray<T>, axis: Option<isize>) -> Result<Array<T>>
 where
-    T: Clone + Default + std::ops::Add<Output = T>,
+    T: Clone + Default + std::ops::Add<Output = T> + Debug + 'static,
 {
     // Simplified: ignore mask for cumsum
     ma.data().cumsum(axis)
@@ -1031,7 +1044,7 @@ where
 /// Cumulative product of masked array elements
 pub fn cumprod<T>(ma: &MaskedArray<T>, axis: Option<isize>) -> Result<Array<T>>
 where
-    T: Clone + Default + std::ops::Mul<Output = T>,
+    T: Clone + Default + std::ops::Mul<Output = T> + Debug + 'static,
 {
     // Simplified: ignore mask for cumprod
     ma.data().cumprod(axis)
@@ -1040,7 +1053,7 @@ where
 /// Peak-to-peak (max - min) of masked array elements
 pub fn ptp<T>(ma: &MaskedArray<T>) -> Option<f64>
 where
-    T: PartialOrd + Clone + Into<f64>,
+    T: PartialOrd + Clone + Into<f64> + Debug + Default + 'static,
 {
     if ma.count() == 0 {
         return None;
@@ -1051,32 +1064,50 @@ where
 }
 
 /// Count the number of unmasked elements
-pub fn count<T>(ma: &MaskedArray<T>) -> usize {
+pub fn count<T>(ma: &MaskedArray<T>) -> usize
+where
+    T: Clone + Debug + Default + 'static,
+{
     ma.count()
 }
 
 /// Return the underlying data of a masked array
-pub fn getdata<T>(ma: &MaskedArray<T>) -> &Array<T> {
+pub fn getdata<T>(ma: &MaskedArray<T>) -> &Array<T>
+where
+    T: Clone + Debug + Default + 'static,
+{
     ma.data()
 }
 
 /// Copy a masked array
-pub fn copy<T>(ma: &MaskedArray<T>) -> MaskedArray<T> {
+pub fn copy<T>(ma: &MaskedArray<T>) -> MaskedArray<T>
+where
+    T: Clone + Debug + Default + 'static,
+{
     ma.copy()
 }
 
 /// Reshape a masked array
-pub fn reshape<T>(ma: &MaskedArray<T>, new_shape: &[usize]) -> Result<MaskedArray<T>> {
+pub fn reshape<T>(ma: &MaskedArray<T>, new_shape: &[usize]) -> Result<MaskedArray<T>>
+where
+    T: Clone + Debug + Default + 'static,
+{
     ma.reshape(new_shape.to_vec())
 }
 
 /// Transpose a masked array
-pub fn transpose<T>(ma: &MaskedArray<T>) -> MaskedArray<T> {
+pub fn transpose<T>(ma: &MaskedArray<T>) -> MaskedArray<T>
+where
+    T: Clone + Debug + Default + 'static,
+{
     ma.transpose()
 }
 
 /// Swap axes of a masked array
-pub fn swapaxes<T>(ma: &MaskedArray<T>, axis1: isize, axis2: isize) -> MaskedArray<T> {
+pub fn swapaxes<T>(ma: &MaskedArray<T>, axis1: isize, axis2: isize) -> MaskedArray<T>
+where
+    T: Clone + Debug + Default + 'static,
+{
     // Simplified implementation
     ma.transpose()
 }
@@ -1086,48 +1117,69 @@ pub fn take<T>(
     ma: &MaskedArray<T>,
     indices: &[usize],
     axis: Option<usize>,
-) -> Result<MaskedArray<T>> {
+) -> Result<MaskedArray<T>>
+where
+    T: Clone + Debug + Default + 'static,
+{
     ma.take(indices, axis)
 }
 
 /// Fill the masked array with a given value
-pub fn filled<T>(ma: &MaskedArray<T>) -> Array<T> {
+pub fn filled<T>(ma: &MaskedArray<T>) -> Array<T>
+where
+    T: Clone + Debug + Default + 'static,
+{
     ma.filled()
 }
 
 /// Set the fill value of a masked array
-pub fn set_fill_value<T>(ma: &mut MaskedArray<T>, value: T) {
+pub fn set_fill_value<T>(ma: &mut MaskedArray<T>, value: T)
+where
+    T: Clone + Debug + Default + 'static,
+{
     ma.set_fill_value(value)
 }
 
 /// Get the fill value of a masked array
-pub fn get_fill_value<T>(ma: &MaskedArray<T>) -> T {
+pub fn get_fill_value<T>(ma: &MaskedArray<T>) -> T
+where
+    T: Clone + Debug + Default + 'static,
+{
     ma.fill_value()
 }
 
 /// Hardens the mask to prevent unmasking
-pub fn harden_mask<T>(ma: &mut MaskedArray<T>) {
+pub fn harden_mask<T>(ma: &mut MaskedArray<T>)
+where
+    T: Clone + Debug + Default + 'static,
+{
     ma.harden_mask()
 }
 
 /// Softens the mask to allow unmasking
-pub fn soften_mask<T>(ma: &mut MaskedArray<T>) {
+pub fn soften_mask<T>(ma: &mut MaskedArray<T>)
+where
+    T: Clone + Debug + Default + 'static,
+{
     ma.soften_mask()
 }
 
 /// Shrinks the mask to include only masked data
-pub fn shrink_mask<T>(ma: &mut MaskedArray<T>) {
+pub fn shrink_mask<T>(ma: &mut MaskedArray<T>)
+where
+    T: Clone + Debug + Default + 'static,
+{
     ma.shrink_mask()
 }
 
 /// Check if two masked arrays are close
 pub fn allclose<T>(a: &MaskedArray<T>, b: &MaskedArray<T>, rtol: Option<T>, atol: Option<T>) -> bool
 where
-    T: num_traits::Float + Clone + PartialEq,
+    T: num_traits::Float + Clone + PartialEq + Debug + Default + 'static,
 {
     let rtol_val =
-        rtol.unwrap_or_else(|| num_traits::Float::epsilon() * T::from(10.0).unwrap_or(T::one()));
-    let atol_val = atol.unwrap_or_else(num_traits::Float::epsilon);
+        rtol.unwrap_or_else(|| T::epsilon() * T::from(10.0).unwrap_or(T::one()));
+    let atol_val = atol.unwrap_or_else(T::epsilon);
 
     let a_data = a.data().data();
     let b_data = b.data().data();
@@ -1146,7 +1198,7 @@ where
         if a_m || b_m {
             continue;
         }
-        let diff = (*a_val - b_val).abs();
+        let diff = (*a_val - *b_val).abs();
         let tolerance = atol_val + rtol_val * b_val.abs();
         if diff > tolerance {
             return false;
@@ -1163,11 +1215,11 @@ pub fn isclose<T>(
     atol: Option<T>,
 ) -> Result<MaskedArray<bool>>
 where
-    T: num_traits::Float + Clone + PartialEq + 'static,
+    T: num_traits::Float + Clone + PartialEq + Debug + Default + 'static,
 {
     let rtol_val =
-        rtol.unwrap_or_else(|| num_traits::Float::epsilon() * T::from(10.0).unwrap_or(T::one()));
-    let atol_val = atol.unwrap_or_else(num_traits::Float::epsilon);
+        rtol.unwrap_or_else(|| T::epsilon() * T::from(10.0).unwrap_or(T::one()));
+    let atol_val = atol.unwrap_or_else(T::epsilon);
 
     let a_data = a.data().data();
     let b_data = b.data().data();
@@ -1187,7 +1239,7 @@ where
             result_data.push(false);
             result_mask.push(false);
         } else {
-            let diff = (*a_val - b_val).abs();
+            let diff = (*a_val - *b_val).abs();
             let tolerance = atol_val + rtol_val * b_val.abs();
             result_data.push(diff <= tolerance);
             result_mask.push(false);
@@ -1202,7 +1254,7 @@ where
 /// Check if all unmasked elements are equal
 pub fn allequal<T>(a: &MaskedArray<T>, b: &MaskedArray<T>) -> bool
 where
-    T: PartialEq + Clone,
+    T: PartialEq + Clone + Debug + Default + 'static,
 {
     if a.shape() != b.shape() {
         return false;
@@ -1236,7 +1288,7 @@ pub fn is_masked_array<T>(_: &T) -> bool {
 /// Return the average of masked array elements
 pub fn average<T>(ma: &MaskedArray<T>) -> Result<T>
 where
-    T: std::iter::Sum + Clone + num_traits::FromPrimitive + std::ops::Div<Output = T> + Default,
+    T: std::iter::Sum + Clone + num_traits::FromPrimitive + std::ops::Div<Output = T> + Default + Debug + 'static,
 {
     ma.mean()
 }
@@ -1251,7 +1303,7 @@ where
     T: Clone + Debug + Default + 'static,
 {
     // Simplified: ignore mask for append
-    let new_data = ma.data().append(values, axis)?;
+    let new_data = array_append(ma.data(), values, axis)?;
     Ok(MaskedArray::from_data(new_data))
 }
 
@@ -1272,13 +1324,13 @@ where
     } as usize;
 
     // Extract data and masks
-    let mut all_data = Vec::new();
-    let mut all_mask = Vec::new();
+    let mut all_data: Vec<Vec<T>> = Vec::new();
+    let mut all_mask: Vec<Vec<bool>> = Vec::new();
     let mut output_shape = first_shape.to_vec();
 
     for (i, ma) in arrays.iter().enumerate() {
-        let data = ma.data().data().clone();
-        let mask = ma.mask().data().clone();
+        let data = ma.data().data().to_vec();
+        let mask = ma.mask().data().to_vec();
 
         // Adjust shape for concatenation
         if i > 0 {
@@ -1319,7 +1371,7 @@ where
         new_mask.push(old_mask[idx]);
     }
 
-    let result = Array::from_data(new_data, new_shape.to_vec())?;
+    let result = Array::from_data(new_data, new_shape.to_vec());
     let result_mask = Array::from_data(new_mask, new_shape.to_vec());
     MaskedArray::new(result, result_mask)
 }
@@ -1327,21 +1379,23 @@ where
 /// Sort a masked array along a given axis
 pub fn sort<T>(ma: &MaskedArray<T>, axis: Option<isize>) -> Result<MaskedArray<T>>
 where
-    T: Clone + Debug + Default + PartialOrd + 'static,
+    T: Clone + Debug + Default + PartialOrd + crate::comparison_ufuncs::ComparisonOps<T> + Send + Sync + 'static,
 {
-    // Simplified: sort ignoring mask
-    let sorted_data = ma.data().sort(axis)?;
+    // Simplified: sort ignoring mask - clone data first then sort
+    let mut data_clone = ma.data().clone();
+    let sorted_data = data_clone.sort(axis, "quicksort", "C")?;
     Ok(MaskedArray::from_data(sorted_data))
 }
 
 /// Argsort of masked array
 pub fn argsort<T>(ma: &MaskedArray<T>, axis: Option<isize>) -> Result<Array<usize>>
 where
-    T: Clone + Debug + Default + PartialOrd + 'static,
+    T: Clone + Debug + Default + PartialOrd + crate::comparison_ufuncs::ComparisonOps<T> + Send + Sync + 'static,
 {
     // Simplified: argsort ignoring mask
-    let sorted_indices = ma.data().argsort(axis)?;
-    Ok(sorted_indices)
+    let sorted_indices = ma.data().argsort(axis, "quicksort", "C")?;
+    let result: Vec<usize> = sorted_indices.iter().map(|&x| x as usize).collect();
+    Ok(Array::from_vec(result))
 }
 
 /// Argmax of masked array
@@ -1361,7 +1415,7 @@ where
 }
 
 /// Where condition for masked arrays
-pub fn where_<T>(condition: Array<bool>, x: Array<T>, y: Array<T>) -> Result<Array<T>>
+pub fn where_<T>(condition: Array<bool>, x: Array<T>, y: Array<T>) -> Array<T>
 where
     T: Clone + Debug + Default + 'static,
 {
@@ -1384,10 +1438,10 @@ where
 /// Put values into masked array
 pub fn put<T>(ma: &mut MaskedArray<T>, indices: &[usize], values: &[T]) -> Result<()>
 where
-    T: Clone + Debug + 'static,
+    T: Clone + Debug + Default + 'static,
 {
     for (idx, val) in indices.iter().zip(values.iter()) {
-        ma.data().set_linear(*idx, val.clone());
+        ma.data_mut().set_linear(*idx, val.clone());
     }
     Ok(())
 }
@@ -1395,7 +1449,7 @@ where
 /// Place values into masked array
 pub fn place<T>(ma: &mut MaskedArray<T>, condition: &Array<bool>, values: &[T]) -> Result<()>
 where
-    T: Clone + Debug + 'static,
+    T: Clone + Debug + Default + 'static,
 {
     let cond_data = condition.data();
     let mut data = ma.data().clone();
@@ -1416,10 +1470,10 @@ where
 /// Fill masked array with a scalar value
 pub fn fill<T>(ma: &mut MaskedArray<T>, value: T)
 where
-    T: Clone,
+    T: Clone + Debug + Default + 'static,
 {
     let shape = ma.shape().to_vec();
-    let new_data = Array::from_shape_vec(shape, vec![value; ma.size()]).unwrap();
+    let new_data = Array::from_shape_vec(shape, vec![value; ma.size()]);
     ma.data = new_data;
 }
 
@@ -1439,19 +1493,21 @@ pub fn is_masked_array_type<T>(_: &T) -> bool {
 }
 
 /// Compress elements from array based on condition (re-exported from array_extra)
-pub fn compress<T>(condition: &Array<bool>, a: &Array<T>, axis: Option<isize>) -> Result<Array<T>> {
+pub fn compress<T>(condition: &Array<bool>, a: &Array<T>, axis: Option<isize>) -> Result<Array<T>>
+where
+    T: Clone + Debug + Default + 'static,
+{
     super::super::array_extra::compress(condition, a, axis)
 }
 
 pub mod exports {
     pub use super::{
-        all, all, allequal, allequal, any, any, append, append, argmax, argmin, argsort, array,
-        array, average, average, compress, concatenate, concatenate, copy, copy, count, count,
-        cumprod, cumsum, empty, empty, filled, filled, full, full, full_like, full_like, getdata,
-        getdata, getmask, getmaskarray, harden_mask, is_masked_array, is_masked_array_type,
-        isclose, isnan, masked_array, masked_equal, masked_greater, masked_greater_equal,
-        masked_inside, masked_less, masked_less_equal, masked_not_equal, masked_object,
-        masked_outside, masked_values, masked_where, median, ones, place, ptp, put, reshape,
-        resize, set_fill_value, shrink_mask, swapaxes, take, transpose, zeros, MaskedArray,
+        allequal, all, any, append, argmax, argmin, argsort, array, average, compress, concatenate,
+        copy, count, cumprod, cumsum, empty, filled, full, full_like, getdata, getmask, getmaskarray,
+        harden_mask, isclose, is_masked_array, is_masked_array_type, isnan, masked_array,
+        masked_equal, masked_greater, masked_greater_equal, masked_inside, masked_less,
+        masked_less_equal, masked_not_equal, masked_object, masked_outside, masked_values,
+        masked_where, median, ones, place, ptp, put, reshape, resize, set_fill_value, shrink_mask,
+        swapaxes, take, transpose, zeros, MaskedArray, NOMASK,
     };
 }

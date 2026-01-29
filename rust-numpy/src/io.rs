@@ -596,10 +596,10 @@ where
         }
         
         let line = line_result.map_err(|e| NumPyError::io_error(format!("Read error: {}", e)))?;
-        let trimmed = if autostrip {
+        let trimmed: &str = if autostrip {
             line.trim()
         } else {
-            line
+            &line
         };
         
         // Skip comments and empty lines
@@ -613,19 +613,20 @@ where
         } else {
             trimmed.to_string()
         };
-        
+
         // Handle replace_space
         let processed = if let Some(replacement) = replace_space {
-            processed.replace(' ', replacement)
+            processed.replace(' ', &replacement.to_string())
         } else {
             processed
         };
-        
+
         // Handle case sensitivity for missing values
         let is_missing = |val: &str| {
             if let Some(ref mv) = missing_values {
                 if case_sensitive {
-                    mv.contains(&val.to_string())
+                    let val_string = val.to_string();
+                    mv.iter().any(|m| m == &val_string)
                 } else {
                     mv.iter().any(|m| m.to_lowercase() == val.to_lowercase())
                 }
@@ -633,20 +634,20 @@ where
                 false
             }
         };
-        
+
         // Split by delimiter
         let parts: Vec<&str> = if delimiter.is_empty() {
             processed.split_whitespace().collect()
         } else {
             processed.split(delimiter).collect()
         };
-        
+
         // Filter excluded columns
-        let selected_parts = if let Some(ref excl) = excludelist {
+        let selected_parts: Vec<&str> = if let Some(ref excl) = excludelist {
             parts.iter()
                 .enumerate()
-                .filter(|(i, _)| !excl.contains(&i.to_string()))
-                .map(|(_, &p)| *p)
+                .filter(|(i, _)| !excl.iter().any(|e| e == &i.to_string()))
+                .map(|(_, &p)| p)
                 .collect()
         } else {
             parts.iter().copied().collect()
@@ -655,7 +656,7 @@ where
         // Select specific columns
         let selected_parts = if let Some(cols) = usecols {
             cols.iter()
-                .filter_map(|&col| selected_parts.get(*col).copied())
+                .filter_map(|&col| selected_parts.get(col).copied())
                 .collect()
         } else {
             selected_parts
@@ -665,20 +666,20 @@ where
         let row_data: Result<Vec<T>> = selected_parts
             .iter()
             .enumerate()
-            .map(|(i, part)| {
+            .map(|(i, part): (usize, &&str)| {
                 let part = part.trim();
-                
+
                 if is_missing(part) {
                     if let Some(ref fv) = filling_values {
                         if i < fv.len() {
                             Ok(fv[i].clone())
                         } else {
                             // Use default filling value if not specified
-                            T::default().map_err(|_| NumPyError::value_error(part.to_string(), "conversion"))
+                            Ok(T::default())
                         }
                     } else {
                         // Return default value for missing data
-                        T::default().map_err(|_| NumPyError::value_error(part.to_string(), "conversion"))
+                        Ok(T::default())
                     }
                 } else {
                     if let Some(ref conv) = converters {

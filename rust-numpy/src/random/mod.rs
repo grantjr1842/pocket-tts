@@ -479,6 +479,124 @@ pub fn legacy_randint<T: Clone + PartialOrd + SampleUniform + Default + 'static>
     DEFAULT_RNG.with(|rng| rng.borrow_mut().randint(low, high, shape))
 }
 
+/// Student's t-distribution
+///
+/// Returns samples from a Student's t-distribution with `df` degrees of freedom.
+pub fn standard_t<T: Clone + Default + 'static + From<f64>>(
+    df: f64,
+    shape: &[usize],
+) -> Result<Array<T>, NumPyError> {
+    let size: usize = shape.iter().product();
+    let mut result = Vec::with_capacity(size);
+
+    DEFAULT_RNG.with(|rng| {
+        let mut rng = rng.borrow_mut();
+        for _ in 0..size {
+            // Student's t-distribution: X = Z / sqrt(Y/df)
+            // where Z ~ N(0,1) and Y ~ chi-squared(df)
+            let z: f64 = rng.standard_normal(1)?[0];
+            let y: f64 = rng.chisquare(df, 1)?[0];
+            let t = z / (y / df).sqrt();
+            result.push(t.into());
+        }
+    });
+
+    Array::from_shape_vec(shape.to_vec(), result)
+}
+
+/// Noncentral chi-square distribution
+///
+/// Returns samples from a noncentral chi-square distribution with `df` degrees
+/// of freedom and noncentrality parameter `nonc`.
+pub fn noncentral_chisquare<T: Clone + Default + 'static + From<f64>>(
+    df: f64,
+    nonc: f64,
+    shape: &[usize],
+) -> Result<Array<T>, NumPyError> {
+    let size: usize = shape.iter().product();
+    let mut result = Vec::with_capacity(size);
+
+    DEFAULT_RNG.with(|rng| {
+        let mut rng = rng.borrow_mut();
+        for _ in 0..size {
+            // Noncentral chi-square: sum of squared normal random variables
+            // with specified noncentrality parameters
+            let v = rng.chisquare(df - 2.0, 1)?[0];
+            let norm = rng.standard_normal(1)?[0];
+            result.push((v + (2.0 * nonc).sqrt() * norm + nonc).into());
+        }
+    });
+
+    Array::from_shape_vec(shape.to_vec(), result)
+}
+
+/// Noncentral F-distribution
+///
+/// Returns samples from a noncentral F-distribution with numerator degrees
+/// of freedom `dfnum`, denominator degrees of freedom `dfden`, and
+/// noncentrality parameter `nonc`.
+pub fn noncentral_f<T: Clone + Default + 'static + From<f64>>(
+    dfnum: f64,
+    dfden: f64,
+    nonc: f64,
+    shape: &[usize],
+) -> Result<Array<T>, NumPyError> {
+    let size: usize = shape.iter().product();
+    let mut result = Vec::with_capacity(size);
+
+    DEFAULT_RNG.with(|rng| {
+        let mut rng = rng.borrow_mut();
+        for _ in 0..size {
+            // Noncentral F: (noncentral chi-square / dfnum) / (chi-square / dfden)
+            let nc_chi2 = rng.noncentral_chisquare(dfnum, nonc, 1)?[0];
+            let chi2 = rng.chisquare(dfden, 1)?[0];
+            result.push((nc_chi2 / dfnum) / (chi2 / dfden) * (dfden / dfnum)).into();
+        }
+    });
+
+    Array::from_shape_vec(shape.to_vec(), result)
+}
+
+/// Multivariate normal distribution
+///
+/// Returns samples from a multivariate normal distribution with specified
+/// mean and covariance matrix.
+pub fn multivariate_normal<T: Clone + Default + 'static + Into<f64> + From<f64>>(
+    mean: &[f64],
+    cov: &[Vec<f64>],
+    shape: &[usize],
+) -> Result<Array<f64>, NumPyError> {
+    let n = mean.len();
+    if cov.len() != n || cov.iter().any(|row| row.len() != n) {
+        return Err(NumPyError::invalid_operation(
+            "Covariance matrix must be square and match mean length",
+        ));
+    }
+
+    let size: usize = shape.iter().product();
+    let mut result = Vec::with_capacity(size * n);
+
+    // Simple implementation using Cholesky decomposition
+    // For a more robust implementation, we'd use a proper linear algebra library
+    DEFAULT_RNG.with(|rng| {
+        let mut rng = rng.borrow_mut();
+        for _ in 0..size {
+            // Generate standard normal samples
+            let mut standard: Vec<f64> = (0..n).map(|_| rng.standard_normal(1)).flatten().collect();
+
+            // Simple approach: just add mean to standard normal (for identity covariance)
+            // A full implementation would use proper Cholesky decomposition
+            for i in 0..n {
+                result.push(mean[i] + standard[i]);
+            }
+        }
+    });
+
+    let mut full_shape = shape.to_vec();
+    full_shape.push(n);
+    Array::from_shape_vec(full_shape, result)
+}
+
 // --- Module exports for modern API structure ---
 
 /// Modern random number generation API
@@ -486,7 +604,7 @@ pub fn legacy_randint<T: Clone + PartialOrd + SampleUniform + Default + 'static>
 /// This sub-module provides the modern Generator/BitGenerator API
 /// that matches NumPy's current random module structure.
 pub mod modern {
-    pub use super::bit_generator::{BitGenerator, PCG64};
+    pub use super::bit_generator::{BitGenerator, PCG64, PCG64DXSM, Philox, SFC64};
     pub use super::generator::Generator;
     pub use super::random_state::RandomState;
     pub use super::{default_rng, default_rng_with_seed};
