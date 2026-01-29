@@ -133,8 +133,8 @@ impl LinalgScalar for Complex<f64> {
 }
 
 // Re-export public API
-pub use decompositions::*;
-pub use eigen::*;
+pub use decompositions::{cholesky, qr, svd, QRResult};
+pub use eigen::{eig, eigh, eigvals, eigvalsh, ToComplex};
 pub use einsum::{einsum, einsum_path};
 pub use norms::norm;
 pub use products::{
