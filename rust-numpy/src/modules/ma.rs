@@ -1159,7 +1159,7 @@ pub fn is_masked_array_type<T>(_: &T) -> bool {
 
 pub mod exports {
     pub use super::{
-        all, allequal, any, append, argmax, argmin, argsort, array, average, compress, concatenate,
+        all, allequal, any, append, argmax, argmin, argsort, array, average, concatenate,
         copy, count, cumprod, cumsum, empty, filled, full, full_like, getdata,
         getmask, getmaskarray, harden_mask, isclose, is_masked_array, is_masked_array_type,
         isnan, masked_array, masked_equal, masked_greater, masked_greater_equal,

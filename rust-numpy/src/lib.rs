@@ -137,6 +137,8 @@ pub mod error;
 pub mod fft;
 #[cfg(test)]
 mod fft_tests;
+pub mod array_methods;
+pub mod io;
 pub mod iterator;
 pub mod kernel_api;
 pub mod kernel_impls;
@@ -182,6 +184,7 @@ pub mod type_promotion;
 pub mod ufunc;
 pub mod ufunc_ops;
 pub mod utils;
+pub mod window;
 
 // Additional type modules for NumPy compatibility
 pub mod scalar;
@@ -246,9 +249,9 @@ pub use crate::typing::{
 pub use array::Array;
 pub use array_manipulation::{
     append, apply_along_axis, apply_over_axes, atleast_1d, atleast_2d, atleast_3d, delete,
-    empty_like, expand_dims, eye, flatten, flip, full_like, identity, insert, meshgrid, moveaxis,
-    ones_like, pad, repeat, reshape, roll, rollaxis, rot90, ravel, squeeze, swapaxes, tile,
-    zeros_like, Vectorize,
+    expand_dims, eye, flatten, flip, insert, moveaxis,
+    pad, repeat, reshape, roll, rollaxis, rot90, ravel, squeeze, swapaxes, tile,
+    Vectorize,
 };
 pub use bitwise::*;
 pub use char::exports::{
@@ -382,14 +385,13 @@ pub use statistics::{amax, amin, max_reduce, min_reduce};
 // Utility functions
 pub use utils::{
     base_repr, binary_repr, bitwise_count, bitwise_invert, bitwise_left_shift, bitwise_right_shift,
-    bmat, bool, bool_, byte, bytes_, can_cast, character, common_type, complex128, complex64,
-    complexfloating, double, errstate, finfo, flexible, floating, generic, get_include,
-    get_printoptions, getbufsize, geterr, geterrcall, half, iinfo, inexact, info, int16, int32,
-    int64, int8, integer, iscomplex, iscomplexobj, isdtype, isfortran, isnat, isreal, isrealobj,
-    isscalar, issubdtype, iterable, may_share_memory, min_scalar_type, mintypecode, object_,
+    bmat, bool, byte, bytes_, can_cast, character, common_type, double, errstate, finfo, flexible,
+    get_include, get_printoptions, getbufsize, geterr, geterrcall, half, iinfo, inexact, info,
+    iscomplex, iscomplexobj, isdtype, isfortran, isnat, isreal, isrealobj,
+    isscalar, issubdtype, iterable, may_share_memory, min_scalar_type, mintypecode,
     promote_types as utils_promote_types, result_type, set_printoptions, setbufsize, seterr,
-    seterrcall, shares_memory, show_config, show_runtime, signedinteger, single, str_, test,
-    typename, uint16, uint32, uint64, uint8, unsignedinteger, version, void,
+    seterrcall, shares_memory, show_config, show_runtime, single, test,
+    typename, version,
 };
 
 // Typing and annotations
