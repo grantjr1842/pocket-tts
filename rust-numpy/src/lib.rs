@@ -117,6 +117,7 @@ pub mod array;
 pub mod array_creation;
 pub mod array_extra;
 pub mod array_manipulation;
+pub mod array_methods;
 pub mod bitwise;
 pub mod broadcasting;
 pub mod char;
@@ -135,11 +136,12 @@ pub mod error;
 pub mod fft;
 #[cfg(test)]
 mod fft_tests;
+pub mod io;
 pub mod iterator;
 pub mod kernel_api;
-pub mod kernels;
 pub mod kernel_impls;
 pub mod kernel_registry;
+pub mod kernels;
 pub mod layout_optimizer;
 pub mod linalg;
 pub mod math_ufuncs;
@@ -166,9 +168,16 @@ pub mod strided_executor;
 pub mod strides;
 pub mod type_promotion;
 pub mod ufunc;
-pub mod utils;
 pub mod ufunc_ops;
-pub mod dynamic_kernel_registry;
+pub mod utils;
+pub mod window;
+
+// Additional type modules for NumPy compatibility
+pub mod bytes;
+pub mod object;
+pub mod scalar;
+pub mod string;
+pub mod void;
 
 #[cfg(test)]
 mod kernel_tests;
@@ -224,7 +233,11 @@ pub use crate::typing::{
     // Void,
 };
 pub use array::Array;
-pub use array_manipulation::{apply_along_axis, apply_over_axes, expand_dims, Vectorize};
+pub use array_manipulation::{
+    append, apply_along_axis, apply_over_axes, atleast_1d, atleast_2d, atleast_3d, delete,
+    expand_dims, eye, flatten, flip, insert, moveaxis, pad, ravel, repeat, reshape, roll, rollaxis,
+    rot90, squeeze, swapaxes, tile, Vectorize,
+};
 pub use bitwise::*;
 pub use char::exports::{
     add as char_add, capitalize, center, count as char_count, endswith, expandtabs, find,
@@ -256,11 +269,11 @@ pub use statistics::{
 };
 pub use type_promotion::{promote_types, TypePromotionRules};
 // Complex utility functions
+pub use dynamic_kernel_registry::{DynamicKernelRegistry, RegistryStats};
 pub use kernel_api::{
     execute_binary, execute_unary, init_kernel_registry, register_binary_kernel,
     register_unary_kernel,
 };
-pub use dynamic_kernel_registry::{DynamicKernelRegistry, RegistryStats};
 pub use kernel_registry::Kernel;
 pub use kernels::UfuncPerformanceHint as PerformanceHint;
 pub use math_ufuncs::{
@@ -322,28 +335,18 @@ pub use statistics::{amax, amin, max_reduce, min_reduce};
 // Utility functions
 pub use utils::{
     base_repr, binary_repr, bitwise_count, bitwise_invert, bitwise_left_shift, bitwise_right_shift,
-    bmat, bool, bool_, byte, bytes_, can_cast, character, common_type, complex128, complex64,
-    complexfloating, double, errstate, finfo, flexible, floating, generic, get_include,
-    get_printoptions, getbufsize, geterr, geterrcall, half, iinfo, inexact, info, int16, int32,
-    int64, int8, integer, iscomplex, iscomplexobj, isdtype, isfortran, isnat, isreal, isrealobj,
-    isscalar, issubdtype, iterable, may_share_memory, min_scalar_type, mintypecode, object_,
-    promote_types as utils_promote_types, result_type, set_printoptions, setbufsize, seterr,
-    seterrcall, shares_memory, show_config, show_runtime, signedinteger, single, str_, test,
-    typename, uint16, uint32, uint64, uint8, unsignedinteger, version, void,
+    bmat, bool, byte, bytes_, can_cast, character, common_type, double, errstate, finfo, flexible,
+    get_include, get_printoptions, getbufsize, geterr, geterrcall, half, iinfo, inexact, info,
+    iscomplex, iscomplexobj, isdtype, isfortran, isnat, isreal, isrealobj, isscalar, issubdtype,
+    iterable, may_share_memory, min_scalar_type, mintypecode, promote_types as utils_promote_types,
+    result_type, set_printoptions, setbufsize, seterr, seterrcall, shares_memory, show_config,
+    show_runtime, single, test, typename, version,
 };
 
 // Typing and annotations
 pub mod typing;
 pub use typing::{
-    nbit_128,
-    nbit_16,
-    nbit_256,
-    nbit_32,
-    nbit_64,
-    nbit_8,
-    NBitBase,
-    SignedInt,
-    UnsignedInt,
+    nbit_128, nbit_16, nbit_256, nbit_32, nbit_64, nbit_8, NBitBase, SignedInt, UnsignedInt,
 };
 
 /// Version information

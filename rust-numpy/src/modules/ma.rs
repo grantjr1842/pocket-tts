@@ -1164,8 +1164,13 @@ pub fn compress<T>(condition: &Array<bool>, a: &Array<T>, axis: Option<isize>) -
 
 pub mod exports {
     pub use super::{
+<<<<<<< HEAD
         all, allequal, any, append, array, average, compress, concatenate,
         copy, count, empty, filled, full, full_like, getdata,
+=======
+        all, allequal, any, append, argmax, argmin, argsort, array, average, concatenate,
+        copy, count, cumprod, cumsum, empty, filled, full, full_like, getdata,
+>>>>>>> cb6090710ebf438bf4ca2ae74bb3371e0cb13b81
         getmask, getmaskarray, harden_mask, isclose, is_masked_array, is_masked_array_type,
         isnan, masked_array, masked_equal, masked_greater, masked_greater_equal,
         masked_inside, masked_less, masked_less_equal, masked_not_equal, masked_object,
