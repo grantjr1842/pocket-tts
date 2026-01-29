@@ -185,7 +185,11 @@ pub mod void;
 #[cfg(test)]
 mod kernel_tests;
 
-// Re-export key types for convenience
+// Centralized export registry
+pub mod exports;
+
+// Re-export from export registry for convenience
+pub use crate::exports::*;
 pub use crate::array_extra::exports::*;
 pub use crate::comparison_ufuncs::exports::*;
 pub use crate::fft::*;
@@ -253,7 +257,10 @@ pub use dtype::{
     uint64, uint8, uintp,
 };
 pub use error::{NumPyError, Result};
-pub use linalg::norm;
+pub use linalg::{
+    cond, cross, det, dot, eig, inner, kron, matrix_power, matrix_rank, norm, norm_axis, outer,
+    qr, slogdet, svd, trace, LinAlgError,
+};
 pub use performance_metrics::{
     Bottleneck, BottleneckType, MemoryTracker, OptimizationRecommendation, PerformanceMetrics,
     PerformanceReport,
