@@ -111,7 +111,9 @@
 #![allow(clippy::iter_without_into_iter)] // 1 warning - iter without IntoIterator (into_iter_without_iter was wrong)
 #![allow(clippy::comparison_chain)] // 1 warning - comparison chain pattern
 
+#[doc(hidden)]
 pub mod advanced_broadcast;
+#[doc(hidden)]
 pub mod advanced_reductions;
 pub mod array;
 pub mod array_creation;
@@ -124,8 +126,10 @@ pub mod char;
 #[cfg(test)]
 mod char_tests;
 pub mod comparison_ufuncs;
+#[doc(hidden)]
 pub mod complex_simd;
 pub mod constants;
+#[doc(hidden)]
 pub mod cpu_features;
 pub mod datetime;
 pub mod dist;
@@ -138,32 +142,45 @@ pub mod fft;
 mod fft_tests;
 pub mod io;
 pub mod iterator;
+#[doc(hidden)]
 pub mod kernel_api;
+#[doc(hidden)]
 pub mod kernel_impls;
+#[doc(hidden)]
 pub mod kernel_registry;
 pub mod kernels;
+#[doc(hidden)]
 pub mod layout_optimizer;
 pub mod linalg;
 pub mod math_ufuncs;
 pub mod matrix;
 pub mod memory;
 pub mod modules;
+#[doc(hidden)]
 pub mod parallel;
+#[doc(hidden)]
 pub mod parallel_broadcasting;
+#[doc(hidden)]
 pub mod parallel_executor;
+#[doc(hidden)]
 pub mod parallel_ops;
+#[doc(hidden)]
 pub mod performance_metrics;
 pub mod polynomial;
+#[doc(hidden)]
 pub mod profiler;
 pub mod random;
 pub mod rec;
 pub mod reductions;
 pub mod set_ops;
+#[doc(hidden)]
 pub mod simd;
+#[doc(hidden)]
 pub mod simd_ops;
 pub mod slicing;
 pub mod sorting;
 pub mod statistics;
+#[doc(hidden)]
 pub mod strided_executor;
 pub mod strides;
 pub mod type_promotion;
@@ -173,6 +190,7 @@ pub mod utils;
 pub mod window;
 
 // Dynamic kernel registry
+#[doc(hidden)]
 pub mod dynamic_kernel_registry;
 
 // Additional type modules for NumPy compatibility
