@@ -265,6 +265,7 @@ pub use crate::typing::{
     // Bit-width types
     Int8Bit,
     // Integer,
+    NDArray,
     // Number,
     // Object,
     // Scalar,
@@ -281,7 +282,11 @@ pub use crate::typing::{
     // Void,
 };
 pub use array::Array;
-pub use array_manipulation::{apply_along_axis, apply_over_axes, expand_dims, Vectorize};
+pub use array_manipulation::{
+    append, apply_along_axis, apply_over_axes, atleast_1d, atleast_2d, atleast_3d, delete,
+    expand_dims, eye, flatten, flip, insert, moveaxis, pad, ravel, repeat, reshape, roll, rollaxis,
+    rot90, squeeze, swapaxes, tile, Vectorize,
+};
 pub use bitwise::*;
 pub use char::exports::{
     add as char_add,
@@ -360,18 +365,6 @@ pub use statistics::{
     nanvar, percentile, ptp, quantile, std, var,
 };
 pub use type_promotion::{promote_types, TypePromotionRules};
-
-// Broadcasting functions
-pub use broadcasting::{broadcast_arrays, broadcast_to};
-
-// Datetime functions
-pub use datetime::{busday_count, busday_offset, datetime_as_string, datetime_data};
-
-// I/O functions
-pub use io::{fromfile, fromstring, load, loadtxt, save, savetxt, savez, savez_compressed};
-
-// Window functions
-pub use window::{bartlett, blackman, hamming, hanning, kaiser};
 // Complex utility functions
 pub use dynamic_kernel_registry::{DynamicKernelRegistry, RegistryStats};
 pub use kernel_api::{
@@ -486,14 +479,12 @@ pub use statistics::{amax, amin, max_reduce, min_reduce};
 // Utility functions
 pub use utils::{
     base_repr, binary_repr, bitwise_count, bitwise_invert, bitwise_left_shift, bitwise_right_shift,
-    bmat, bool, bool_, byte, bytes_, can_cast, character, common_type, complex128, complex64,
-    complexfloating, double, errstate, finfo, flexible, floating, generic, get_include,
-    get_printoptions, getbufsize, geterr, geterrcall, half, iinfo, inexact, info, int16, int32,
-    int64, int8, integer, iscomplex, iscomplexobj, isdtype, isfortran, isnat, isreal, isrealobj,
-    isscalar, issubdtype, iterable, may_share_memory, min_scalar_type, mintypecode, object_,
-    promote_types as utils_promote_types, result_type, set_printoptions, setbufsize, seterr,
-    seterrcall, shares_memory, show_config, show_runtime, signedinteger, single, str_, test,
-    typename, uint16, uint32, uint64, uint8, unsignedinteger, version, void,
+    bmat, bool, byte, bytes_, can_cast, character, common_type, double, errstate, finfo, flexible,
+    get_include, get_printoptions, getbufsize, geterr, geterrcall, half, iinfo, inexact, info,
+    iscomplex, iscomplexobj, isdtype, isfortran, isnat, isreal, isrealobj, isscalar, issubdtype,
+    iterable, may_share_memory, min_scalar_type, mintypecode, promote_types as utils_promote_types,
+    result_type, set_printoptions, setbufsize, seterr, seterrcall, shares_memory, show_config,
+    show_runtime, single, test, typename, version,
 };
 
 // Typing and annotations

@@ -137,17 +137,18 @@ impl RandomState {
         self.gen.gumbel(loc, scale, shape)
     }
 
-    pub fn logistic<T>(
-        &mut self,
-        loc: f64,
-        scale: f64,
-        shape: &[usize],
-    ) -> Result<Array<T>, NumPyError>
-    where
-        T: Clone + Default + 'static + From<f64>,
-    {
-        self.gen.logistic(loc, scale, shape)
-    }
+    // TODO: Logistic distribution not available - uncomment when available
+    // pub fn logistic<T>(
+    //     &mut self,
+    //     loc: f64,
+    //     scale: f64,
+    //     shape: &[usize],
+    // ) -> Result<Array<T>, NumPyError>
+    // where
+    //     T: Clone + Default + 'static + From<f64>,
+    // {
+    //     self.gen.logistic(loc, scale, shape)
+    // }
 
     pub fn lognormal<T>(
         &mut self,
@@ -315,24 +316,26 @@ impl RandomState {
         self.gen.f(dfnum, dfden, shape)
     }
 
-    pub fn power<T>(&mut self, a: f64, shape: &[usize]) -> Result<Array<T>, NumPyError>
-    where
-        T: Clone + Default + 'static + From<f64>,
-    {
-        self.gen.power(a, shape)
-    }
+    // TODO: Power distribution not available - uncomment when available
+    // pub fn power<T>(&mut self, a: f64, shape: &[usize]) -> Result<Array<T>, NumPyError>
+    // where
+    //     T: Clone + Default + 'static + From<f64>,
+    // {
+    //     self.gen.power(a, shape)
+    // }
 
-    pub fn vonmises<T>(
-        &mut self,
-        mu: f64,
-        kappa: f64,
-        shape: &[usize],
-    ) -> Result<Array<T>, NumPyError>
-    where
-        T: Clone + Default + 'static + From<f64>,
-    {
-        self.gen.vonmises(mu, kappa, shape)
-    }
+    // TODO: VonMises distribution not available - uncomment when available
+    // pub fn vonmises<T>(
+    //     &mut self,
+    //     mu: f64,
+    //     kappa: f64,
+    //     shape: &[usize],
+    // ) -> Result<Array<T>, NumPyError>
+    // where
+    //     T: Clone + Default + 'static + From<f64>,
+    // {
+    //     self.gen.vonmises(mu, kappa, shape)
+    // }
 }
 
 impl RngCore for RandomState {

@@ -596,6 +596,15 @@ where
     }
 }
 
+// Public exports module for NumPy API compatibility
+pub mod exports {
+    pub use super::{
+        argmax, argmin, argpartition, argsort, argwhere, count_nonzero, extract, flatnonzero,
+        lexsort, nonzero, partition, searchsorted, sort, where_,
+        ArrayOrInt, SearchSide, SortKind, SortOrder,
+    };
+}
+
 // ===== Helper Functions =====
 
 /// Normalize axis to be within bounds

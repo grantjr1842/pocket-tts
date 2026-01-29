@@ -14,7 +14,6 @@ where
     name: String,
     operation: F,
     phantom: PhantomData<T>,
-    performance_hint: PerformanceHint,
 }
 
 impl<T, F> BinaryKernel<T, F>
@@ -28,18 +27,11 @@ where
             name: name.to_string(),
             operation,
             phantom: PhantomData,
-            performance_hint: PerformanceHint::General,
         }
-    }
-
-    /// Set performance hint
-    pub fn with_performance_hint(mut self, hint: PerformanceHint) -> Self {
-        self.performance_hint = hint;
-        self
     }
 }
 
-impl<T, F> Kernel for BinaryKernel<T, F>
+impl<T, F> Kernel<T> for BinaryKernel<T, F>
 where
     T: Clone + Default + 'static + Send + Sync,
     F: Fn(T, T) -> T + Send + Sync,
@@ -109,10 +101,6 @@ where
 
         Ok(())
     }
-
-    fn performance_hint(&self) -> PerformanceHint {
-        self.performance_hint
-    }
 }
 
 /// Generic unary kernel implementation
@@ -124,7 +112,6 @@ where
     name: String,
     operation: F,
     phantom: PhantomData<T>,
-    performance_hint: PerformanceHint,
 }
 
 impl<T, F> UnaryKernel<T, F>
@@ -138,18 +125,11 @@ where
             name: name.to_string(),
             operation,
             phantom: PhantomData,
-            performance_hint: PerformanceHint::General,
         }
-    }
-
-    /// Set performance hint
-    pub fn with_performance_hint(mut self, hint: PerformanceHint) -> Self {
-        self.performance_hint = hint;
-        self
     }
 }
 
-impl<T, F> Kernel for UnaryKernel<T, F>
+impl<T, F> Kernel<T> for UnaryKernel<T, F>
 where
     T: Clone + Default + 'static + Send + Sync,
     F: Fn(T) -> T + Send + Sync,
@@ -201,10 +181,6 @@ where
 
         Ok(())
     }
-
-    fn performance_hint(&self) -> PerformanceHint {
-        self.performance_hint
-    }
 }
 
 /// SIMD-optimized binary kernel for floating point operations
@@ -233,7 +209,7 @@ where
     }
 }
 
-impl<T, F> Kernel for SimdBinaryKernel<T, F>
+impl<T, F> Kernel<T> for SimdBinaryKernel<T, F>
 where
     T: Clone + Default + 'static + Send + Sync,
     F: Fn(T, T) -> T + Send + Sync,
@@ -280,10 +256,6 @@ where
 
         Ok(())
     }
-
-    fn performance_hint(&self) -> PerformanceHint {
-        PerformanceHint::Vectorized
-    }
 }
 
 /// Memory-optimized kernel for large arrays
@@ -312,7 +284,7 @@ where
     }
 }
 
-impl<T, F> Kernel for MemoryOptimizedKernel<T, F>
+impl<T, F> Kernel<T> for MemoryOptimizedKernel<T, F>
 where
     T: Clone + Default + 'static + Send + Sync,
     F: Fn(T, T) -> T + Send + Sync,
@@ -365,10 +337,6 @@ where
 
         Ok(())
     }
-
-    fn performance_hint(&self) -> PerformanceHint {
-        PerformanceHint::MemoryBound
-    }
 }
 
 /// Convenience macros for creating common kernels
@@ -377,11 +345,11 @@ where
 #[macro_export]
 macro_rules! binary_kernel {
     ($name:expr, $op:expr) => {
-        std::sync::Arc::new(crate::kernel_impls::BinaryKernel::new($name, $op))
+        std::sync::Arc::new($crate::kernel_impls::BinaryKernel::new($name, $op))
     };
     ($name:expr, $op:expr, $hint:expr) => {
         std::sync::Arc::new(
-            crate::kernel_impls::BinaryKernel::new($name, $op).with_performance_hint($hint),
+            $crate::kernel_impls::BinaryKernel::new($name, $op).with_performance_hint($hint),
         )
     };
 }
@@ -390,11 +358,11 @@ macro_rules! binary_kernel {
 #[macro_export]
 macro_rules! unary_kernel {
     ($name:expr, $op:expr) => {
-        std::sync::Arc::new(crate::kernel_impls::UnaryKernel::new($name, $op))
+        std::sync::Arc::new($crate::kernel_impls::UnaryKernel::new($name, $op))
     };
     ($name:expr, $op:expr, $hint:expr) => {
         std::sync::Arc::new(
-            crate::kernel_impls::UnaryKernel::new($name, $op).with_performance_hint($hint),
+            $crate::kernel_impls::UnaryKernel::new($name, $op).with_performance_hint($hint),
         )
     };
 }
@@ -403,7 +371,7 @@ macro_rules! unary_kernel {
 #[macro_export]
 macro_rules! simd_binary_kernel {
     ($name:expr, $op:expr) => {
-        std::sync::Arc::new(crate::kernel_impls::SimdBinaryKernel::new($name, $op))
+        std::sync::Arc::new($crate::kernel_impls::SimdBinaryKernel::new($name, $op))
     };
 }
 
@@ -411,6 +379,6 @@ macro_rules! simd_binary_kernel {
 #[macro_export]
 macro_rules! memory_optimized_kernel {
     ($name:expr, $op:expr) => {
-        std::sync::Arc::new(crate::kernel_impls::MemoryOptimizedKernel::new($name, $op))
+        std::sync::Arc::new($crate::kernel_impls::MemoryOptimizedKernel::new($name, $op))
     };
 }

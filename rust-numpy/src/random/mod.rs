@@ -222,13 +222,14 @@ pub fn gumbel<T: Clone + Default + 'static + From<f64>>(
 /// Generate samples from a logistic distribution
 ///
 /// This uses the modern Generator API internally.
-pub fn logistic<T: Clone + Default + 'static + From<f64>>(
-    loc: f64,
-    scale: f64,
-    shape: &[usize],
-) -> Result<Array<T>, NumPyError> {
-    DEFAULT_GENERATOR.with(|rng| rng.borrow_mut().logistic(loc, scale, shape))
-}
+// TODO: Logistic distribution not available - uncomment when available
+// pub fn logistic<T: Clone + Default + 'static + From<f64>>(
+//     loc: f64,
+//     scale: f64,
+//     shape: &[usize],
+// ) -> Result<Array<T>, NumPyError> {
+//     DEFAULT_GENERATOR.with(|rng| rng.borrow_mut().logistic(loc, scale, shape))
+// }
 
 /// Generate samples from a log-normal distribution
 ///
@@ -420,23 +421,25 @@ pub fn f<T: Clone + Default + 'static + From<f64>>(
 /// Generate samples from a power distribution
 ///
 /// This uses the modern Generator API internally.
-pub fn power<T: Clone + Default + 'static + From<f64>>(
-    a: f64,
-    shape: &[usize],
-) -> Result<Array<T>, NumPyError> {
-    DEFAULT_GENERATOR.with(|rng| rng.borrow_mut().power(a, shape))
-}
+// TODO: Power distribution not available - uncomment when available
+// pub fn power<T: Clone + Default + 'static + From<f64>>(
+//     a: f64,
+//     shape: &[usize],
+// ) -> Result<Array<T>, NumPyError> {
+//     DEFAULT_GENERATOR.with(|rng| rng.borrow_mut().power(a, shape))
+// }
 
 /// Generate samples from a von Mises distribution
 ///
 /// This uses the modern Generator API internally.
-pub fn vonmises<T: Clone + Default + 'static + From<f64>>(
-    mu: f64,
-    kappa: f64,
-    shape: &[usize],
-) -> Result<Array<T>, NumPyError> {
-    DEFAULT_GENERATOR.with(|rng| rng.borrow_mut().vonmises(mu, kappa, shape))
-}
+// TODO: VonMises distribution not available - uncomment when available
+// pub fn vonmises<T: Clone + Default + 'static + From<f64>>(
+//     mu: f64,
+//     kappa: f64,
+//     shape: &[usize],
+// ) -> Result<Array<T>, NumPyError> {
+//     DEFAULT_GENERATOR.with(|rng| rng.borrow_mut().vonmises(mu, kappa, shape))
+// }
 
 // --- Legacy API Functions (for backward compatibility) ---
 
@@ -492,6 +495,8 @@ pub mod modern {
 /// Legacy random number generation API
 ///
 /// This sub-module provides the legacy RandomState API for backward compatibility.
+#[deprecated(since = "0.1.0", note = "Use modern Generator API instead")]
+#[allow(deprecated)]
 pub mod legacy {
     pub use super::RandomState;
     pub use super::{legacy_randint, legacy_random, legacy_rng, seed};

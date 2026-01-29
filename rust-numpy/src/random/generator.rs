@@ -18,6 +18,9 @@ use rand_distr::{
     Beta, Binomial, ChiSquared, Exp, FisherF, Gamma, Gumbel, LogNormal, Normal, Poisson,
 };
 
+// TODO: Logistic and Power distributions are not available in rand_distr
+// These need to be implemented manually or use a different distribution library
+
 /// Generator for random numbers using a BitGenerator
 pub struct Generator {
     bit_gen: Box<dyn BitGenerator>,
@@ -689,7 +692,7 @@ impl Generator {
     /// For multi-dimensional arrays, it shuffles each sub-array independently.
     pub fn shuffle<T>(&mut self, arr: &mut Array<T>) -> Result<(), NumPyError>
     where
-        T: Clone + Default + 'static,
+        T: Clone + Default + 'static + Copy,
     {
         if arr.ndim() == 1 {
             // For 1D arrays, shuffle the elements directly

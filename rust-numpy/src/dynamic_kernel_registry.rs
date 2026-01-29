@@ -6,7 +6,7 @@
 use crate::array::Array;
 use crate::dtype::{Dtype, DtypeKind};
 use crate::error::{NumPyError, Result};
-use crate::ufunc::{ArrayView, ArrayViewMut, Ufunc};
+use crate::ufunc::{ArrayView, ArrayViewMut};
 use std::collections::HashMap;
 use std::sync::{Arc, RwLock};
 
@@ -133,10 +133,9 @@ pub struct DynamicKernelRegistry {
 impl DynamicKernelRegistry {
     /// Create new dynamic registry instance
     pub fn new() -> Arc<RwLock<Self>> {
-        let registry = Self {
+        Arc::new(RwLock::new(Self {
             kernels: HashMap::new(),
-        };
-        Arc::new(RwLock::new(registry))
+        }))
     }
 
     /// Get global registry instance

@@ -13,6 +13,7 @@ use std::sync::Arc;
 
 use crate::dtype::Dtype;
 use crate::error::NumPyError;
+use crate::iterator::ArrayIter;
 use crate::memory::MemoryManager;
 
 use num_complex::Complex64;
@@ -118,8 +119,8 @@ impl<T> Array<T> {
     }
 
     /// Get iterator over array elements
-    pub fn iter(&self) -> crate::iterator::ArrayIter<'_, T> {
-        crate::iterator::ArrayIter::new(self)
+    pub fn iter(&self) -> ArrayIter<'_, T> {
+        ArrayIter::new(self)
     }
 
     pub fn to_vec(&self) -> Vec<T>
@@ -1435,8 +1436,6 @@ impl ElementConj for num_complex::Complex<f32> {
         self.conj()
     }
 }
-
-// --- Additional ndarray methods ---
 
 impl<T> Array<T> {
     /// Return the maximum element of the array

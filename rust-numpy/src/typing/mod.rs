@@ -243,53 +243,56 @@ pub mod aliases {
     /// Represents valid index types for NumPy arrays
     pub type SupportsIndex = isize;
 
-    /// Generic scalar type
-    /// Represents any scalar value compatible with NumPy
-    pub type Scalar = crate::scalar::Scalar;
-
-    /// Number type alias
-    /// Represents NumPy number types
-    pub type Number = crate::scalar::Number;
-
-    /// Integer type alias
-    /// Represents NumPy integer types
-    pub type Integer = crate::scalar::Int;
-
-    /// Floating type alias
-    /// Represents NumPy floating types
-    pub type Floating = crate::scalar::Floating;
-
-    /// Complex floating type alias
-    /// Represents NumPy complex floating types
-    pub type ComplexFloating = crate::scalar::ComplexFloating;
-
-    /// Generic type alias
-    /// Represents generic NumPy types
-    pub type Generic = crate::scalar::Generic;
+    // TODO: Implement these types when the corresponding modules are created
+    // /// Generic scalar type
+    // /// Represents any scalar value compatible with NumPy
+    // pub type Scalar = crate::Scalar;
+    //
+    // /// Number type alias
+    // /// Represents NumPy number types
+    // pub type Number = crate::Number;
+    //
+    // /// Integer type alias
+    // /// Represents NumPy integer types
+    // pub type Integer = crate::Integer;
+    //
+    // /// Floating type alias
+    // /// Represents NumPy floating types
+    // pub type Floating = crate::Floating;
+    //
+    // /// Complex floating type alias
+    // /// Represents NumPy complex floating types
+    // pub type ComplexFloating = crate::ComplexFloating;
+    //
+    // /// Generic type alias
+    // /// Represents generic NumPy types
+    // pub type Generic = crate::Generic;
 
     /// Boolean type alias
     /// Represents NumPy boolean type
     pub type Boolean = bool;
 
-    /// Object type alias
-    /// Represents NumPy object type
-    pub type Object = crate::object::Object;
+    // TODO: Implement these types when the corresponding modules are created
+    // /// Object type alias
+    // /// Represents NumPy object type
+    // pub type Object = crate::Object;
+    //
+    // /// String type alias
+    // /// Represents NumPy string type
+    // pub type String_ = crate::String_;
+    //
+    // /// Unicode string type alias
+    // /// Represents NumPy unicode string type
+    // pub type Unicode = crate::Unicode;
+    //
+    // /// Bytes type alias
+    // /// Represents NumPy bytes type
+    // pub type Bytes = crate::Bytes;
 
-    /// String type alias
-    /// Represents NumPy string type
-    pub type String_ = crate::string::String;
-
-    /// Unicode string type alias
-    /// Represents NumPy unicode string type
-    pub type Unicode = crate::string::Unicode;
-
-    /// Bytes type alias
-    /// Represents NumPy bytes type
-    pub type Bytes = crate::bytes::Bytes;
-
-    /// Void type alias
-    /// Represents NumPy void type
-    pub type Void = crate::void::Void;
+    // TODO: Implement Void type when the corresponding module is created
+    // /// Void type alias
+    // /// Represents NumPy void type
+    // pub type Void = crate::Void;
 }
 
 /// Re-export additional aliases

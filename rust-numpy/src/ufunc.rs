@@ -245,14 +245,13 @@ where
             let arr0 = &broadcasted[0];
             let arr1 = &broadcasted[1];
 
-            for i in 0..output.size() {
-                if where_mask
-                    .as_ref()
-                    .map_or(true, |m| *m.get_linear(i).unwrap_or(&false))
-                {
-                    if let (Some(a), Some(b)) = (arr0.get(i), arr1.get(i)) {
-                        output.set(i, (self.operation)(a.clone(), b.clone()))?;
-                    }
+        for i in 0..output.size() {
+            if where_mask
+                .as_ref()
+                .map_or(true, |m| *m.get_linear(i).unwrap_or(&false))
+            {
+                if let (Some(a), Some(b)) = (arr0.get(i), arr1.get(i)) {
+                    output.set(i, (self.operation)(a.clone(), b.clone()))?;
                 }
             }
         }

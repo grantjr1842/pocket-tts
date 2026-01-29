@@ -6,10 +6,14 @@ use crate::kernel_registry::{
 };
 use crate::kernels::UfuncType;
 
-/// Runtime API for dynamic kernel registration and execution
+use crate::array::Array;
+use crate::error::{NumPyError, Result};
+use crate::kernels::UfuncPerformanceHint as PerformanceHint;
 
 /// Register a binary operation kernel
-pub fn register_binary_kernel<T, F>(name: &str, operation: F) -> Result<()>
+///
+/// TODO: Not yet implemented - needs wrapper to adapt BinaryKernel to KernelFunction
+pub fn register_binary_kernel<T, F>(_name: &str, _operation: F) -> Result<()>
 where
     T: Clone + Default + 'static + Send + Sync,
     F: Fn(T, T) -> T + Send + Sync + 'static,
@@ -20,10 +24,12 @@ where
 }
 
 /// Register a binary operation kernel with performance hint
+///
+/// TODO: Not yet implemented
 pub fn register_binary_kernel_with_hint<T, F>(
-    name: &str,
-    operation: F,
-    hint: PerformanceHint,
+    _name: &str,
+    _operation: F,
+    _hint: PerformanceHint,
 ) -> Result<()>
 where
     T: Clone + Default + 'static + Send + Sync,
@@ -35,7 +41,9 @@ where
 }
 
 /// Register a unary operation kernel
-pub fn register_unary_kernel<T, F>(name: &str, operation: F) -> Result<()>
+///
+/// TODO: Not yet implemented
+pub fn register_unary_kernel<T, F>(_name: &str, _operation: F) -> Result<()>
 where
     T: Clone + Default + 'static + Send + Sync,
     F: Fn(T) -> T + Send + Sync + 'static,
@@ -46,10 +54,12 @@ where
 }
 
 /// Register a unary operation kernel with performance hint
+///
+/// TODO: Not yet implemented
 pub fn register_unary_kernel_with_hint<T, F>(
-    name: &str,
-    operation: F,
-    hint: PerformanceHint,
+    _name: &str,
+    _operation: F,
+    _hint: PerformanceHint,
 ) -> Result<()>
 where
     T: Clone + Default + 'static + Send + Sync,
@@ -61,7 +71,9 @@ where
 }
 
 /// Register a SIMD-optimized binary kernel
-pub fn register_simd_binary_kernel<T, F>(name: &str, operation: F) -> Result<()>
+///
+/// TODO: Not yet implemented
+pub fn register_simd_binary_kernel<T, F>(_name: &str, _operation: F) -> Result<()>
 where
     T: Clone + Default + 'static + Send + Sync,
     F: Fn(T, T) -> T + Send + Sync + 'static,
@@ -72,7 +84,9 @@ where
 }
 
 /// Register a memory-optimized binary kernel
-pub fn register_memory_optimized_kernel<T, F>(name: &str, operation: F) -> Result<()>
+///
+/// TODO: Not yet implemented
+pub fn register_memory_optimized_kernel<T, F>(_name: &str, _operation: F) -> Result<()>
 where
     T: Clone + Default + 'static + Send + Sync,
     F: Fn(T, T) -> T + Send + Sync + 'static,
@@ -83,7 +97,9 @@ where
 }
 
 /// Execute a binary operation using the dynamic kernel registry
-pub fn execute_binary<T>(name: &str, a: &Array<T>, b: &Array<T>) -> Result<Array<T>>
+///
+/// TODO: Not yet implemented - needs kernel lookup and execution
+pub fn execute_binary<T>(_name: &str, _a: &Array<T>, _b: &Array<T>) -> Result<Array<T>>
 where
     T: Clone + Default + 'static,
 {
@@ -112,7 +128,9 @@ where
 }
 
 /// Execute a unary operation using the dynamic kernel registry
-pub fn execute_unary<T>(name: &str, a: &Array<T>) -> Result<Array<T>>
+///
+/// TODO: Not yet implemented
+pub fn execute_unary<T>(_name: &str, _a: &Array<T>) -> Result<Array<T>>
 where
     T: Clone + Default + 'static,
 {
@@ -133,6 +151,8 @@ where
 }
 
 /// Register common mathematical kernels
+///
+/// TODO: Not yet implemented
 pub fn register_common_kernels() -> Result<()> {
     // Addition kernels
     register_binary_kernel_with_hint("add", |a: f64, b: f64| a + b, PerformanceHint::Vectorized)?;
@@ -205,20 +225,41 @@ pub fn register_common_kernels() -> Result<()> {
 }
 
 /// Kernel registry builder for convenient registration
+///
+/// TODO: Not yet implemented
 pub struct KernelRegistryBuilder {
     _private: (),
 }
 
 impl KernelRegistryBuilder {
-    /// Create new builder
     pub fn new() -> Self {
         Self { _private: () }
     }
 
-    /// Register common kernels
+    pub fn with_binary_kernel<T, F>(self, _name: &str, _operation: F) -> Result<Self>
+    where
+        T: Clone + Default + 'static + Send + Sync,
+        F: Fn(T, T) -> T + Send + Sync + 'static,
+    {
+        Err(NumPyError::not_implemented(
+            "KernelRegistryBuilder: Not yet implemented",
+        ))
+    }
+
+    pub fn with_unary_kernel<T, F>(self, _name: &str, _operation: F) -> Result<Self>
+    where
+        T: Clone + Default + 'static + Send + Sync,
+        F: Fn(T) -> T + Send + Sync + 'static,
+    {
+        Err(NumPyError::not_implemented(
+            "KernelRegistryBuilder: Not yet implemented",
+        ))
+    }
+
     pub fn with_common_kernels(self) -> Result<Self> {
-        register_common_kernels()?;
-        Ok(self)
+        Err(NumPyError::not_implemented(
+            "KernelRegistryBuilder: Not yet implemented",
+        ))
     }
 
     /// Register a custom binary kernel
@@ -243,8 +284,9 @@ impl KernelRegistryBuilder {
 
     /// Build (finalizes registration)
     pub fn build(self) -> Result<()> {
-        // In the future, this could perform validation or optimization
-        Ok(())
+        Err(NumPyError::not_implemented(
+            "KernelRegistryBuilder: Not yet implemented",
+        ))
     }
 }
 
@@ -254,12 +296,18 @@ impl Default for KernelRegistryBuilder {
     }
 }
 
-/// Convenience function to initialize the kernel registry
+/// Initialize the kernel registry
+///
+/// TODO: Not yet implemented
 pub fn init_kernel_registry() -> Result<()> {
-    KernelRegistryBuilder::new().with_common_kernels()?.build()
+    Err(NumPyError::not_implemented(
+        "init_kernel_registry: Not yet implemented",
+    ))
 }
 
 /// Get information about registered kernels
+///
+/// TODO: Not yet implemented
 pub fn get_kernel_info() -> Result<KernelInfo> {
     let kernel_names = list_kernels().into_iter().map(|(_, name)| name).collect();
     let stats = get_registry_stats();
@@ -274,13 +322,12 @@ pub fn get_kernel_info() -> Result<KernelInfo> {
 #[derive(Debug, Clone)]
 pub struct KernelInfo {
     pub kernel_names: Vec<String>,
-    pub stats: crate::kernel_registry::RegistryStats,
+    pub stats: crate::dynamic_kernel_registry::RegistryStats,
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::dtype::Dtype;
 
     #[test]
     fn test_kernel_registration() {

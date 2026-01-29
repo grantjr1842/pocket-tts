@@ -127,7 +127,7 @@ mod tests {
         // Test that the modern submodule exports work correctly
         use crate::random::modern::*;
 
-        // Test default_rng from modern submodule
+        // Test default_rng
         let mut rng = default_rng();
         let arr = rng
             .random::<f64>(&[2, 2], Dtype::from_type::<f64>())
@@ -157,7 +157,7 @@ mod tests {
         // Confirm legacy module structure
         use crate::random::legacy::*;
 
-        // Test legacy_rng from legacy submodule
+        // Test legacy_rng
         let _legacy = legacy_rng();
 
         // Test seed from legacy submodule
