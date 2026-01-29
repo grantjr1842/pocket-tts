@@ -1,0 +1,89 @@
+# Rust NumPy - File Ownership and Coordination
+# This file defines ownership for multi-agent coordination
+# See: https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners
+
+# Default ownership - fallback for unowned files
+* @grantjr1842
+
+# ============================================================================
+# CORE FILES - Require orchestrator approval
+# ============================================================================
+# Main library exports - critical for API consistency
+rust-numpy/src/lib.rs @grantjr1842
+rust-numpy/Cargo.toml @grantjr1842
+rust-numpy/Cargo.lock @grantjr1842
+
+# Workspace configuration
+Cargo.toml @grantjr1842
+Cargo.lock @grantjr1842
+
+# CI/CD configuration - affects all builds
+.github/workflows/ @grantjr1842
+scripts/ci/ @grantjr1842
+
+# ============================================================================
+# MODULE OWNERSHIP - Domain experts
+# ============================================================================
+# Linear algebra module
+rust-numpy/src/linalg/** @grantjr1842
+
+# Random number generation
+rust-numpy/src/random/** @grantjr1842
+
+# FFT operations
+rust-numpy/src/fft/** @grantjr1842
+
+# I/O operations
+rust-numpy/src/io/** @grantjr1842
+
+# Polynomial operations
+rust-numpy/src/polynomial/** @grantjr1842
+
+# Masked arrays
+rust-numpy/src/ma/** @grantjr1842
+
+# Testing utilities
+rust-numpy/src/testing/** @grantjr1842
+
+# ============================================================================
+# EXPORT CATEGORIES - Group coordination
+# ============================================================================
+# Array manipulation and creation
+rust-numpy/src/array*.rs @grantjr1842
+rust-numpy/src/array_extra/** @grantjr1842
+
+# Mathematical ufuncs
+rust-numpy/src/math_ufuncs.rs @grantjr1842
+rust-numpy/src/comparison_ufuncs.rs @grantjr1842
+
+# Reductions and aggregations
+rust-numpy/src/reductions.rs @grantjr1842
+
+# Statistical functions
+rust-numpy/src/statistics.rs @grantjr1842
+
+# Set operations
+rust-numpy/src/set_ops.rs @grantjr1842
+
+# Bitwise operations
+rust-numpy/src/bitwise.rs @grantjr1842
+
+# ============================================================================
+# INFRASTRUCTURE - Build and tooling
+# ============================================================================
+# Build scripts
+build.rs @grantjr1842
+**/build.rs @grantjr1842
+
+# Python bindings
+python/ @grantjr1842
+
+# Documentation
+docs/ @grantjr1842
+*.md @grantjr1842
+
+# ============================================================================
+# TESTS - Anyone can review
+# ============================================================================
+**/tests/ @grantjr1842
+**/test*.rs @grantjr1842
