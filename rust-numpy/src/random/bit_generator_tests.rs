@@ -10,6 +10,7 @@ mod tests {
             Box::new(PCG64::new()),
             Box::new(MT19937::new()),
             Box::new(Philox::new()),
+            Box::new(SFC64::new()),
         ];
 
         for (i, mut rng) in generators.into_iter().enumerate() {
@@ -175,6 +176,56 @@ mod tests {
     }
 
     #[test]
+    fn test_sfc64_implementation() {
+        let mut sfc = SFC64::new();
+
+        // Test basic properties
+        assert_eq!(sfc.name(), "SFC64");
+        assert_eq!(sfc.version(), "1.0.0");
+        assert!(!sfc.is_cryptographically_secure());
+        assert_eq!(sfc.state_size(), 40);
+
+        // Test period (SFC64 has a very long period ~2^192)
+        if let Some(period) = sfc.period() {
+            assert_eq!(period, 2u128.pow(192));
+        }
+
+        // Test seeding
+        let seed = 77777u64;
+        sfc.seed_u64(seed);
+
+        // Generate some values
+        let val1 = sfc.next_u32();
+        let val2 = sfc.next_u64();
+        let val3 = sfc.next_u32();
+
+        // Test reproducibility
+        let mut sfc2 = SFC64::seed_from_u64(seed);
+        assert_eq!(sfc2.next_u32(), val1);
+        assert_eq!(sfc2.next_u64(), val2);
+        assert_eq!(sfc2.next_u32(), val3);
+
+        // Test counter functionality
+        assert_eq!(sfc.counter(), 0);
+        let _ = sfc.next_u64();
+        assert!(sfc.counter() > 0);
+
+        // Test jump functionality
+        let mut sfc3 = SFC64::seed_from_u64(seed);
+        sfc3.jump(4);
+        let val_after_jump = sfc3.next_u32();
+
+        let mut sfc4 = SFC64::seed_from_u64(seed);
+        sfc4.next_u32();
+        sfc4.next_u64();
+        sfc4.next_u32();
+        sfc4.next_u64();
+        let val_after_manual = sfc4.next_u32();
+
+        assert_eq!(val_after_jump, val_after_manual);
+    }
+
+    #[test]
     fn test_state_serialization() {
         // Test PCG64 state serialization
         let mut pcg = PCG64::seed_from_u64(12345);
@@ -212,6 +263,17 @@ mod tests {
         let mut philox2 = Philox::new();
         philox2.set_state_bytes(&philox_state).unwrap();
         assert_eq!(philox2.next_u32(), philox_val);
+
+        // Test SFC64 state serialization
+        let mut sfc = SFC64::seed_from_u64(11111);
+        let sfc_val = sfc.next_u32();
+
+        let sfc_state = sfc.get_state_bytes();
+        assert_eq!(sfc_state.len(), sfc.state_size());
+
+        let mut sfc2 = SFC64::new();
+        sfc2.set_state_bytes(&sfc_state).unwrap();
+        assert_eq!(sfc2.next_u32(), sfc_val);
     }
 
     #[test]
@@ -247,6 +309,16 @@ mod tests {
         let philox2_val = philox2.next_u32();
 
         assert_eq!(philox_val, philox2_val);
+
+        // Test with SFC64
+        let mut sfc = SFC64::new();
+        sfc.seed_u32_slice(&seed_slice);
+        let sfc_val = sfc.next_u32();
+
+        let mut sfc2 = SFC64::from_seed_slice(&seed_slice);
+        let sfc2_val = sfc2.next_u32();
+
+        assert_eq!(sfc_val, sfc2_val);
     }
 
     #[test]
@@ -276,6 +348,9 @@ mod tests {
         let philox = factory::create_bitgenerator("Philox").unwrap();
         assert_eq!(philox.name(), "Philox");
 
+        let sfc = factory::create_bitgenerator("SFC64").unwrap();
+        assert_eq!(sfc.name(), "SFC64");
+
         // Test seeded factory creation
         let seed = 12345;
         let seeded_pcg = factory::create_seeded_bitgenerator("PCG64", seed).unwrap();
@@ -289,7 +364,8 @@ mod tests {
         assert!(available.contains(&"PCG64"));
         assert!(available.contains(&"MT19937"));
         assert!(available.contains(&"Philox"));
-        assert_eq!(available.len(), 3);
+        assert!(available.contains(&"SFC64"));
+        assert_eq!(available.len(), 4);
 
         // Test default generator
         let default = factory::default_bitgenerator();
@@ -321,6 +397,7 @@ mod tests {
             Box::new(PCG64::seed_from_u64(12345)),
             Box::new(MT19937::seed_from_u64(12345)),
             Box::new(Philox::seed_from_u64(12345)),
+            Box::new(SFC64::seed_from_u64(12345)),
         ];
 
         for (i, mut rng) in generators.into_iter().enumerate() {
@@ -380,6 +457,7 @@ mod tests {
             Box::new(PCG64::new()),
             Box::new(MT19937::new()),
             Box::new(Philox::new()),
+            Box::new(SFC64::new()),
         ];
 
         for rng in generators {
@@ -410,6 +488,7 @@ mod tests {
             Box::new(PCG64::seed_from_u64(12345)),
             Box::new(MT19937::seed_from_u64(12345)),
             Box::new(Philox::seed_from_u64(12345)),
+            Box::new(SFC64::seed_from_u64(12345)),
         ];
 
         for (i, mut rng) in generators.into_iter().enumerate() {
@@ -456,6 +535,7 @@ mod tests {
             Box::new(PCG64::new()),
             Box::new(MT19937::new()),
             Box::new(Philox::new()),
+            Box::new(SFC64::new()),
         ];
 
         for (i, mut rng) in generators.into_iter().enumerate() {
@@ -502,6 +582,11 @@ mod tests {
                 Box::new(Philox::seed_from_u64(seed1)) as Box<dyn BitGenerator>,
                 Box::new(Philox::seed_from_u64(seed2)),
             ),
+            (
+                "SFC64",
+                Box::new(SFC64::seed_from_u64(seed1)) as Box<dyn BitGenerator>,
+                Box::new(SFC64::seed_from_u64(seed2)),
+            ),
         ];
 
         for (name, mut rng1, mut rng2) in generators {
@@ -526,16 +611,19 @@ mod tests {
         let pcg = PCG64::new();
         let mt = MT19937::new();
         let philox = Philox::new();
+        let sfc = SFC64::new();
 
         // These should compile without errors
         let _debug_pcg = format!("{:?}", pcg);
         let _debug_mt = format!("{:?}", mt);
         let _debug_philox = format!("{:?}", philox);
+        let _debug_sfc = format!("{:?}", sfc);
 
         // Debug output should contain the generator name
         assert!(_debug_pcg.contains("PCG64"));
         assert!(_debug_mt.contains("MT19937"));
         assert!(_debug_philox.contains("Philox"));
+        assert!(_debug_sfc.contains("SFC64"));
     }
 
     #[test]
@@ -561,6 +649,11 @@ mod tests {
         let philox = Philox::seed_from_u64(12345);
         let philox_clone = philox.clone();
         assert_eq!(philox.next_u32(), philox_clone.next_u32());
+
+        // Test SFC64
+        let sfc = SFC64::seed_from_u64(12345);
+        let sfc_clone = sfc.clone();
+        assert_eq!(sfc.next_u32(), sfc_clone.next_u32());
     }
 
     #[test]
