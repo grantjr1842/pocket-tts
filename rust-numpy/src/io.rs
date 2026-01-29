@@ -14,6 +14,7 @@
 //! - Memory-mapped file support
 //! - Compression support for NPZ files
 
+use std::collections::HashMap;
 use std::fs::File;
 use std::io::{BufRead, BufReader, BufWriter, Read, Seek, Write};
 use std::path::Path;
@@ -170,6 +171,17 @@ where
 }
 
 /// Save multiple arrays to uncompressed NPZ file
+///
+/// # Arguments
+/// * `file` - Path to the output NPZ file
+/// * `args` - Vector of (name, array) pairs to save
+///
+/// # Example
+/// ```rust,ignore
+/// let a = Array::from_vec(vec![1, 2, 3]);
+/// let b = Array::from_vec(vec![4, 5, 6]);
+/// savez("data.npz", vec![("a", &a), ("b", &b)]).unwrap();
+/// ```
 pub fn savez<T>(file: &str, args: Vec<(&str, &Array<T>)>) -> Result<()>
 where
     T: Clone + Default + Pod + 'static,
@@ -177,12 +189,115 @@ where
     savez_internal(file, &args, false)
 }
 
+/// Save multiple arrays to uncompressed NPZ file (variadic version)
+///
+/// Similar to NumPy's `savez` function. Arrays are saved with names arr_0, arr_1, etc.
+///
+/// # Arguments
+/// * `file` - Path to the output NPZ file
+/// * `arrays` - Arrays to save (will be named arr_0, arr_1, ...)
+pub fn savez_many<T>(file: &str, arrays: &[&Array<T>]) -> Result<()>
+where
+    T: Clone + Default + Pod + 'static,
+{
+    let named: Vec<(String, &Array<T>)> = arrays
+        .iter()
+        .enumerate()
+        .map(|(i, arr)| (format!("arr_{}", i), *arr))
+        .collect();
+    let refs: Vec<(&str, &Array<T>)> = named.iter().map(|(s, arr)| (s.as_str(), *arr)).collect();
+    savez_internal(file, &refs, false)
+}
+
 /// Save multiple arrays to compressed NPZ file
+///
+/// # Arguments
+/// * `file` - Path to the output NPZ file
+/// * `args` - Vector of (name, array) pairs to save
+///
+/// # Example
+/// ```rust,ignore
+/// let a = Array::from_vec(vec![1, 2, 3]);
+/// let b = Array::from_vec(vec![4, 5, 6]);
+/// savez_compressed("data.npz", vec![("a", &a), ("b", &b)]).unwrap();
+/// ```
 pub fn savez_compressed<T>(file: &str, args: Vec<(&str, &Array<T>)>) -> Result<()>
 where
     T: Clone + Default + Pod + 'static,
 {
     savez_internal(file, &args, true)
+}
+
+/// Save multiple arrays to compressed NPZ file (variadic version)
+///
+/// Similar to NumPy's `savez_compressed` function. Arrays are saved with names arr_0, arr_1, etc.
+///
+/// # Arguments
+/// * `file` - Path to the output NPZ file
+/// * `arrays` - Arrays to save (will be named arr_0, arr_1, ...)
+pub fn savez_compressed_many<T>(file: &str, arrays: &[&Array<T>]) -> Result<()>
+where
+    T: Clone + Default + Pod + 'static,
+{
+    let named: Vec<(String, &Array<T>)> = arrays
+        .iter()
+        .enumerate()
+        .map(|(i, arr)| (format!("arr_{}", i), *arr))
+        .collect();
+    let refs: Vec<(&str, &Array<T>)> = named.iter().map(|(s, arr)| (s.as_str(), *arr)).collect();
+    savez_internal(file, &refs, true)
+}
+
+/// Load arrays from an NPZ file
+///
+/// Returns a HashMap mapping array names to arrays. The names exclude the `.npy` extension.
+///
+/// # Arguments
+/// * `file` - Path to the NPZ file
+///
+/// # Example
+/// ```rust,ignore
+/// let arrays = load_npz::<i32>("data.npz").unwrap();
+/// let a = arrays.get("a").unwrap();
+/// ```
+pub fn load_npz<T>(file: &str) -> Result<HashMap<String, Array<T>>>
+where
+    T: Clone + Default + Pod + 'static,
+{
+    let file = File::open(file)
+        .map_err(|e| NumPyError::io_error(format!("Failed to open file: {}", e)))?;
+    let reader = BufReader::new(file);
+    let mut archive = ZipArchive::new(reader)
+        .map_err(|e| NumPyError::file_format_error("npz", &e.to_string()))?;
+
+    let mut arrays = HashMap::new();
+
+    for i in 0..archive.len() {
+        let mut zip_file = archive
+            .by_index(i)
+            .map_err(|e| NumPyError::file_format_error("npz", &e.to_string()))?;
+        let filename = zip_file.name().to_string();
+
+        if filename.ends_with(".npy") {
+            let mut buffer = Vec::new();
+            zip_file.read_to_end(&mut buffer)?;
+
+            let array = load_npy_from_bytes(buffer)?;
+            
+            // Remove .npy extension for the key
+            let key = filename.strip_suffix(".npy").unwrap_or(&filename).to_string();
+            arrays.insert(key, array);
+        }
+    }
+
+    if arrays.is_empty() {
+        return Err(NumPyError::file_format_error(
+            "npz",
+            "No NPY files found in archive",
+        ));
+    }
+
+    Ok(arrays)
 }
 
 /// Load array from text file with configurable parsing
