@@ -2,8 +2,10 @@ pub mod bitwidth;
 #[cfg(test)]
 mod bitwidth_tests;
 pub mod dtype_getter;
+pub mod protocol;
 pub use bitwidth::*;
 pub use dtype_getter::*;
+pub use protocol::{SupportsArray, SupportsDType, SupportsShape};
 
 use crate::array::Array;
 use crate::dtype::Dtype;
