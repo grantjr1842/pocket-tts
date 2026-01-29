@@ -17,14 +17,17 @@
 use std::fs::File;
 use std::io::{BufRead, BufReader, BufWriter, Read, Seek, Write};
 use std::path::Path;
+use std::sync::Arc;
 
 use bytemuck::{cast_slice, Pod};
 use byteorder::{ByteOrder as _, LittleEndian, ReadBytesExt, WriteBytesExt};
+use memmap2::{Mmap, MmapMut, MmapOptions};
 use zip::{ZipArchive, ZipWriter};
 
 use crate::array::Array;
 use crate::dtype::Dtype;
 use crate::error::{NumPyError, Result};
+use crate::memory::MemoryManager;
 
 /// File format detection
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -1112,9 +1115,295 @@ fn parse_npy_shape(header: &str) -> Result<Vec<usize>> {
     dimensions
 }
 
+/// Memory-mapped array structure
+///
+/// Provides a NumPy-compatible memory-mapped array that allows
+/// arrays to be stored in files and accessed as if they were in memory.
+pub struct MemmapArray<T> {
+    /// The underlying array data
+    pub array: Array<T>,
+    /// The memory map (stored to keep the mapping alive)
+    #[allow(dead_code)]
+    mmap: MemmapStorage,
+}
+
+/// Storage for memory-mapped data
+enum MemmapStorage {
+    ReadOnly(Mmap),
+    ReadWrite(MmapMut),
+}
+
+/// Create a memory-mapped array from a file
+///
+/// # Arguments
+/// * `filename` - Path to the file to memory map
+/// * `dtype` - Data type of the array elements
+/// * `mode` - File mode: 'r' (read-only), 'r+' (read-write), 'w+' (write)
+/// * `shape` - Shape of the array (if creating new), or None to infer from file
+/// * `offset` - Offset in bytes from the beginning of the file
+///
+/// # Returns
+/// A memory-mapped array that can be accessed like a regular array
+///
+/// # Example
+/// ```rust,ignore
+/// use numpy::io::{memmap, MmapMode};
+/// use numpy::Dtype;
+///
+/// // Open existing file as memory-mapped array
+/// let arr = memmap::<f64>("data.bin", None, MmapMode::Read, None, 0).unwrap();
+/// ```
+pub fn memmap<T>(
+    filename: &str,
+    dtype: Option<Dtype>,
+    mode: MmapMode,
+    shape: Option<Vec<usize>>,
+    offset: usize,
+) -> Result<MemmapArray<T>>
+where
+    T: Clone + Default + Pod + 'static,
+{
+    let dtype = dtype.unwrap_or_else(|| Dtype::from_type::<T>());
+    let item_size = dtype.itemsize();
+
+    match mode {
+        MmapMode::Read => {
+            let file = File::open(filename)
+                .map_err(|e| NumPyError::io_error(format!("Failed to open file: {}", e)))?;
+
+            let file_len = file
+                .metadata()
+                .map_err(|e| NumPyError::io_error(format!("Failed to get metadata: {}", e)))?
+                .len() as usize;
+
+            if offset >= file_len {
+                return Err(NumPyError::invalid_operation(
+                    "Offset exceeds file length",
+                ));
+            }
+
+            let mmap = unsafe {
+                Mmap::map(&file)
+                    .map_err(|e| NumPyError::io_error(format!("Failed to mmap file: {}", e)))?
+            };
+
+            let data_len = file_len - offset;
+            let num_elements = data_len / item_size;
+
+            let actual_shape = match shape {
+                Some(s) => {
+                    let expected_elements: usize = s.iter().product();
+                    if expected_elements > num_elements {
+                        return Err(NumPyError::invalid_operation(
+                            "Shape requires more elements than available in file",
+                        ));
+                    }
+                    s
+                }
+                None => vec![num_elements],
+            };
+
+            // Copy data from mmap to array (since our Array uses MemoryManager)
+            let data_slice = &mmap[offset..offset + num_elements * item_size];
+            let typed_data: &[T] = bytemuck::cast_slice(data_slice);
+            let data: Vec<T> = typed_data.iter().cloned().collect();
+
+            let array = Array::from_shape_vec(actual_shape, data);
+
+            Ok(MemmapArray {
+                array,
+                mmap: MemmapStorage::ReadOnly(mmap),
+            })
+        }
+        MmapMode::ReadWrite => {
+            let file = std::fs::OpenOptions::new()
+                .read(true)
+                .write(true)
+                .open(filename)
+                .map_err(|e| NumPyError::io_error(format!("Failed to open file: {}", e)))?;
+
+            let mmap = unsafe {
+                MmapMut::map_mut(&file)
+                    .map_err(|e| NumPyError::io_error(format!("Failed to mmap file: {}", e)))?
+            };
+
+            let file_len = mmap.len();
+
+            if offset >= file_len {
+                return Err(NumPyError::invalid_operation(
+                    "Offset exceeds file length",
+                ));
+            }
+
+            let data_len = file_len - offset;
+            let num_elements = data_len / item_size;
+
+            let actual_shape = match shape {
+                Some(s) => {
+                    let expected_elements: usize = s.iter().product();
+                    if expected_elements > num_elements {
+                        return Err(NumPyError::invalid_operation(
+                            "Shape requires more elements than available in file",
+                        ));
+                    }
+                    s
+                }
+                None => vec![num_elements],
+            };
+
+            // Copy data from mmap to array
+            let data_slice = &mmap[offset..offset + num_elements * item_size];
+            let typed_data: &[T] = bytemuck::cast_slice(data_slice);
+            let data: Vec<T> = typed_data.iter().cloned().collect();
+
+            let array = Array::from_shape_vec(actual_shape, data);
+
+            Ok(MemmapArray {
+                array,
+                mmap: MemmapStorage::ReadWrite(mmap),
+            })
+        }
+        MmapMode::None => Err(NumPyError::invalid_operation(
+            "MmapMode::None is not valid for memmap",
+        )),
+    }
+}
+
+impl<T> MemmapArray<T> {
+    /// Get a reference to the underlying array
+    pub fn array(&self) -> &Array<T> {
+        &self.array
+    }
+
+    /// Convert into the underlying array (consumes the MemmapArray)
+    pub fn into_array(self) -> Array<T> {
+        self.array
+    }
+
+    /// Flush changes to disk (for writable mappings)
+    pub fn flush(&self) -> Result<()> {
+        match &self.mmap {
+            MemmapStorage::ReadWrite(mmap) => mmap
+                .flush()
+                .map_err(|e| NumPyError::io_error(format!("Failed to flush mmap: {}", e))),
+            _ => Ok(()),
+        }
+    }
+}
+
+/// Get a buffer object exposing the underlying data of an array
+///
+/// # Arguments
+/// * `arr` - The array to get the buffer from
+/// * `offset` - Offset in bytes from the start of the array data
+/// * `size` - Size of the buffer in bytes, or -1 for all remaining data
+///
+/// # Returns
+/// A vector containing the buffer data
+///
+/// # Example
+/// ```rust,ignore
+/// use numpy::io::getbuffer;
+/// use numpy::Array;
+///
+/// let arr = Array::from_vec(vec![1.0f64, 2.0, 3.0, 4.0]);
+/// let buffer = getbuffer(&arr, 0, -1).unwrap();
+/// ```
+pub fn getbuffer<T>(arr: &Array<T>, offset: isize, size: isize) -> Result<Vec<u8>>
+where
+    T: Clone + Default + Pod + 'static,
+{
+    let item_size = arr.dtype().itemsize();
+    let num_elements = arr.size();
+    let total_bytes = num_elements * item_size;
+
+    // Calculate actual offset
+    let actual_offset = if offset < 0 {
+        total_bytes.saturating_sub((-offset) as usize)
+    } else {
+        offset as usize
+    };
+
+    if actual_offset > total_bytes {
+        return Err(NumPyError::invalid_operation(
+            "Offset exceeds array data size",
+        ));
+    }
+
+    // Calculate actual size
+    let actual_size = if size < 0 {
+        total_bytes - actual_offset
+    } else {
+        std::cmp::min(size as usize, total_bytes - actual_offset)
+    };
+
+    // Get the array data
+    let data = arr.to_vec();
+    let data_bytes: &[u8] = bytemuck::cast_slice(&data);
+
+    // Extract the requested portion
+    let end_offset = actual_offset + actual_size;
+    if end_offset > data_bytes.len() {
+        return Err(NumPyError::invalid_operation(
+            "Buffer range exceeds array bounds",
+        ));
+    }
+
+    Ok(data_bytes[actual_offset..end_offset].to_vec())
+}
+
+/// Get a buffer information structure for an array
+///
+/// Returns information about the array's buffer without copying data
+///
+/// # Arguments
+/// * `arr` - The array to get buffer info from
+///
+/// # Returns
+/// Buffer information including pointer, size, and format
+pub fn getbuffer_info<T>(arr: &Array<T>) -> BufferInfo
+where
+    T: Clone + Default + Pod + 'static,
+{
+    let item_size = arr.dtype().itemsize();
+    let num_elements = arr.size();
+    let total_bytes = num_elements * item_size;
+
+    BufferInfo {
+        ndim: arr.ndim(),
+        shape: arr.shape().to_vec(),
+        strides: arr.strides().to_vec(),
+        itemsize: item_size,
+        size: total_bytes,
+        format: arr.dtype().to_string(),
+        readonly: false,
+    }
+}
+
+/// Buffer information structure
+#[derive(Debug, Clone)]
+pub struct BufferInfo {
+    /// Number of dimensions
+    pub ndim: usize,
+    /// Shape of the array
+    pub shape: Vec<usize>,
+    /// Strides in bytes
+    pub strides: Vec<isize>,
+    /// Size of each element in bytes
+    pub itemsize: usize,
+    /// Total size in bytes
+    pub size: usize,
+    /// Format string (like numpy's buffer protocol)
+    pub format: String,
+    /// Whether the buffer is read-only
+    pub readonly: bool,
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::io::Write;
+    use tempfile::NamedTempFile;
 
     #[test]
     fn test_format_detection() {
@@ -1126,5 +1415,141 @@ mod tests {
         assert_eq!("r".parse::<MmapMode>().unwrap(), MmapMode::Read);
         assert_eq!("r+".parse::<MmapMode>().unwrap(), MmapMode::ReadWrite);
         assert_eq!("c".parse::<MmapMode>().unwrap(), MmapMode::Read);
+    }
+
+    #[test]
+    fn test_memmap_read() {
+        // Create a temporary file with test data
+        let mut temp_file = NamedTempFile::new().unwrap();
+        let data: Vec<f64> = vec![1.0, 2.0, 3.0, 4.0, 5.0, 6.0];
+        let data_bytes: &[u8] = bytemuck::cast_slice(&data);
+        temp_file.write_all(data_bytes).unwrap();
+        temp_file.flush().unwrap();
+
+        // Memory map the file
+        let mmap_arr = memmap::<f64>(
+            temp_file.path().to_str().unwrap(),
+            None,
+            MmapMode::Read,
+            None,
+            0,
+        )
+        .unwrap();
+
+        let arr = mmap_arr.array();
+        assert_eq!(arr.size(), 6);
+        assert_eq!(arr.shape(), &[6]);
+
+        // Check values
+        for i in 0..6 {
+            assert!((arr.get(i).unwrap() - (i as f64 + 1.0)).abs() < 1e-10);
+        }
+    }
+
+    #[test]
+    fn test_memmap_with_shape() {
+        // Create a temporary file with test data
+        let mut temp_file = NamedTempFile::new().unwrap();
+        let data: Vec<f64> = vec![1.0, 2.0, 3.0, 4.0, 5.0, 6.0];
+        let data_bytes: &[u8] = bytemuck::cast_slice(&data);
+        temp_file.write_all(data_bytes).unwrap();
+        temp_file.flush().unwrap();
+
+        // Memory map with specific shape
+        let mmap_arr = memmap::<f64>(
+            temp_file.path().to_str().unwrap(),
+            None,
+            MmapMode::Read,
+            Some(vec![2, 3]),
+            0,
+        )
+        .unwrap();
+
+        let arr = mmap_arr.array();
+        assert_eq!(arr.shape(), &[2, 3]);
+    }
+
+    #[test]
+    fn test_memmap_with_offset() {
+        // Create a temporary file with test data and offset
+        let mut temp_file = NamedTempFile::new().unwrap();
+        let header: Vec<u8> = vec![0u8; 16]; // 16 bytes of header
+        let data: Vec<f64> = vec![1.0, 2.0, 3.0, 4.0];
+        let data_bytes: &[u8] = bytemuck::cast_slice(&data);
+        temp_file.write_all(&header).unwrap();
+        temp_file.write_all(data_bytes).unwrap();
+        temp_file.flush().unwrap();
+
+        // Memory map with offset
+        let mmap_arr = memmap::<f64>(
+            temp_file.path().to_str().unwrap(),
+            None,
+            MmapMode::Read,
+            None,
+            16,
+        )
+        .unwrap();
+
+        let arr = mmap_arr.array();
+        assert_eq!(arr.size(), 4);
+    }
+
+    #[test]
+    fn test_getbuffer() {
+        let arr = Array::from_vec(vec![1.0f64, 2.0, 3.0, 4.0]);
+
+        // Get entire buffer
+        let buffer = getbuffer(&arr, 0, -1).unwrap();
+        assert_eq!(buffer.len(), 32); // 4 * 8 bytes for f64
+
+        // Get partial buffer
+        let buffer = getbuffer(&arr, 0, 16).unwrap();
+        assert_eq!(buffer.len(), 16); // 2 * 8 bytes
+
+        // Get buffer with offset
+        let buffer = getbuffer(&arr, 8, 8).unwrap();
+        assert_eq!(buffer.len(), 8); // 1 * 8 bytes
+    }
+
+    #[test]
+    fn test_getbuffer_info() {
+        let arr = Array::from_shape_vec(vec![2, 3], vec![1.0f64, 2.0, 3.0, 4.0, 5.0, 6.0]);
+
+        let info = getbuffer_info(&arr);
+        assert_eq!(info.ndim, 2);
+        assert_eq!(info.shape, vec![2, 3]);
+        assert_eq!(info.itemsize, 8); // f64
+        assert_eq!(info.size, 48); // 6 * 8 bytes
+        assert!(!info.readonly);
+    }
+
+    #[test]
+    fn test_frombuffer_basic() {
+        let data: Vec<f64> = vec![1.0, 2.0, 3.0, 4.0];
+        let data_bytes: &[u8] = bytemuck::cast_slice(&data);
+
+        let arr = frombuffer::<f64>(data_bytes, None, None, 0).unwrap();
+        assert_eq!(arr.size(), 4);
+        assert_eq!(arr.shape(), &[4]);
+    }
+
+    #[test]
+    fn test_frombuffer_with_offset() {
+        let data: Vec<f64> = vec![1.0, 2.0, 3.0, 4.0];
+        let data_bytes: &[u8] = bytemuck::cast_slice(&data);
+
+        // Skip first element (8 bytes for f64)
+        let arr = frombuffer::<f64>(data_bytes, None, None, 8).unwrap();
+        assert_eq!(arr.size(), 3);
+    }
+
+    #[test]
+    fn test_frombuffer_with_count() {
+        let data: Vec<f64> = vec![1.0, 2.0, 3.0, 4.0];
+        let data_bytes: &[u8] = bytemuck::cast_slice(&data);
+
+        // Only read 2 elements
+        let arr = frombuffer::<f64>(data_bytes, None, Some(2), 0).unwrap();
+        assert_eq!(arr.size(), 2);
     }
 }
