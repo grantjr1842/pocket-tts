@@ -479,18 +479,11 @@ macro_rules! array3 {
     };
 }
 
-// NumPy-compatible submodule structure
-pub mod emath;
-pub mod exceptions;
-pub mod ctypeslib;
+// Centralized export registry for NumPy API
+pub mod exports;
 
-// Re-export submodules at root level (NumPy compatibility)
-pub use ma::{
-    all as ma_all, allequal as ma_allequal, any as ma_any, append as ma_append,
-    average as ma_average, MaskedArray, NOMASK,
-};
-
-pub use fft::{
-    fft, ifft, fftshift, ifftshift, fftfreq, rfftfreq, rfft, irfft,
-    fftn, ifftn, rfftn, irfftn, fft2, ifft2, rfft2, irfft2,
+// Convenience re-export of all API modules
+pub use exports::{
+    array_api, math_api, stats_api, linalg_api, random_api, fft_api,
+    comparison_api, setops_api, bitwise_api, constants_api, testing_api, ma_api,
 };
