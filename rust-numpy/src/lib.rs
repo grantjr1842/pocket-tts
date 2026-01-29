@@ -117,7 +117,6 @@ pub mod array;
 pub mod array_creation;
 pub mod array_extra;
 pub mod array_manipulation;
-pub mod array_methods;
 pub mod bitwise;
 pub mod broadcasting;
 pub mod char;
@@ -136,12 +135,11 @@ pub mod error;
 pub mod fft;
 #[cfg(test)]
 mod fft_tests;
-pub mod io;
 pub mod iterator;
 pub mod kernel_api;
+pub mod kernels;
 pub mod kernel_impls;
 pub mod kernel_registry;
-pub mod kernels;
 pub mod layout_optimizer;
 pub mod linalg;
 pub mod math_ufuncs;
@@ -168,19 +166,9 @@ pub mod strided_executor;
 pub mod strides;
 pub mod type_promotion;
 pub mod ufunc;
-pub mod ufunc_ops;
 pub mod utils;
-pub mod window;
-
-// Dynamic kernel registry
+pub mod ufunc_ops;
 pub mod dynamic_kernel_registry;
-
-// Additional type modules for NumPy compatibility
-pub mod bytes;
-pub mod object;
-pub mod scalar;
-pub mod string;
-pub mod void;
 
 #[cfg(test)]
 mod kernel_tests;
@@ -190,6 +178,7 @@ pub use crate::array_extra::exports::*;
 pub use crate::comparison_ufuncs::exports::*;
 pub use crate::fft::*;
 pub use crate::matrix::exports::*;
+pub use crate::modules::ma::exports::*;
 pub use crate::modules::testing::exports::*;
 pub use crate::typing::{
     dtype,
@@ -235,11 +224,7 @@ pub use crate::typing::{
     // Void,
 };
 pub use array::Array;
-pub use array_manipulation::{
-    append, apply_along_axis, apply_over_axes, atleast_1d, atleast_2d, atleast_3d, delete,
-    expand_dims, eye, flatten, flip, insert, moveaxis, pad, ravel, repeat, reshape, roll, rollaxis,
-    rot90, squeeze, swapaxes, tile, Vectorize,
-};
+pub use array_manipulation::{apply_along_axis, apply_over_axes, expand_dims, Vectorize};
 pub use bitwise::*;
 pub use char::exports::{
     add as char_add, capitalize, center, count as char_count, endswith, expandtabs, find,
@@ -248,14 +233,9 @@ pub use char::exports::{
     strip, upper, zfill,
 };
 pub use dist::{cdist, pdist, squareform};
-pub use dtype::{
-    Casting, Dtype, DtypeKind, float32, float64, int16, int32, int64, int8, intp, uint16, uint32,
-    uint64, uint8, uintp,
-};
+pub use dtype::{Casting, Dtype, DtypeKind};
 pub use error::{NumPyError, Result};
-pub use linalg::{
-    cross, det, dot, eig, inner, kron, matrix_power, norm, outer, qr, svd, trace, LinAlgError,
-};
+pub use linalg::norm;
 pub use performance_metrics::{
     Bottleneck, BottleneckType, MemoryTracker, OptimizationRecommendation, PerformanceMetrics,
     PerformanceReport,
@@ -270,24 +250,17 @@ pub use reductions::{
 };
 pub use set_ops::exports::*;
 pub use statistics::{
-    amax, amin, average, bincount, corrcoef, cov, digitize, histogram, histogram2d, histogramdd,
-    max_reduce, median, min_reduce, nanmax, nanmean, nanmedian, nanmin, nanpercentile, nanprod,
-    nanquantile, nanstd, nansum, nanvar, percentile, ptp, quantile, std, var,
+    average, bincount, corrcoef, cov, digitize, histogram, histogram2d, histogramdd, median,
+    nanmax, nanmean, nanmedian, nanmin, nanpercentile, nanprod, nanquantile, nanstd, nansum,
+    nanvar, percentile, ptp, quantile, std, var,
 };
-pub use random::{
-    default_rng, default_rng_with_seed, beta, binomial, chisquare, dirichlet, exponential,
-    gamma, gumbel, geometric, legacy_rng, lognormal, multinomial, normal,
-    randint, random, standard_normal, uniform,
-};
-pub use random::bit_generator::{BitGenerator, MT19937, PCG64};
-pub use random::generator::Generator;
 pub use type_promotion::{promote_types, TypePromotionRules};
 // Complex utility functions
-pub use dynamic_kernel_registry::{DynamicKernelRegistry, RegistryStats};
 pub use kernel_api::{
     execute_binary, execute_unary, init_kernel_registry, register_binary_kernel,
     register_unary_kernel,
 };
+pub use dynamic_kernel_registry::{DynamicKernelRegistry, RegistryStats};
 pub use kernel_registry::Kernel;
 pub use kernels::UfuncPerformanceHint as PerformanceHint;
 pub use math_ufuncs::{
@@ -295,13 +268,6 @@ pub use math_ufuncs::{
     absolute,
     acos,
     acosh,
-    arccos,
-    arccosh,
-    arcsin,
-    arcsinh,
-    arctan,
-    arctan2,
-    arctanh,
     angle,
     angle32,
     asin,
@@ -313,50 +279,17 @@ pub use math_ufuncs::{
     conj32,
     conjugate,
     conjugate32,
-    convolve,
     copysign,
-    correlate,
-    cos,
-    cosh,
-    degrees,
-    exp,
-    exp2,
-    expm1,
     fabs,
-    fix,
-    floor,
-    heaviside,
-    hypot,
-    i0,
     imag,
     imag32,
-    isfinite,
-    isinf,
-    isnan,
-    isneginf,
-    isposinf,
-    log,
-    log10,
-    log1p,
-    log2,
-    logaddexp,
-    logaddexp2,
-    radians,
     real,
     real32,
     real_if_close,
     real_if_close32,
-    rint,
-    round_,
+    // Sign and absolute value functions
     sign,
     signbit,
-    sin,
-    sinc,
-    sinh,
-    tan,
-    tanh,
-    trunc,
-    unwrap,
 };
 pub use ufunc_ops::UfuncEngine;
 // Advanced ufunc features
@@ -383,23 +316,34 @@ pub use array_creation::{
     ascontiguousarray, asfortranarray, asmatrix, copy, copyto,
 };
 
-// Reduction functions (merged into main statistics import above)
+// Reduction functions
+pub use statistics::{amax, amin, max_reduce, min_reduce};
 
 // Utility functions
 pub use utils::{
     base_repr, binary_repr, bitwise_count, bitwise_invert, bitwise_left_shift, bitwise_right_shift,
-    bmat, bool, byte, bytes_, can_cast, character, common_type, double, errstate, finfo, flexible,
-    get_include, get_printoptions, getbufsize, geterr, geterrcall, half, iinfo, inexact, info,
-    iscomplex, iscomplexobj, isdtype, isfortran, isnat, isreal, isrealobj, isscalar, issubdtype,
-    iterable, may_share_memory, min_scalar_type, mintypecode, promote_types as utils_promote_types,
-    result_type, set_printoptions, setbufsize, seterr, seterrcall, shares_memory, show_config,
-    show_runtime, single, test, typename, version,
+    bmat, bool, bool_, byte, bytes_, can_cast, character, common_type, complex128, complex64,
+    complexfloating, double, errstate, finfo, flexible, floating, generic, get_include,
+    get_printoptions, getbufsize, geterr, geterrcall, half, iinfo, inexact, info, int16, int32,
+    int64, int8, integer, iscomplex, iscomplexobj, isdtype, isfortran, isnat, isreal, isrealobj,
+    isscalar, issubdtype, iterable, may_share_memory, min_scalar_type, mintypecode, object_,
+    promote_types as utils_promote_types, result_type, set_printoptions, setbufsize, seterr,
+    seterrcall, shares_memory, show_config, show_runtime, signedinteger, single, str_, test,
+    typename, uint16, uint32, uint64, uint8, unsignedinteger, version, void,
 };
 
 // Typing and annotations
 pub mod typing;
 pub use typing::{
-    nbit_128, nbit_16, nbit_256, nbit_32, nbit_64, nbit_8, NBitBase, SignedInt, UnsignedInt,
+    nbit_128,
+    nbit_16,
+    nbit_256,
+    nbit_32,
+    nbit_64,
+    nbit_8,
+    NBitBase,
+    SignedInt,
+    UnsignedInt,
 };
 
 /// Version information
