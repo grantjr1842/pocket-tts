@@ -281,6 +281,7 @@ pub use random::{
 };
 pub use random::bit_generator::{BitGenerator, MT19937, PCG64};
 pub use random::generator::Generator;
+pub use random::seed_sequence::{spawn_sequences, SeedSequence};
 pub use type_promotion::{promote_types, TypePromotionRules};
 // Complex utility functions
 pub use dynamic_kernel_registry::{DynamicKernelRegistry, RegistryStats};

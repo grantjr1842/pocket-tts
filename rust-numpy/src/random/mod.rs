@@ -13,6 +13,7 @@
 pub mod bit_generator;
 pub mod generator;
 pub mod random_state;
+pub mod seed_sequence;
 
 use crate::array::Array;
 use crate::dtype::Dtype;
@@ -20,6 +21,7 @@ use crate::error::NumPyError;
 use num_traits::NumCast;
 use rand_distr::uniform::SampleUniform;
 pub use random_state::RandomState;
+pub use seed_sequence::{spawn_sequences, SeedSequence};
 use std::cell::RefCell;
 
 // Thread-local default RNG for modern API
@@ -487,6 +489,7 @@ pub mod modern {
     pub use super::bit_generator::{BitGenerator, PCG64};
     pub use super::generator::Generator;
     pub use super::random_state::RandomState;
+    pub use super::seed_sequence::{spawn_sequences, SeedSequence};
     pub use super::{default_rng, default_rng_with_seed};
 }
 
