@@ -221,11 +221,16 @@ pub use crate::typing::{
     NDArray,
     // Number,
     // Object,
+    // Protocol traits for duck-typing
+    protocol,
     // Scalar,
     // Type aliases
     ShapeLike,
     // String_,
+    SupportsArray,
+    SupportsDType,
     SupportsIndex,
+    SupportsShape,
     ToDtype,
     UInt16Bit,
     UInt32Bit,
