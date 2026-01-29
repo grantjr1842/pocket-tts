@@ -75,14 +75,21 @@ impl StridedReductionExecutor {
     ) -> Result<Array<R>>
     where
         T: Clone + 'static,
-        R: Clone + 'static,
+        R: Clone + Default + 'static,
         F: Fn(R, T) -> R,
     {
         // Basic implementation - would be optimized with actual strided execution
         match axis {
             Some(axis) => {
                 if axis >= input.ndim() {
-                    return Err(NumPyError::axis_out_of_bounds(axis, input.ndim()));
+                    return Err(NumPyError::value_error(
+                        format!(
+                            "Axis {} out of bounds for array of dimension {}",
+                            axis,
+                            input.ndim()
+                        ),
+                        "",
+                    ));
                 }
                 // Simplified reduction along axis
                 let mut result = identity;
@@ -91,7 +98,7 @@ impl StridedReductionExecutor {
                         result = operation(result, val.clone());
                     }
                 }
-                Ok(Array::from_vec(vec![result], vec![]))
+                Ok(Array::from_vec(vec![result]))
             }
             None => {
                 // Global reduction
@@ -101,7 +108,7 @@ impl StridedReductionExecutor {
                         result = operation(result, val.clone());
                     }
                 }
-                Ok(Array::from_vec(vec![result], vec![]))
+                Ok(Array::from_shape_vec(vec![], vec![result]))
             }
         }
     }
@@ -130,22 +137,22 @@ mod tests {
 
     #[test]
     fn test_strided_binary_executor() {
-        let lhs = Array::from_vec(vec![1, 2, 3], vec![3]);
-        let rhs = Array::from_vec(vec![4, 5, 6], vec![3]);
-        let mut output = Array::from_vec(vec![0; 3], vec![3]);
+        let lhs = Array::from_data(vec![1, 2, 3], vec![3]);
+        let rhs = Array::from_data(vec![4, 5, 6], vec![3]);
+        let mut output = Array::from_data(vec![0; 3], vec![3]);
 
         let result = StridedBinaryExecutor::execute(&lhs, &rhs, &mut output, |a, b| a + b);
 
         assert!(result.is_ok());
-        assert_eq!(output.get(0), Some(&7));
+        assert_eq!(output.get(0), Some(&5));
         assert_eq!(output.get(1), Some(&7));
         assert_eq!(output.get(2), Some(&9));
     }
 
     #[test]
     fn test_strided_unary_executor() {
-        let input = Array::from_vec(vec![1, 2, 3], vec![3]);
-        let mut output = Array::from_vec(vec![0; 3], vec![3]);
+        let input = Array::from_data(vec![1, 2, 3], vec![3]);
+        let mut output = Array::from_data(vec![0; 3], vec![3]);
 
         let result = StridedUnaryExecutor::execute(&input, &mut output, |x| x * 2);
 
@@ -157,7 +164,7 @@ mod tests {
 
     #[test]
     fn test_strided_reduction_executor() {
-        let input = Array::from_vec(vec![1, 2, 3, 4], vec![2, 2]);
+        let input = Array::from_data(vec![1, 2, 3, 4], vec![2, 2]);
 
         let result = StridedReductionExecutor::execute(&input, None, |acc, val| acc + val, 0i32);
 

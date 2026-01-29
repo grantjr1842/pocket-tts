@@ -37,8 +37,8 @@ fn test_conj() {
 
     // Complex array
     let c1 = Complex64::new(1.0, 2.0);
-    let cArray = Array::from_vec(vec![c1]);
-    let conj = cArray.conj().unwrap();
+    let c_array = Array::from_vec(vec![c1]);
+    let conj = c_array.conj().unwrap();
 
     let res = conj.get(0).unwrap();
     assert_eq!(res.re, 1.0);

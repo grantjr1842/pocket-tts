@@ -3,9 +3,11 @@
 //! This file shows how to use the NDArray, ArrayLike, and DtypeLike
 //! type annotations for better type safety and IDE support.
 
-use rust_numpy::error::NumPyError;
-use rust_numpy::prelude::*;
-use rust_numpy::typing::prelude::*;
+use numpy::array;
+use numpy::error::NumPyError;
+use numpy::prelude::*;
+use numpy::typing::prelude::*;
+use numpy::Array;
 
 /// Example function using type annotations for arrays
 fn process_numeric_data(

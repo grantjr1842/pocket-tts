@@ -122,6 +122,21 @@ pub fn lstrip(a: &crate::Array<String>) -> Result<crate::Array<String>, NumPyErr
     Ok(crate::Array::from_vec(result))
 }
 
+pub fn strip_chars(
+    a: &crate::Array<String>,
+    chars: &str,
+) -> Result<crate::Array<String>, NumPyError> {
+    let mut result = Vec::with_capacity(a.size());
+    for idx in 0..a.size() {
+        if let Some(s) = get_string(a, idx) {
+            result.push(s.trim_matches(|c| chars.contains(c)).to_string());
+        } else {
+            return Err(NumPyError::dtype_error("Not a string array"));
+        }
+    }
+    Ok(crate::Array::from_vec(result))
+}
+
 pub fn rstrip(a: &crate::Array<String>) -> Result<crate::Array<String>, NumPyError> {
     let mut result = Vec::with_capacity(a.size());
 
@@ -959,12 +974,111 @@ pub fn mod_impl(
     Ok(crate::Array::from_vec(result))
 }
 
+/// Encode strings to bytes using specified encoding
+pub fn encode(
+    a: &crate::Array<String>,
+    encoding: &str,
+) -> Result<crate::Array<Vec<u8>>, NumPyError> {
+    let mut result = Vec::with_capacity(a.size());
+
+    for idx in 0..a.size() {
+        if let Some(s) = get_string(a, idx) {
+            match s.encode_bytes(encoding) {
+                Ok(encoded) => result.push(encoded),
+                Err(_) => {
+                    return Err(NumPyError::invalid_operation(format!(
+                        "Failed to encode string with encoding: {}",
+                        encoding
+                    )))
+                }
+            }
+        } else {
+            return Err(NumPyError::dtype_error("Not a string array"));
+        }
+    }
+
+    Ok(crate::Array::from_vec(result))
+}
+
+/// Decode bytes to strings using specified encoding
+pub fn decode(
+    a: &crate::Array<Vec<u8>>,
+    encoding: &str,
+) -> Result<crate::Array<String>, NumPyError> {
+    let mut result = Vec::with_capacity(a.size());
+
+    for idx in 0..a.size() {
+        if let Some(bytes) = a.get(idx) {
+            match std::str::from_utf8(bytes) {
+                Ok(s) => result.push(s.to_string()),
+                Err(_) => {
+                    // Try decoding with the specified encoding
+                    match encoding {
+                        "utf-8" | "utf8" => {
+                            return Err(NumPyError::invalid_operation("Invalid UTF-8 sequence"))
+                        }
+                        "ascii" => {
+                            // Try ASCII decoding
+                            if bytes.iter().all(|&b| b.is_ascii()) {
+                                result.push(bytes.iter().map(|&b| b as char).collect());
+                            } else {
+                                return Err(NumPyError::invalid_operation(
+                                    "Cannot decode non-ASCII bytes with ASCII encoding",
+                                ));
+                            }
+                        }
+                        _ => {
+                            // For other encodings, use lossy conversion
+                            result.push(String::from_utf8_lossy(bytes).into_owned());
+                        }
+                    }
+                }
+            }
+        } else {
+            return Err(NumPyError::dtype_error("Not a byte array"));
+        }
+    }
+
+    Ok(crate::Array::from_vec(result))
+}
+
+/// Helper trait for encoding strings to bytes
+trait EncodeBytes {
+    fn encode_bytes(&self, encoding: &str) -> Result<Vec<u8>, ()>;
+}
+
+impl EncodeBytes for str {
+    fn encode_bytes(&self, encoding: &str) -> Result<Vec<u8>, ()> {
+        match encoding.to_lowercase().as_str() {
+            "utf-8" | "utf8" => Ok(self.as_bytes().to_vec()),
+            "ascii" => {
+                if self.is_ascii() {
+                    Ok(self.as_bytes().to_vec())
+                } else {
+                    Err(())
+                }
+            }
+            "latin-1" | "latin1" | "iso-8859-1" => {
+                let mut bytes = Vec::with_capacity(self.len());
+                for c in self.chars() {
+                    if c as u32 > 255 {
+                        return Err(());
+                    }
+                    bytes.push(c as u8);
+                }
+                Ok(bytes)
+            }
+            _ => Err(()),
+        }
+    }
+}
+
 pub mod exports {
     pub use super::{
-        add, capitalize, center, count, endswith, equal, expandtabs, find, greater, greater_equal,
-        index, isalnum, isalpha, isdecimal, isdigit, islower, isnumeric, isspace, istitle, isupper,
-        join, less, less_equal, ljust, lower, lstrip, mod_impl, multiply, not_equal, partition,
-        replace, rfind, rindex, rjust, rpartition, rsplit, rstrip, split, splitlines, startswith,
-        str_len, strip, swapcase, title, translate, upper, zfill,
+        add, capitalize, center, count, decode, encode, endswith, equal, expandtabs, find, greater,
+        greater_equal, index, isalnum, isalpha, isdecimal, isdigit, islower, isnumeric, isspace,
+        istitle, isupper, join, less, less_equal, ljust, lower, lstrip, mod_impl, multiply,
+        not_equal, partition, replace, rfind, rindex, rjust, rpartition, rsplit, rstrip, split,
+        splitlines, startswith, str_len, strip, swapcase, title, translate, upper, zfill,
     };
 }
