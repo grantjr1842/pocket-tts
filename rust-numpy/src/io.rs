@@ -1113,6 +1113,50 @@ fn parse_npy_shape(header: &str) -> Result<Vec<usize>> {
     dimensions
 }
 
+/// Write array to binary file
+pub fn tofile<T>(arr: &Array<T>, file: &str, sep: &str, format_: &str) -> Result<()>
+where
+    T: Clone + Default + Pod + std::fmt::Display + 'static,
+{
+    use std::fs::File;
+    use std::io::Write;
+
+    let mut output_file = File::create(file)
+        .map_err(|e| NumPyError::io_error(format!("Failed to create file: {}", e)))?;
+
+    if sep.is_empty() {
+        // Binary format
+        let bytes = unsafe {
+            std::slice::from_raw_parts(
+                arr.as_ptr() as *const u8,
+                arr.len() * std::mem::size_of::<T>(),
+            )
+        };
+        output_file
+            .write_all(bytes)
+            .map_err(|e| NumPyError::io_error(format!("Failed to write: {}", e)))?;
+    } else {
+        // Text format with separator
+        for (i, item) in arr.iter().enumerate() {
+            if i > 0 {
+                output_file
+                    .write_all(sep.as_bytes())
+                    .map_err(|e| NumPyError::io_error(format!("Failed to write separator: {}", e)))?;
+            }
+            if format_.is_empty() || format_ == "%s" {
+                write!(output_file, "{}", item)
+                    .map_err(|e| NumPyError::io_error(format!("Failed to write: {}", e)))?;
+            } else {
+                // Handle format string (simplified)
+                write!(output_file, "{}", item)
+                    .map_err(|e| NumPyError::io_error(format!("Failed to write: {}", e)))?;
+            }
+        }
+    }
+
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
