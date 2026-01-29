@@ -90,7 +90,7 @@ impl<T> Array<T> {
 
     /// Get size of each element in bytes
     pub fn itemsize(&self) -> usize {
-        self.dtype.size()
+        self.dtype.itemsize()
     }
 
     /// Get total number of bytes consumed by the array

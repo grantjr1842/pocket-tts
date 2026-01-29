@@ -1209,14 +1209,13 @@ pub fn compress<T>(condition: &Array<bool>, a: &Array<T>, axis: Option<isize>) -
 
 pub mod exports {
     pub use super::{
-        all, all, allequal, allequal, any, any, append, append, argmax, argmin, argsort, array,
-        array, average, average, compress, concatenate, concatenate, copy, copy, count, count,
-        cumprod, cumsum, empty, empty, filled, filled, full, full, full_like, full_like, getdata,
-        getdata, getmask, getmaskarray, harden_mask, is_masked_array, is_masked_array_type,
-        isclose, isnan, masked_array, masked_equal, masked_greater, masked_greater_equal,
-        masked_inside, masked_less, masked_less_equal, masked_not_equal, masked_object,
-        masked_outside, masked_values, masked_where, median, ones, place, ptp, put, reshape,
-        resize, set_fill_value, shrink_mask, swapaxes, take, transpose, zeros, MaskedArray,
+        allequal, all, any, append, argmax, argmin, argsort, array, average, compress, concatenate,
+        copy, count, cumprod, cumsum, empty, filled, full, full_like, getdata, getmask, getmaskarray,
+        harden_mask, isclose, is_masked_array, is_masked_array_type, isnan, masked_array,
+        masked_equal, masked_greater, masked_greater_equal, masked_inside, masked_less,
+        masked_less_equal, masked_not_equal, masked_object, masked_outside, masked_values,
+        masked_where, median, ones, place, ptp, put, reshape, resize, set_fill_value, shrink_mask,
+        swapaxes, take, transpose, zeros, MaskedArray, NOMASK,
     };
 }
 

@@ -111,7 +111,9 @@
 #![allow(clippy::iter_without_into_iter)] // 1 warning - iter without IntoIterator (into_iter_without_iter was wrong)
 #![allow(clippy::comparison_chain)] // 1 warning - comparison chain pattern
 
+#[doc(hidden)]
 pub mod advanced_broadcast;
+#[doc(hidden)]
 pub mod advanced_reductions;
 pub mod array;
 pub mod array_creation;
@@ -124,8 +126,10 @@ pub mod char;
 #[cfg(test)]
 mod char_tests;
 pub mod comparison_ufuncs;
+#[doc(hidden)]
 pub mod complex_simd;
 pub mod constants;
+#[doc(hidden)]
 pub mod cpu_features;
 pub mod datetime;
 pub mod dist;
@@ -138,32 +142,45 @@ pub mod fft;
 mod fft_tests;
 pub mod io;
 pub mod iterator;
+#[doc(hidden)]
 pub mod kernel_api;
+#[doc(hidden)]
 pub mod kernel_impls;
+#[doc(hidden)]
 pub mod kernel_registry;
 pub mod kernels;
+#[doc(hidden)]
 pub mod layout_optimizer;
 pub mod linalg;
 pub mod math_ufuncs;
 pub mod matrix;
 pub mod memory;
 pub mod modules;
+#[doc(hidden)]
 pub mod parallel;
+#[doc(hidden)]
 pub mod parallel_broadcasting;
+#[doc(hidden)]
 pub mod parallel_executor;
+#[doc(hidden)]
 pub mod parallel_ops;
+#[doc(hidden)]
 pub mod performance_metrics;
 pub mod polynomial;
+#[doc(hidden)]
 pub mod profiler;
 pub mod random;
 pub mod rec;
 pub mod reductions;
 pub mod set_ops;
+#[doc(hidden)]
 pub mod simd;
+#[doc(hidden)]
 pub mod simd_ops;
 pub mod slicing;
 pub mod sorting;
 pub mod statistics;
+#[doc(hidden)]
 pub mod strided_executor;
 pub mod strides;
 pub mod type_promotion;
@@ -171,6 +188,10 @@ pub mod ufunc;
 pub mod ufunc_ops;
 pub mod utils;
 pub mod window;
+
+// Dynamic kernel registry
+#[doc(hidden)]
+pub mod dynamic_kernel_registry;
 
 // Additional type modules for NumPy compatibility
 pub mod bytes;
@@ -187,7 +208,6 @@ pub use crate::array_extra::exports::*;
 pub use crate::comparison_ufuncs::exports::*;
 pub use crate::fft::*;
 pub use crate::matrix::exports::*;
-pub use crate::modules::ma::exports::*;
 pub use crate::modules::testing::exports::*;
 pub use crate::typing::{
     dtype,
@@ -246,9 +266,14 @@ pub use char::exports::{
     strip, upper, zfill,
 };
 pub use dist::{cdist, pdist, squareform};
-pub use dtype::{Casting, Dtype, DtypeKind};
+pub use dtype::{
+    Casting, Dtype, DtypeKind, float32, float64, int16, int32, int64, int8, intp, uint16, uint32,
+    uint64, uint8, uintp,
+};
 pub use error::{NumPyError, Result};
-pub use linalg::norm;
+pub use linalg::{
+    cross, det, dot, eig, inner, kron, matrix_power, norm, outer, qr, svd, trace, LinAlgError,
+};
 pub use performance_metrics::{
     Bottleneck, BottleneckType, MemoryTracker, OptimizationRecommendation, PerformanceMetrics,
     PerformanceReport,
@@ -263,10 +288,17 @@ pub use reductions::{
 };
 pub use set_ops::exports::*;
 pub use statistics::{
-    average, bincount, corrcoef, cov, digitize, histogram, histogram2d, histogramdd, median,
-    nanmax, nanmean, nanmedian, nanmin, nanpercentile, nanprod, nanquantile, nanstd, nansum,
-    nanvar, percentile, ptp, quantile, std, var,
+    amax, amin, average, bincount, corrcoef, cov, digitize, histogram, histogram2d, histogramdd,
+    max_reduce, median, min_reduce, nanmax, nanmean, nanmedian, nanmin, nanpercentile, nanprod,
+    nanquantile, nanstd, nansum, nanvar, percentile, ptp, quantile, std, var,
 };
+pub use random::{
+    default_rng, default_rng_with_seed, beta, binomial, chisquare, dirichlet, exponential,
+    gamma, gumbel, geometric, legacy_rng, lognormal, multinomial, normal,
+    randint, random, standard_normal, uniform,
+};
+pub use random::bit_generator::{BitGenerator, MT19937, PCG64};
+pub use random::generator::Generator;
 pub use type_promotion::{promote_types, TypePromotionRules};
 // Complex utility functions
 pub use dynamic_kernel_registry::{DynamicKernelRegistry, RegistryStats};
@@ -281,6 +313,13 @@ pub use math_ufuncs::{
     absolute,
     acos,
     acosh,
+    arccos,
+    arccosh,
+    arcsin,
+    arcsinh,
+    arctan,
+    arctan2,
+    arctanh,
     angle,
     angle32,
     asin,
@@ -292,17 +331,50 @@ pub use math_ufuncs::{
     conj32,
     conjugate,
     conjugate32,
+    convolve,
     copysign,
+    correlate,
+    cos,
+    cosh,
+    degrees,
+    exp,
+    exp2,
+    expm1,
     fabs,
+    fix,
+    floor,
+    heaviside,
+    hypot,
+    i0,
     imag,
     imag32,
+    isfinite,
+    isinf,
+    isnan,
+    isneginf,
+    isposinf,
+    log,
+    log10,
+    log1p,
+    log2,
+    logaddexp,
+    logaddexp2,
+    radians,
     real,
     real32,
     real_if_close,
     real_if_close32,
-    // Sign and absolute value functions
+    rint,
+    round_,
     sign,
     signbit,
+    sin,
+    sinc,
+    sinh,
+    tan,
+    tanh,
+    trunc,
+    unwrap,
 };
 pub use ufunc_ops::UfuncEngine;
 // Advanced ufunc features
@@ -329,8 +401,7 @@ pub use array_creation::{
     ascontiguousarray, asfortranarray, asmatrix, copy, copyto,
 };
 
-// Reduction functions
-pub use statistics::{amax, amin, max_reduce, min_reduce};
+// Reduction functions (merged into main statistics import above)
 
 // Utility functions
 pub use utils::{

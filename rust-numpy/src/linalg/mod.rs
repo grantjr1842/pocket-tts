@@ -136,7 +136,7 @@ impl LinalgScalar for Complex<f64> {
 pub use decompositions::*;
 pub use eigen::*;
 pub use einsum::{einsum, einsum_path};
-pub use norms::*;
+pub use norms::norm;
 pub use products::{
     cross, diagonal, dot, dot_nd, inner, kron, matmul, matrix_power, matrix_transpose, multi_dot,
     outer, tensordot, trace, vdot, vecdot,
