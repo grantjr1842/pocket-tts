@@ -111,9 +111,7 @@
 #![allow(clippy::iter_without_into_iter)] // 1 warning - iter without IntoIterator (into_iter_without_iter was wrong)
 #![allow(clippy::comparison_chain)] // 1 warning - comparison chain pattern
 
-#[doc(hidden)]
 pub mod advanced_broadcast;
-#[doc(hidden)]
 pub mod advanced_reductions;
 pub mod array;
 pub mod array_creation;
@@ -126,10 +124,8 @@ pub mod char;
 #[cfg(test)]
 mod char_tests;
 pub mod comparison_ufuncs;
-#[doc(hidden)]
 pub mod complex_simd;
 pub mod constants;
-#[doc(hidden)]
 pub mod cpu_features;
 pub mod datetime;
 pub mod dist;
@@ -142,45 +138,32 @@ pub mod fft;
 mod fft_tests;
 pub mod io;
 pub mod iterator;
-#[doc(hidden)]
 pub mod kernel_api;
-#[doc(hidden)]
 pub mod kernel_impls;
-#[doc(hidden)]
 pub mod kernel_registry;
 pub mod kernels;
-#[doc(hidden)]
 pub mod layout_optimizer;
 pub mod linalg;
 pub mod math_ufuncs;
 pub mod matrix;
 pub mod memory;
 pub mod modules;
-#[doc(hidden)]
 pub mod parallel;
-#[doc(hidden)]
 pub mod parallel_broadcasting;
-#[doc(hidden)]
 pub mod parallel_executor;
-#[doc(hidden)]
 pub mod parallel_ops;
-#[doc(hidden)]
 pub mod performance_metrics;
 pub mod polynomial;
-#[doc(hidden)]
 pub mod profiler;
 pub mod random;
 pub mod rec;
 pub mod reductions;
 pub mod set_ops;
-#[doc(hidden)]
 pub mod simd;
-#[doc(hidden)]
 pub mod simd_ops;
 pub mod slicing;
 pub mod sorting;
 pub mod statistics;
-#[doc(hidden)]
 pub mod strided_executor;
 pub mod strides;
 pub mod type_promotion;
@@ -190,7 +173,6 @@ pub mod utils;
 pub mod window;
 
 // Dynamic kernel registry
-#[doc(hidden)]
 pub mod dynamic_kernel_registry;
 
 // Additional type modules for NumPy compatibility
@@ -204,29 +186,11 @@ pub mod void;
 mod kernel_tests;
 
 // Re-export key types for convenience
-pub use crate::array_extra::exports::{
-    SplitArg, concatenate, stack, vstack, hstack, dstack, array_split, split, hsplit, vsplit,
-    dsplit, interp, clip, trim_zeros, ediff1d, diff, gradient, diagonal, diag, triu, tril,
-    column_stack, row_stack, block, put, putmask, place, put_along_axis, vander, choose,
-};
-pub use crate::comparison_ufuncs::exports::{
-    ComparisonUfunc, LogicalUnaryUfunc, ExtremaUfunc, ComparisonOps, LogicalOps, LogicalUnaryOps,
-    isclose, allclose, array_equal, array_equiv,
-};
-pub use crate::fft::{
-    FFTNorm, fft, ifft, fftshift, ifftshift, fftfreq, rfftfreq, rfft, irfft, fftn, ifftn,
-    rfftn, irfftn, fft2, ifft2, rfft2, irfft2, hfft, ihfft,
-};
-pub use crate::matrix::exports::{
-    Matrix,
-};
-pub use crate::modules::testing::exports::{
-    assert_array_equal, assert_equal, assert_array_almost_equal, assert_almost_equal,
-    assert_approx_equal, assert_allclose, assert_array_almost_nulp, assert_array_almost_equal_nulp,
-    assert_array_max_ulp, assert_array_less, assert_array_compare, assert_array_shape_equal,
-    assert_string_equal, assert_raises, assert_raises_regex, assert_warns, assert_no_warnings,
-    assert_no_gc_cycles,
-};
+pub use crate::array_extra::exports::*;
+pub use crate::comparison_ufuncs::exports::*;
+pub use crate::fft::*;
+pub use crate::matrix::exports::*;
+pub use crate::modules::testing::exports::*;
 pub use crate::typing::{
     dtype,
     // Prelude exports
@@ -276,11 +240,7 @@ pub use array_manipulation::{
     expand_dims, eye, flatten, flip, insert, moveaxis, pad, ravel, repeat, reshape, roll, rollaxis,
     rot90, squeeze, swapaxes, tile, Vectorize,
 };
-pub use bitwise::{
-    BitwiseOps, BitwiseBinaryUfunc, BitwiseUnaryUfunc, BitwiseShiftUfunc, EnhancedLogicalUfunc,
-    bitwise_and, bitwise_or, bitwise_xor, bitwise_not, invert, left_shift, right_shift,
-    logical_and, logical_or, logical_xor, logical_not, register_bitwise_ufuncs,
-};
+pub use bitwise::*;
 pub use char::exports::{
     add as char_add, capitalize, center, count as char_count, endswith, expandtabs, find,
     index as char_index, isalnum, isalpha, isdigit, isnumeric, isspace, join, lower, lstrip,
@@ -308,8 +268,6 @@ pub use rec::{array as rec_array, fromarrays, fromrecords, RecArray};
 pub use reductions::{
     all, all_bool, any, any_bool, argmax, argmin, cumprod, cumsum, max, mean, min, prod, sum,
 };
-pub use set_ops::exports::{
-    SetElement, UniqueResult, unique, in1d, intersect1d, union1d, setdiff1d, setxor1d, isin, SetOps,
 pub use set_ops::exports::*;
 pub use statistics::{
     amax, amin, average, bincount, corrcoef, cov, digitize, histogram, histogram2d, histogramdd,
@@ -457,11 +415,7 @@ pub type Int = i64;
 pub type Complex = num_complex::Complex<f64>;
 
 // Re-export common constants
-pub use constants::{
-    RoundingMode, ComparisonKind, ReductionMode, Order, SortKind, SearchMode, ClipMode,
-    DEFAULT_ALIGNMENT, MAX_DIMS, MAX_ELEMENTS, EPSILON, EPSILON_F32, MAX, MIN, MIN_POSITIVE,
-    E, INF, NAN, NEG_INF, PI, TAU, NEWAXIS,
-};
+pub use constants::*;
 /// Create array macro for convenient array creation
 #[macro_export]
 macro_rules! array {
@@ -524,3 +478,19 @@ macro_rules! array3 {
         }
     };
 }
+
+// NumPy-compatible submodule structure
+pub mod emath;
+pub mod exceptions;
+pub mod ctypeslib;
+
+// Re-export submodules at root level (NumPy compatibility)
+pub use ma::{
+    all as ma_all, allequal as ma_allequal, any as ma_any, append as ma_append,
+    average as ma_average, MaskedArray, NOMASK,
+};
+
+pub use fft::{
+    fft, ifft, fftshift, ifftshift, fftfreq, rfftfreq, rfft, irfft,
+    fftn, ifftn, rfftn, irfftn, fft2, ifft2, rfft2, irfft2,
+};
