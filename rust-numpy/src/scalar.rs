@@ -1,10 +1,9 @@
 // Scalar type definitions for NumPy compatibility
 
-use num_traits::Float;
 
 /// Generic scalar type (placeholder for Python object compatibility)
 #[derive(Debug, Clone)]
-pub struct Generic(pub Box<dyn std::any::Any>);
+pub struct Generic(pub std::sync::Arc<dyn std::any::Any + Send + Sync>);
 
 /// Complex floating point type
 pub type ComplexFloating = num_complex::Complex64;

@@ -1012,7 +1012,8 @@ pub use crate::math_ufuncs::around as round;
 pub mod exports {
     pub use super::{
         array_split, block, choose, column_stack, compress, concatenate, diag, diagonal, diff,
-        dsplit, dstack, ediff1d, gradient, hsplit, hstack, place, put, put_along_axis, putmask,
-        round, row_stack, split, stack, tril, triu, vander, vsplit, vstack,
+        dsplit, dstack, ediff1d, gradient, hsplit, hstack, place, put,
+        put_along_axis, putmask, round, row_stack, split, stack, trim_zeros,
+        tril, triu, vander, vsplit, vstack,
     };
 }

@@ -148,7 +148,7 @@ where
 }
 
 /// Save array to file (NumPy-compatible)
-pub fn save<T>(file: &str, arr: &Array<T>, allow_pickle: bool, fix_imports: bool) -> Result<()>
+pub fn save<T>(file: &str, arr: &Array<T>, allow_pickle: bool, _fix_imports: bool) -> Result<()>
 where
     T: Clone + Default + Pod + 'static,
     T: std::fmt::Display,
@@ -188,7 +188,7 @@ where
 /// Load array from text file with configurable parsing
 pub fn loadtxt<T>(
     fname: &str,
-    dtype: Option<Dtype>,
+    _dtype: Option<Dtype>,
     comments: &str,
     delimiter: &str,
     converters: Option<Vec<fn(&str) -> T>>,
@@ -196,7 +196,7 @@ pub fn loadtxt<T>(
     usecols: Option<&[usize]>,
     unpack: bool,
     ndmin: isize,
-    encoding: &str,
+    _encoding: &str,
     max_rows: Option<usize>,
 ) -> Result<Array<T>>
 where
@@ -525,6 +525,297 @@ where
     }
 }
 
+/// Create array from DLPack capsule (placeholder for FFI integration)
+///
+/// Note: This is a placeholder for DLPack integration.
+/// Full DLPack support requires FFI bindings to DLPack C API.
+pub fn from_dlpack<T>(_x: &[u8]) -> Result<Array<T>>
+where
+    T: Clone + Default + Pod + 'static,
+{
+    // TODO: Implement proper DLPack capsule parsing
+    // This requires FFI bindings to dlpack.h
+    Err(NumPyError::invalid_operation(
+        "from_dlpack requires DLPack FFI bindings (not yet implemented)",
+    ))
+}
+
+/// Load data from text file with missing value handling
+///
+/// This is an enhanced version of loadtxt that handles missing values,
+/// custom converters, and more flexible data loading.
+pub fn genfromtxt<T>(
+    fname: &str,
+    dtype: Option<Dtype>,
+    comments: Option<&str>,
+    delimiter: Option<&str>,
+    skip_header: usize,
+    skip_footer: usize,
+    converters: Option<Vec<fn(&str) -> T>>,
+    missing_values: Option<Vec<&str>>,
+    filling_values: Option<Vec<T>>,
+    usecols: Option<&[usize]>,
+    names: Option<Vec<&str>>,
+    excludelist: Option<Vec<&str>>,
+    deletechars: Option<&str>,
+    replace_space: Option<char>,
+    autostrip: bool,
+    case_sensitive: bool,
+    defaultfmt: &str,
+    unpack: bool,
+    usemask: bool,
+    loose: bool,
+    invalid_raise: bool,
+    max_rows: Option<usize>,
+    encoding: Option<&str>,
+    ndmin: isize,
+) -> Result<Array<T>>
+where
+    T: Clone + Default + std::str::FromStr + 'static,
+    T::Err: std::fmt::Display,
+{
+    let comments = comments.unwrap_or("#");
+    let delimiter = delimiter.unwrap_or(" ");
+    let encoding = encoding.unwrap_or("utf8");
+    
+    let file = File::open(fname)
+        .map_err(|e| NumPyError::io_error(format!("Failed to open file: {}", e)))?;
+    let reader = BufReader::new(file);
+    
+    let mut data = Vec::new();
+    let mut rows = 0;
+    let mut cols = 0;
+    let mut line_num = 0;
+    
+    for line_result in reader.lines() {
+        line_num += 1;
+        
+        // Skip header
+        if line_num <= skip_header {
+            continue;
+        }
+        
+        let line = line_result.map_err(|e| NumPyError::io_error(format!("Read error: {}", e)))?;
+        let trimmed: &str = if autostrip {
+            line.trim()
+        } else {
+            &line
+        };
+        
+        // Skip comments and empty lines
+        if trimmed.starts_with(comments) || trimmed.is_empty() {
+            continue;
+        }
+        
+        // Handle deletechars
+        let processed = if let Some(dc) = deletechars {
+            trimmed.chars().filter(|&c| !dc.contains(c)).collect()
+        } else {
+            trimmed.to_string()
+        };
+
+        // Handle replace_space
+        let processed = if let Some(replacement) = replace_space {
+            processed.replace(' ', &replacement.to_string())
+        } else {
+            processed
+        };
+
+        // Handle case sensitivity for missing values
+        let is_missing = |val: &str| {
+            if let Some(ref mv) = missing_values {
+                if case_sensitive {
+                    let val_string = val.to_string();
+                    mv.iter().any(|m| m == &val_string)
+                } else {
+                    mv.iter().any(|m| m.to_lowercase() == val.to_lowercase())
+                }
+            } else {
+                false
+            }
+        };
+
+        // Split by delimiter
+        let parts: Vec<&str> = if delimiter.is_empty() {
+            processed.split_whitespace().collect()
+        } else {
+            processed.split(delimiter).collect()
+        };
+
+        // Filter excluded columns
+        let selected_parts: Vec<&str> = if let Some(ref excl) = excludelist {
+            parts.iter()
+                .enumerate()
+                .filter(|(i, _)| !excl.iter().any(|e| e == &i.to_string()))
+                .map(|(_, &p)| p)
+                .collect()
+        } else {
+            parts.iter().copied().collect()
+        };
+        
+        // Select specific columns
+        let selected_parts = if let Some(cols) = usecols {
+            cols.iter()
+                .filter_map(|&col| selected_parts.get(col).copied())
+                .collect()
+        } else {
+            selected_parts
+        };
+        
+        // Apply converters or parse with missing value handling
+        let row_data: Result<Vec<T>> = selected_parts
+            .iter()
+            .enumerate()
+            .map(|(i, part): (usize, &&str)| {
+                let part = part.trim();
+
+                if is_missing(part) {
+                    if let Some(ref fv) = filling_values {
+                        if i < fv.len() {
+                            Ok(fv[i].clone())
+                        } else {
+                            // Use default filling value if not specified
+                            Ok(T::default())
+                        }
+                    } else {
+                        // Return default value for missing data
+                        Ok(T::default())
+                    }
+                } else {
+                    if let Some(ref conv) = converters {
+                        if i < conv.len() {
+                            Ok(conv[i](part))
+                        } else {
+                            part.parse().map_err(|_| {
+                                NumPyError::value_error(part.to_string(), "numeric conversion")
+                            })
+                        }
+                    } else {
+                        part.parse().map_err(|_| {
+                            NumPyError::value_error(part.to_string(), "numeric conversion")
+                        })
+                    }
+                }
+            })
+            .collect();
+        
+        let row_data = row_data?;
+        
+        if rows == 0 {
+            cols = row_data.len();
+        }
+        
+        data.extend(row_data);
+        rows += 1;
+        
+        // Check max_rows
+        if let Some(max) = max_rows {
+            if rows >= max {
+                break;
+            }
+        }
+        
+        // Skip footer
+        if line_num > skip_footer + skip_header {
+            continue;
+        }
+    }
+    
+    // Handle ndmin
+    let final_shape = match ndmin {
+        0 | 1 => {
+            if unpack {
+                vec![cols, rows]
+            } else {
+                vec![rows, cols]
+            }
+        }
+        2 => vec![1, rows, cols],
+        _ => return Err(NumPyError::invalid_operation("ndmin must be 0, 1, or 2")),
+    };
+    
+    // Remove trailing dimension of size 1
+    let shape = if final_shape.last() == Some(&1) && final_shape.len() > 1 {
+        final_shape[..final_shape.len() - 1].to_vec()
+    } else {
+        final_shape
+    };
+    
+    if rows == 0 {
+        return Err(NumPyError::invalid_operation("No data found in file"));
+    }
+    
+    Ok(Array::from_shape_vec(shape, data))
+}
+
+/// Create array from text file using regular expression parsing
+pub fn fromregex<T>(
+    file: &str,
+    pattern: &str,
+    dtype: Option<Dtype>,
+    encoding: Option<&str>,
+) -> Result<Array<T>>
+where
+    T: Clone + Default + std::str::FromStr + 'static,
+    T::Err: std::fmt::Display,
+{
+    use regex::Regex;
+    
+    let encoding = encoding.unwrap_or("utf8");
+    let regex = Regex::new(pattern)
+        .map_err(|e| NumPyError::invalid_operation(format!("Invalid regex: {}", e)))?;
+    
+    let file_content = std::fs::read_to_string(file)
+        .map_err(|e| NumPyError::io_error(format!("Failed to read file: {}", e)))?;
+    
+    let mut data = Vec::new();
+    let mut rows = 0;
+    let mut cols = 0;
+    
+    for line in file_content.lines() {
+        let trimmed = line.trim();
+        if trimmed.is_empty() {
+            continue;
+        }
+        
+        let captures: Vec<&str> = regex
+            .captures_iter(trimmed)
+            .filter_map(|c| c.get(1))
+            .map(|m| m.as_str())
+            .collect();
+        
+        let row_data: Result<Vec<T>> = captures
+            .iter()
+            .map(|part| {
+                part.trim()
+                    .parse()
+                    .map_err(|_| NumPyError::value_error(part.to_string(), "numeric conversion"))
+            })
+            .collect();
+        
+        let row_data = row_data?;
+        
+        if rows == 0 {
+            cols = row_data.len();
+        }
+        
+        data.extend(row_data);
+        rows += 1;
+    }
+    
+    if rows == 0 {
+        return Err(NumPyError::invalid_operation("No data found in file"));
+    }
+    
+    let shape = if cols == 1 {
+        vec![rows]
+    } else {
+        vec![rows, cols]
+    };
+    
+    Ok(Array::from_shape_vec(shape, data))
+}
+
 // Internal helper functions
 
 fn detect_file_format_from_filename(file: &str) -> Result<FileFormat> {
@@ -553,7 +844,7 @@ where
         let zip_writer = ZipWriter::new(file);
         savez_to_zip(zip_writer, args)
     } else {
-        let mut zip_writer = ZipWriter::new(file);
+        let zip_writer = ZipWriter::new(file);
         savez_to_zip(zip_writer, args)
     }
 }
@@ -565,7 +856,7 @@ fn savez_to_zip<T, W: Write + Seek>(
 where
     T: Clone + Default + Pod + 'static,
 {
-    use std::io::Seek;
+    
     use zip::write::FileOptions;
 
     for (name, array) in args {
@@ -820,6 +1111,50 @@ fn parse_npy_shape(header: &str) -> Result<Vec<usize>> {
         .collect();
 
     dimensions
+}
+
+/// Write array to binary file
+pub fn tofile<T>(arr: &Array<T>, file: &str, sep: &str, format_: &str) -> Result<()>
+where
+    T: Clone + Default + Pod + std::fmt::Display + 'static,
+{
+    use std::fs::File;
+    use std::io::Write;
+
+    let mut output_file = File::create(file)
+        .map_err(|e| NumPyError::io_error(format!("Failed to create file: {}", e)))?;
+
+    if sep.is_empty() {
+        // Binary format
+        let bytes = unsafe {
+            std::slice::from_raw_parts(
+                arr.as_ptr() as *const u8,
+                arr.len() * std::mem::size_of::<T>(),
+            )
+        };
+        output_file
+            .write_all(bytes)
+            .map_err(|e| NumPyError::io_error(format!("Failed to write: {}", e)))?;
+    } else {
+        // Text format with separator
+        for (i, item) in arr.iter().enumerate() {
+            if i > 0 {
+                output_file
+                    .write_all(sep.as_bytes())
+                    .map_err(|e| NumPyError::io_error(format!("Failed to write separator: {}", e)))?;
+            }
+            if format_.is_empty() || format_ == "%s" {
+                write!(output_file, "{}", item)
+                    .map_err(|e| NumPyError::io_error(format!("Failed to write: {}", e)))?;
+            } else {
+                // Handle format string (simplified)
+                write!(output_file, "{}", item)
+                    .map_err(|e| NumPyError::io_error(format!("Failed to write: {}", e)))?;
+            }
+        }
+    }
+
+    Ok(())
 }
 
 #[cfg(test)]

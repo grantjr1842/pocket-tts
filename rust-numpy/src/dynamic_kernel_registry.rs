@@ -6,7 +6,7 @@
 use crate::array::Array;
 use crate::dtype::{Dtype, DtypeKind};
 use crate::error::{NumPyError, Result};
-use crate::ufunc::{ArrayView, ArrayViewMut, Ufunc};
+use crate::ufunc::{ArrayView, ArrayViewMut};
 use std::collections::HashMap;
 use std::sync::{Arc, RwLock};
 
@@ -128,17 +128,14 @@ impl KernelEntry {
 pub struct DynamicKernelRegistry {
     /// Map from ufunc name to list of kernel entries
     kernels: HashMap<String, Vec<KernelEntry>>,
-    /// Global registry instance
-    instance: Arc<RwLock<Self>>,
 }
 
 impl DynamicKernelRegistry {
     /// Create new dynamic registry instance
     pub fn new() -> Arc<RwLock<Self>> {
-        let registry = Self {
+        Arc::new(RwLock::new(Self {
             kernels: HashMap::new(),
-        };
-        Arc::new(RwLock::new(registry))
+        }))
     }
 
     /// Get global registry instance
@@ -256,8 +253,8 @@ pub fn register_kernel(
     input_dtypes: Vec<Dtype>,
 ) -> Result<()> {
     let registry = DynamicKernelRegistry::instance();
-    let mut registry = registry.write().map_err(|_| {
-        NumPyError::InternalError("Failed to acquire write lock for kernel registry".to_string())
+    let mut registry = registry.write().map_err(|_| NumPyError::InternalError {
+        message: "Failed to acquire write lock for kernel registry".to_string(),
     })?;
 
     registry.register_kernel(ufunc_name, kernel, input_dtypes)

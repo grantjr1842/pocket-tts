@@ -26,7 +26,7 @@ impl FFTNorm {
     }
 
     /// Get the forward normalization scale factor for this mode
-    fn forward_scale(&self, n: usize) -> f64 {
+    pub(crate) fn forward_scale(&self, n: usize) -> f64 {
         match self {
             FFTNorm::Backward => 1.0,
             FFTNorm::Ortho => (n as f64).sqrt(),
@@ -35,7 +35,7 @@ impl FFTNorm {
     }
 
     /// Get the inverse normalization scale factor for this mode
-    fn inverse_scale(&self, n: usize) -> f64 {
+    pub(crate) fn inverse_scale(&self, n: usize) -> f64 {
         match self {
             FFTNorm::Backward => n as f64,
             FFTNorm::Ortho => (n as f64).sqrt(),
@@ -200,6 +200,22 @@ fn normalize_axis(axis: isize, ndim: usize) -> Result<usize> {
     }
 }
 
+fn validate_axes(ndim: usize, axes: &[usize]) -> Result<()> {
+    let mut seen = std::collections::HashSet::new();
+    for &ax in axes {
+        if ax >= ndim {
+            return Err(NumPyError::invalid_value(format!(
+                "axis {} is out of bounds for array of dimension {}",
+                ax, ndim
+            )));
+        }
+        if !seen.insert(ax) {
+            return Err(NumPyError::invalid_value(format!("duplicate axis {}", ax)));
+        }
+    }
+    Ok(())
+}
+
 /// Compute the 1-dimensional discrete Fourier Transform for real input.
 pub fn rfft<T>(
     input: &Array<T>,
@@ -262,6 +278,7 @@ where
         Some(a) => a.to_vec(),
         None => (0..ndim).collect(),
     };
+    validate_axes(ndim, &axes)?;
     let s = match s {
         Some(sv) => sv.to_vec(),
         None => axes.iter().map(|&ax| input.shape()[ax]).collect(),
@@ -478,6 +495,7 @@ where
         Some(a) => a.to_vec(),
         None => (0..ndim).collect(),
     };
+    validate_axes(ndim, &axes)?;
     let s = match s {
         Some(sv) => sv.to_vec(),
         None => axes.iter().map(|&ax| input.shape()[ax]).collect(),
@@ -509,8 +527,20 @@ where
         Some(a) => a.to_vec(),
         None => (0..ndim).collect(),
     };
+    validate_axes(ndim, &axes)?;
 
     // For irfft, last axis 'n' defaults to 2*(m-1)
+    if axes.is_empty() {
+        let casting = crate::dtype::Casting::Safe;
+        let data: Vec<f64> = input
+            .iter()
+            .map(|x| {
+                let c: Complex64 = x.clone().into();
+                c.re
+            })
+            .collect();
+        return Ok(Array::from_shape_vec(input.shape().to_vec(), data));
+    }
     let m_last = input.shape()[*axes.last().unwrap()];
     let s = match s {
         Some(sv) => sv.to_vec(),
@@ -699,7 +729,12 @@ where
     T: Clone + Into<Complex64> + Default + 'static,
 {
     let axes = match axes {
-        Some(a) => a.to_vec(),
+        Some(a) => {
+            if a.len() != 2 {
+                return Err(NumPyError::invalid_value("fft2 requires exactly 2 axes"));
+            }
+            a.to_vec()
+        }
         None => vec![input.ndim() - 2, input.ndim() - 1],
     };
     fftn(input, s, Some(&axes), norm)
@@ -719,7 +754,12 @@ where
     T: Clone + Into<Complex64> + Default + 'static,
 {
     let axes = match axes {
-        Some(a) => a.to_vec(),
+        Some(a) => {
+            if a.len() != 2 {
+                return Err(NumPyError::invalid_value("ifft2 requires exactly 2 axes"));
+            }
+            a.to_vec()
+        }
         None => vec![input.ndim() - 2, input.ndim() - 1],
     };
     ifftn(input, s, Some(&axes), norm)
@@ -735,7 +775,12 @@ where
     T: Clone + Into<f64> + Default + 'static,
 {
     let axes = match axes {
-        Some(a) => a.to_vec(),
+        Some(a) => {
+            if a.len() != 2 {
+                return Err(NumPyError::invalid_value("rfft2 requires exactly 2 axes"));
+            }
+            a.to_vec()
+        }
         None => vec![input.ndim() - 2, input.ndim() - 1],
     };
     rfftn(input, s, Some(&axes), norm)
@@ -751,7 +796,12 @@ where
     T: Clone + Into<Complex64> + Default + 'static,
 {
     let axes = match axes {
-        Some(a) => a.to_vec(),
+        Some(a) => {
+            if a.len() != 2 {
+                return Err(NumPyError::invalid_value("irfft2 requires exactly 2 axes"));
+            }
+            a.to_vec()
+        }
         None => vec![input.ndim() - 2, input.ndim() - 1],
     };
     irfftn(input, s, Some(&axes), norm)
