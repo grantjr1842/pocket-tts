@@ -167,3 +167,77 @@ where
 {
     polynomial::domain(p, window)
 }
+
+/// Generate polynomial coefficients from roots
+///
+/// Returns the polynomial coefficients corresponding to the roots `r`.
+/// If `r` is a length-N array, the result is a length-N+1 array whose
+/// elements are the coefficients of the polynomial (x - r[0]) * (x - r[1]) * ...
+pub fn poly<T>(r: &ndarray::Array1<T>) -> Result<ndarray::Array1<T>, NumPyError>
+where
+    T: num_traits::Float + num_traits::Num + std::fmt::Debug + 'static,
+{
+    if r.is_empty() {
+        return Ok(ndarray::Array1::from_elem(1, T::one()));
+    }
+
+    // Start with polynomial = [1]
+    let mut result = ndarray::Array1::from_elem(1, T::one());
+
+    // Multiply by (x - r[i]) for each root
+    for i in 0..r.len() {
+        let root = r[i];
+        // result_new = result * (x - root)
+        // = result[0]*x + result[1] + ... + result[k]*x^k - root*result[0] - root*result[1]*x - ...
+        // = -root*result[0] + (result[0] - root*result[1])*x + (result[1] - root*result[2])*x^2 + ...
+        let new_len = result.len() + 1;
+        let mut new_result = ndarray::Array1::zeros(new_len);
+
+        for j in 0..result.len() {
+            // Coefficient of x^j in new polynomial
+            new_result[j] = new_result[j] - root * result[j];
+            // Coefficient of x^(j+1) in new polynomial
+            if j + 1 < new_len {
+                new_result[j + 1] = new_result[j + 1] + result[j];
+            }
+        }
+        result = new_result;
+    }
+
+    Ok(result)
+}
+
+/// Polynomial addition
+pub fn polyadd<T>(p1: &Polynomial<T>, p2: &Polynomial<T>) -> Result<Polynomial<T>, NumPyError>
+where
+    T: num_traits::Float + num_traits::Num + std::fmt::Debug + 'static,
+{
+    Ok(p1.add(p2))
+}
+
+/// Polynomial subtraction
+pub fn polysub<T>(p1: &Polynomial<T>, p2: &Polynomial<T>) -> Result<Polynomial<T>, NumPyError>
+where
+    T: num_traits::Float + num_traits::Num + std::fmt::Debug + 'static,
+{
+    Ok(p1.sub(p2))
+}
+
+/// Polynomial multiplication
+pub fn polymul<T>(p1: &Polynomial<T>, p2: &Polynomial<T>) -> Result<Polynomial<T>, NumPyError>
+where
+    T: num_traits::Float + num_traits::Num + std::fmt::Debug + 'static,
+{
+    Ok(p1.mul(p2))
+}
+
+/// Polynomial division
+pub fn polydiv<T>(
+    p1: &Polynomial<T>,
+    p2: &Polynomial<T>,
+) -> Result<(Polynomial<T>, Polynomial<T>), NumPyError>
+where
+    T: num_traits::Float + num_traits::Num + std::fmt::Debug + 'static,
+{
+    polynomial::polydiv(p1, p2)
+}
