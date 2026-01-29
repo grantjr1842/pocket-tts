@@ -2,7 +2,7 @@
 ///
 /// This module provides the dtype getter functionality that enables
 /// syntax like `np.dtype[np.float64]` similar to NumPy's API.
-use crate::dtype::{ByteOrder, Dtype};
+use crate::dtype::Dtype;
 use crate::typing::bitwidth::*;
 
 /// Dtype getter struct that provides NumPy-like dtype access

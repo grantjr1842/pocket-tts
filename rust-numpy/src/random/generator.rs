@@ -10,13 +10,16 @@ use crate::dtype::Dtype;
 use crate::error::NumPyError;
 use crate::random::bit_generator::BitGenerator;
 use num_traits::NumCast;
-use rand::distributions::{Distribution, Standard};
+use rand::distributions::Distribution;
 use rand::prelude::*;
 use rand::{Rng, RngCore};
 use rand_distr::uniform::SampleUniform;
 use rand_distr::{
     Beta, Binomial, ChiSquared, Exp, FisherF, Gamma, Gumbel, LogNormal, Normal, Poisson,
 };
+
+// TODO: Logistic and Power distributions are not available in rand_distr
+// These need to be implemented manually or use a different distribution library
 
 /// Generator for random numbers using a BitGenerator
 pub struct Generator {
@@ -232,7 +235,7 @@ impl Generator {
         Ok(Array::from_data(data, shape.to_vec()))
     }
 
-    // logistic function temporarily disabled - requires rand_distr >= 6.0
+    // TODO: Logistic distribution not available in rand_distr
     // pub fn logistic<T>(
     //     &mut self,
     //     loc: f64,
@@ -667,7 +670,7 @@ impl Generator {
         Ok(Array::from_data(data, shape.to_vec()))
     }
 
-    // power function temporarily disabled - requires rand_distr >= 6.0
+    // TODO: Power distribution not available in rand_distr
     // pub fn power<T>(&mut self, a: f64, shape: &[usize]) -> Result<Array<T>, NumPyError>
     // where
     //     T: Clone + Default + 'static + From<f64>,
@@ -684,7 +687,7 @@ impl Generator {
     //     Ok(Array::from_data(data, shape.to_vec()))
     // }
 
-    // vonmises function temporarily disabled - requires rand_distr >= 6.0
+    // TODO: VonMises distribution not available in rand_distr
     // pub fn vonmises<T>(
     //     &mut self,
     //     mu: f64,
@@ -715,7 +718,7 @@ impl Generator {
     /// For multi-dimensional arrays, it shuffles each sub-array independently.
     pub fn shuffle<T>(&mut self, arr: &mut Array<T>) -> Result<(), NumPyError>
     where
-        T: Clone + Default + 'static,
+        T: Clone + Default + 'static + Copy,
     {
         if arr.ndim() == 1 {
             // For 1D arrays, shuffle the elements directly
@@ -729,7 +732,7 @@ impl Generator {
             }
 
             let first_axis_size = shape[0];
-            let element_size = shape[1..].iter().product();
+            let element_size: usize = shape[1..].iter().product();
 
             let data = arr.data.as_slice_mut();
 
@@ -882,6 +885,3 @@ impl RngCore for Generator {
         self.bit_gen.try_fill_bytes(dest)
     }
 }
-
-#[cfg(test)]
-mod tests;

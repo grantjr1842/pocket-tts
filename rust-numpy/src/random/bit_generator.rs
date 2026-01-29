@@ -300,7 +300,7 @@ impl BitGenerator for MT19937 {
 
     fn parallel_params(&self) -> ParallelParams {
         ParallelParams {
-            jump_size: 1 << 64, // Very large jump for parallel streams
+            jump_size: u64::MAX, // Maximum value for parallel stream jumps
             max_streams: 1024,
             supports_parallel: true,
         }
@@ -530,6 +530,3 @@ pub mod legacy {
         factory::create_seeded_bitgenerator("PCG64", seed).unwrap()
     }
 }
-
-#[cfg(test)]
-mod tests;

@@ -109,11 +109,11 @@ mod tests {
     }
 
     #[test]
-    fn test_modern_submodule() {
-        // Test that the modern submodule exports work correctly
-        use super::modern::*;
+    fn test_modern_api() {
+        // Test that the modern API functions work correctly
+        use crate::random::{generator::Generator, bit_generator::{PCG64, BitGenerator}};
 
-        // Test default_rng from modern submodule
+        // Test default_rng
         let mut rng = default_rng();
         let arr = rng.random::<f64>(&[2, 2], Dtype::Float64).unwrap();
         assert_eq!(arr.shape(), &[2, 2]);
@@ -134,11 +134,11 @@ mod tests {
     }
 
     #[test]
-    fn test_legacy_submodule() {
-        // Test that the legacy submodule exports work correctly
-        use super::legacy::*;
+    fn test_legacy_api() {
+        // Test that the legacy API functions work correctly
+        // All these functions are available from the random module directly
 
-        // Test legacy_rng from legacy submodule
+        // Test legacy_rng
         let _legacy = legacy_rng();
 
         // Test seed from legacy submodule

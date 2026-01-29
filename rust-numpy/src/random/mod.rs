@@ -220,13 +220,14 @@ pub fn gumbel<T: Clone + Default + 'static + From<f64>>(
 /// Generate samples from a logistic distribution
 ///
 /// This uses the modern Generator API internally.
-pub fn logistic<T: Clone + Default + 'static + From<f64>>(
-    loc: f64,
-    scale: f64,
-    shape: &[usize],
-) -> Result<Array<T>, NumPyError> {
-    DEFAULT_GENERATOR.with(|rng| rng.borrow_mut().logistic(loc, scale, shape))
-}
+// TODO: Logistic distribution not available - uncomment when available
+// pub fn logistic<T: Clone + Default + 'static + From<f64>>(
+//     loc: f64,
+//     scale: f64,
+//     shape: &[usize],
+// ) -> Result<Array<T>, NumPyError> {
+//     DEFAULT_GENERATOR.with(|rng| rng.borrow_mut().logistic(loc, scale, shape))
+// }
 
 /// Generate samples from a log-normal distribution
 ///
@@ -418,23 +419,25 @@ pub fn f<T: Clone + Default + 'static + From<f64>>(
 /// Generate samples from a power distribution
 ///
 /// This uses the modern Generator API internally.
-pub fn power<T: Clone + Default + 'static + From<f64>>(
-    a: f64,
-    shape: &[usize],
-) -> Result<Array<T>, NumPyError> {
-    DEFAULT_GENERATOR.with(|rng| rng.borrow_mut().power(a, shape))
-}
+// TODO: Power distribution not available - uncomment when available
+// pub fn power<T: Clone + Default + 'static + From<f64>>(
+//     a: f64,
+//     shape: &[usize],
+// ) -> Result<Array<T>, NumPyError> {
+//     DEFAULT_GENERATOR.with(|rng| rng.borrow_mut().power(a, shape))
+// }
 
 /// Generate samples from a von Mises distribution
 ///
 /// This uses the modern Generator API internally.
-pub fn vonmises<T: Clone + Default + 'static + From<f64>>(
-    mu: f64,
-    kappa: f64,
-    shape: &[usize],
-) -> Result<Array<T>, NumPyError> {
-    DEFAULT_GENERATOR.with(|rng| rng.borrow_mut().vonmises(mu, kappa, shape))
-}
+// TODO: VonMises distribution not available - uncomment when available
+// pub fn vonmises<T: Clone + Default + 'static + From<f64>>(
+//     mu: f64,
+//     kappa: f64,
+//     shape: &[usize],
+// ) -> Result<Array<T>, NumPyError> {
+//     DEFAULT_GENERATOR.with(|rng| rng.borrow_mut().vonmises(mu, kappa, shape))
+// }
 
 // --- Legacy API Functions (for backward compatibility) ---
 
@@ -487,152 +490,11 @@ pub mod modern {
     pub use super::{default_rng, default_rng_with_seed};
 }
 
-// --- Additional missing functions ---
-
-/// Generate random bytes.
-///
-/// Returns `n` random bytes as a new array of bytes.
-///
-/// # Arguments
-/// * `n` - Number of random bytes to generate
-pub fn bytes(n: usize) -> Array<u8> {
-    let mut rng = default_rng();
-    let mut data = vec![0u8; n];
-    rng.random_bytes(&mut data);
-    Array::from_vec(data)
-}
-
-/// Shuffle an array in-place.
-///
-/// Modifies the array in-place by shuffling its elements.
-///
-/// # Arguments
-/// * `array` - Array to shuffle
-pub fn shuffle<T>(array: &mut Array<T>) {
-    let mut rng = default_rng();
-    rng.shuffle(array);
-}
-
-/// Permute an array in-place along the given axis.
-///
-/// Modifies the array in-place by shuffling its elements along the given axis.
-///
-/// # Arguments
-/// * `array` - Array to shuffle
-/// * `axis` - Axis along which to shuffle
-pub fn shuffle_axis<T>(array: &mut Array<T>, axis: isize) {
-    let mut rng = default_rng();
-    rng.shuffle_axis(array, axis);
-}
-
-/// Generate samples from a multivariate normal distribution.
-///
-/// # Arguments
-/// * `mean` - Mean of the distribution
-/// * `cov` - Covariance matrix of the distribution
-/// * `size` - Output shape
-pub fn multivariate_normal<T>(
-    mean: &Array<T>,
-    cov: &Array<T>,
-    size: Option<usize>,
-) -> Result<Array<T>, NumPyError>
-where
-    T: Clone + Default + num_traits::Float + Send + Sync + 'static,
-{
-    let n = mean.shape()[0];
-    if cov.shape()[0] != n || cov.shape()[1] != n {
-        return Err(NumPyError::invalid_value(
-            "covariance matrix must be square and match mean length",
-        ));
-    }
-
-    let output_size = size.unwrap_or(1);
-    let mut result = Array::zeros(vec![output_size, n]);
-
-    // Simple implementation using Cholesky decomposition
-    // For a proper implementation, we'd need a linear algebra solver
-    for i in 0..output_size {
-        for j in 0..n {
-            let mut sum = mean.get_linear(j).cloned().unwrap_or_default();
-            // Add random component (simplified - would need proper decomposition)
-            result[[i, j]] = sum;
-        }
-    }
-
-    Ok(result)
-}
-
-/// Generate samples from a non-central chi-square distribution.
-///
-/// # Arguments
-/// * `df` - Degrees of freedom
-/// * `nonc` - Non-centrality parameter
-/// * `size` - Output shape
-pub fn noncentral_chisquare<T>(
-    df: T,
-    nonc: T,
-    size: Option<usize>,
-) -> Result<Array<T>, NumPyError>
-where
-    T: Clone + Default + num_traits::Float + Send + Sync + 'static,
-{
-    let shape = size.map(|s| vec![s]).unwrap_or(vec![]);
-    let mut rng = default_rng();
-    let mut data = Vec::with_capacity(shape.iter().product());
-    let total = shape.iter().product::<usize>().max(1);
-    for _ in 0..total {
-        data.push(df.clone()); // Simplified
-    }
-    Ok(Array::from_shape_vec(shape, data)?)
-}
-
-/// Generate samples from a non-central F distribution.
-///
-/// # Arguments
-/// * `dfnum` - Numerator degrees of freedom
-/// * `dfden` - Denominator degrees of freedom
-/// * `nonc` - Non-centrality parameter
-/// * `size` - Output shape
-pub fn noncentral_f<T>(
-    dfnum: T,
-    dfden: T,
-    nonc: T,
-    size: Option<usize>,
-) -> Result<Array<T>, NumPyError>
-where
-    T: Clone + Default + num_traits::Float + Send + Sync + 'static,
-{
-    let shape = size.map(|s| vec![s]).unwrap_or(vec![]);
-    let mut data = Vec::with_capacity(shape.iter().product());
-    let total = shape.iter().product::<usize>().max(1);
-    for _ in 0..total {
-        data.push(dfnum.clone()); // Simplified
-    }
-    Ok(Array::from_shape_vec(shape, data)?)
-}
-
-/// Generate samples from a standard Student's t-distribution.
-///
-/// # Arguments
-/// * `df` - Degrees of freedom
-/// * `size` - Output shape
-pub fn standard_t<T>(df: T, size: Option<usize>) -> Result<Array<T>, NumPyError>
-where
-    T: Clone + Default + num_traits::Float + Send + Sync + 'static,
-{
-    let shape = size.map(|s| vec![s]).unwrap_or(vec![]);
-    let mut rng = default_rng();
-    let mut data = Vec::with_capacity(shape.iter().product());
-    let total = shape.iter().product::<usize>().max(1);
-    for _ in 0..total {
-        data.push(df.clone()); // Simplified
-    }
-    Ok(Array::from_shape_vec(shape, data)?)
-}
-
 /// Legacy random number generation API
 ///
 /// This sub-module provides the legacy RandomState API for backward compatibility.
+#[deprecated(since = "0.1.0", note = "Use modern Generator API instead")]
+#[allow(deprecated)]
 pub mod legacy {
     pub use super::RandomState;
     pub use super::{legacy_randint, legacy_random, legacy_rng, seed};

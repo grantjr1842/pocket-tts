@@ -101,7 +101,7 @@ mod tests {
     #[test]
     fn test_prelude_exports() {
         // Test that prelude exports work correctly
-        use super::prelude::*;
+        use super::super::prelude::*;
 
         // These should all be available from prelude
         let _arr: NDArray<f64> = Array::from_data(vec![1.0, 2.0], vec![2]);
@@ -115,7 +115,7 @@ mod tests {
 
     #[test]
     fn test_bitwidth_types() {
-        use super::bitwidth::*;
+        use super::super::bitwidth::*;
 
         // Test that all bit-width types implement NBitBase
         fn test_nbit_base<T: NBitBase>() -> (u8, bool, bool, bool) {
@@ -152,7 +152,7 @@ mod tests {
 
     #[test]
     fn test_dtype_getter() {
-        use super::dtype_getter::*;
+        use super::super::dtype_getter::*;
 
         // Test DtypeGetter functionality
         let dtype = DtypeGetter::get::<Int32Bit>();
@@ -176,7 +176,7 @@ mod tests {
 
     #[test]
     fn test_to_dtype_trait() {
-        use super::dtype_getter::*;
+        use super::super::dtype_getter::*;
 
         // Test ToDtype trait implementations
         let dtype = Int32Bit::to_dtype();
@@ -194,7 +194,7 @@ mod tests {
 
     #[test]
     fn test_dtype_function() {
-        use super::dtype_getter::*;
+        use super::super::dtype_getter::*;
 
         // Test the convenience dtype function
         let dtype = dtype::<Int32Bit>();
@@ -274,7 +274,7 @@ mod tests {
         let _supports_index: std::any::TypeId = std::any::TypeId::of::<SupportsIndex>();
 
         // 5. Prelude should re-export commonly used types
-        use super::prelude::*;
+        use crate::typing::prelude::*;
         let _prelude_ndarray: std::any::TypeId = std::any::TypeId::of::<NDArray<f64>>();
         let _prelude_array_like: std::any::TypeId = std::any::TypeId::of::<dyn ArrayLike<f64>>();
     }
@@ -311,7 +311,7 @@ mod tests {
 
         // NBitBase - bit-width type hierarchy
         fn test_nbit_base_completeness() {
-            use super::bitwidth::*;
+            use super::super::bitwidth::*;
 
             fn check_nbit_base<T: NBitBase>() {
                 assert!(T::BITS > 0);

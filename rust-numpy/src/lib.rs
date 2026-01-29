@@ -129,19 +129,17 @@ pub mod cpu_features;
 pub mod datetime;
 pub mod dist;
 pub mod dtype;
-pub mod dtype_constructors;
 #[cfg(test)]
 mod dtype_tests;
-pub mod dynamic_kernel_registry;
 pub mod error;
 pub mod fft;
 #[cfg(test)]
 mod fft_tests;
 pub mod iterator;
 pub mod kernel_api;
+pub mod kernels;
 pub mod kernel_impls;
 pub mod kernel_registry;
-pub mod kernels;
 pub mod layout_optimizer;
 pub mod linalg;
 pub mod math_ufuncs;
@@ -156,18 +154,6 @@ pub mod performance_metrics;
 pub mod polynomial;
 pub mod profiler;
 pub mod random;
-pub use random::{
-    default_rng, default_rng_with_seed,
-    // Distribution functions
-    bernoulli, beta, binomial, chisquare, exponential, f, gamma, gumbel, geometric,
-    hypergeometric, lognormal, logistic, logseries, multinomial, negative_binomial,
-    normal, pareto, poisson, rayleigh, standard_cauchy, standard_exponential,
-    standard_gamma, standard_normal, triangular, uniform, vonmises, wald, weibull, zipf,
-    // New functions
-    bytes, shuffle, shuffle_axis, multivariate_normal, noncentral_chisquare, noncentral_f, standard_t,
-    // Legacy functions
-    legacy_randint, legacy_random, legacy_rng, random, randint, seed,
-};
 pub mod rec;
 pub mod reductions;
 pub mod set_ops;
@@ -180,15 +166,9 @@ pub mod strided_executor;
 pub mod strides;
 pub mod type_promotion;
 pub mod ufunc;
-pub mod ufunc_ops;
 pub mod utils;
-
-// Additional type modules for NumPy compatibility
-pub mod scalar;
-pub mod object;
-pub mod void;
-pub mod string;
-pub mod bytes;
+pub mod ufunc_ops;
+pub mod dynamic_kernel_registry;
 
 #[cfg(test)]
 mod kernel_tests;
@@ -244,12 +224,7 @@ pub use crate::typing::{
     // Void,
 };
 pub use array::Array;
-pub use array_manipulation::{
-    append, apply_along_axis, apply_over_axes, atleast_1d, atleast_2d, atleast_3d, delete,
-    empty_like, expand_dims, eye, flatten, flip, full_like, identity, insert, meshgrid, moveaxis,
-    ones_like, pad, repeat, reshape, roll, rollaxis, rot90, ravel, squeeze, swapaxes, tile,
-    zeros_like, Vectorize,
-};
+pub use array_manipulation::{apply_along_axis, apply_over_axes, expand_dims, Vectorize};
 pub use bitwise::*;
 pub use char::exports::{
     add as char_add, capitalize, center, count as char_count, endswith, expandtabs, find,
@@ -259,16 +234,6 @@ pub use char::exports::{
 };
 pub use dist::{cdist, pdist, squareform};
 pub use dtype::{Casting, Dtype, DtypeKind};
-pub use dtype_constructors::{
-    bool_, int8, int16, int32, int64, intp, int_, intc,
-    uint8, uint16, uint32, uint64, uintp, uint, uintc,
-    float16, float32, float64, float128,
-    complex64, complex128, complex256,
-    generic, number, integer, signedinteger, unsignedinteger, floating, complexfloating,
-    str_, object_, void,
-    is_generic, is_number, is_integer, is_signedinteger, is_unsignedinteger,
-    is_floating, is_complexfloating, is_bool, is_string, is_object, is_void,
-};
 pub use error::{NumPyError, Result};
 pub use linalg::norm;
 pub use performance_metrics::{
@@ -284,32 +249,18 @@ pub use reductions::{
     all, all_bool, any, any_bool, argmax, argmin, cumprod, cumsum, max, mean, min, prod, sum,
 };
 pub use set_ops::exports::*;
-pub use sorting::exports::*;
 pub use statistics::{
     average, bincount, corrcoef, cov, digitize, histogram, histogram2d, histogramdd, median,
     nanmax, nanmean, nanmedian, nanmin, nanpercentile, nanprod, nanquantile, nanstd, nansum,
     nanvar, percentile, ptp, quantile, std, var,
 };
 pub use type_promotion::{promote_types, TypePromotionRules};
-
-// Broadcasting functions
-pub use broadcasting::{broadcast_arrays, broadcast_to};
-
-// Datetime functions
-pub use datetime::{busday_count, busday_offset, datetime_as_string, datetime_data};
-
-// I/O functions
-pub use io::{fromfile, fromstring, load, loadtxt, save, savetxt, savez, savez_compressed, fromregex, from_dlpack, genfromtxt};
-
-// Window functions
-pub use window::{bartlett, blackman, hamming, hanning, kaiser};
-
 // Complex utility functions
-pub use dynamic_kernel_registry::{DynamicKernelRegistry, RegistryStats};
 pub use kernel_api::{
     execute_binary, execute_unary, init_kernel_registry, register_binary_kernel,
     register_unary_kernel,
 };
+pub use dynamic_kernel_registry::{DynamicKernelRegistry, RegistryStats};
 pub use kernel_registry::Kernel;
 pub use kernels::UfuncPerformanceHint as PerformanceHint;
 pub use math_ufuncs::{
@@ -363,17 +314,6 @@ pub use ufunc::{
 pub use array_creation::{
     array, array2string, array_repr, array_str, asanyarray, asarray, asarray_chkfinite,
     ascontiguousarray, asfortranarray, asmatrix, copy, copyto,
-    // Array creation functions
-    arange, clip, empty, empty_like, frombuffer, fromfunction, fromiter, full, full_like,
-    geomspace, identity, indices, linspace, logspace, ones, ones_like, vander, zeros, zeros_like,
-    // Index functions
-    diag_indices, tril_indices, triu_indices,
-};
-
-// Array method wrappers
-pub use array_methods::{
-    divide, minimum, nancumprod, nancumsum, negative,
-    resize, subtract, take, transpose,
 };
 
 // Reduction functions
@@ -395,7 +335,15 @@ pub use utils::{
 // Typing and annotations
 pub mod typing;
 pub use typing::{
-    nbit_128, nbit_16, nbit_256, nbit_32, nbit_64, nbit_8, NBitBase, SignedInt, UnsignedInt,
+    nbit_128,
+    nbit_16,
+    nbit_256,
+    nbit_32,
+    nbit_64,
+    nbit_8,
+    NBitBase,
+    SignedInt,
+    UnsignedInt,
 };
 
 /// Version information

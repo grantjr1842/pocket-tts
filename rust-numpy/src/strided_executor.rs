@@ -75,14 +75,14 @@ impl StridedReductionExecutor {
     ) -> Result<Array<R>>
     where
         T: Clone + 'static,
-        R: Clone + 'static,
+        R: Clone + 'static + Default,
         F: Fn(R, T) -> R,
     {
         // Basic implementation - would be optimized with actual strided execution
         match axis {
             Some(axis) => {
                 if axis >= input.ndim() {
-                    return Err(NumPyError::axis_out_of_bounds(axis, input.ndim()));
+                    return Err(NumPyError::index_error(axis, input.ndim()));
                 }
                 // Simplified reduction along axis
                 let mut result = identity;
@@ -91,7 +91,7 @@ impl StridedReductionExecutor {
                         result = operation(result, val.clone());
                     }
                 }
-                Ok(Array::from_vec(vec![result], vec![]))
+                Ok(Array::from_vec(vec![result]))
             }
             None => {
                 // Global reduction
@@ -101,7 +101,7 @@ impl StridedReductionExecutor {
                         result = operation(result, val.clone());
                     }
                 }
-                Ok(Array::from_vec(vec![result], vec![]))
+                Ok(Array::from_vec(vec![result]))
             }
         }
     }

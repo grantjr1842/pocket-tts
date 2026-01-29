@@ -5,7 +5,6 @@
 
 use crate::array::Array;
 use crate::error::NumPyError;
-use num_complex::{Complex32, Complex64};
 
 /// Options for advanced reduction operations
 #[derive(Debug, Clone, Default)]

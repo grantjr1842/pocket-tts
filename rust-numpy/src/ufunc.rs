@@ -234,30 +234,23 @@ where
         let in1 = unsafe { &*(inputs[1] as *const _ as *const Array<T>) };
         let output = unsafe { &mut *(outputs[0] as *mut _ as *mut Array<T>) };
 
-        // Try kernel registry for type-specific optimization
-        if let (Some(kernel), _) = crate::kernel_registry::get_kernel_registry()
-            .and_then(|registry| registry.get::<T>(crate::kernels::UfuncType::Add))
-        {
-            kernel.execute(&[in0, in1], &mut [output])?;
-        } else {
-            // Fall back to original implementation using iterators
-            let broadcasted = crate::broadcasting::broadcast_arrays(&[in0, in1])?;
-            let arr0 = &broadcasted[0];
-            let arr1 = &broadcasted[1];
+        // Fall back to original implementation using iterators
+        let broadcasted = crate::broadcasting::broadcast_arrays(&[in0, in1])?;
+        let arr0 = &broadcasted[0];
+        let arr1 = &broadcasted[1];
 
-            for i in 0..output.size() {
-                if where_mask
-                    .as_ref()
-                    .map_or(true, |m| *m.get_linear(i).unwrap_or(&false))
-                {
-                    if let (Some(a), Some(b)) = (arr0.get(i), arr1.get(i)) {
-                        output.set(i, (self.operation)(a.clone(), b.clone()))?;
-                    }
+        for i in 0..output.size() {
+            if where_mask
+                .as_ref()
+                .map_or(true, |m| *m.get_linear(i).unwrap_or(&false))
+            {
+                if let (Some(a), Some(b)) = (arr0.get(i), arr1.get(i)) {
+                    output.set(i, (self.operation)(a.clone(), b.clone()))?;
                 }
             }
         }
 
-        Ok(());
+        Ok(())
     }
 }
 
@@ -1380,7 +1373,7 @@ impl CustomUfuncRegistry {
     {
         let name = ufunc.name().to_string();
         let metadata = ufunc.metadata();
-        let supported_dtypes = metadata.supported_dtypes.clone();
+        let _supported_dtypes = metadata.supported_dtypes.clone();
 
         self.custom_ufuncs.insert(name.clone(), Arc::new(ufunc));
         self.metrics.insert(
@@ -1389,7 +1382,7 @@ impl CustomUfuncRegistry {
         );
 
         // Store dtype info for validation
-        let mut metrics = self.metrics.get(&name).unwrap().write().unwrap();
+        let mut _metrics = self.metrics.get(&name).unwrap().write().unwrap();
         // Could add more metadata tracking here
     }
 
@@ -1538,7 +1531,7 @@ lazy_static::lazy_static! {
 }
 
 /// Register a custom ufunc globally
-pub fn register_custom_ufunc<T>(ufunc: T)
+pub fn register_custom_ufunc<T>(_ufunc: T)
 where
     T: CustomUfunc + 'static,
 {
@@ -1547,7 +1540,7 @@ where
 }
 
 /// Register a generalized ufunc globally
-pub fn register_gufunc<T>(gufunc: T)
+pub fn register_gufunc<T>(_gufunc: T)
 where
     T: GeneralizedUfunc + 'static,
 {

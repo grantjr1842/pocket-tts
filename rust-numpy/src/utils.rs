@@ -401,12 +401,12 @@ pub fn mintypecode(_arr: &str) -> &'static str {
 }
 
 /// Common type
-pub fn common_type(arrays: &[&str]) -> &'static str {
+pub fn common_type(_arrays: &[&str]) -> &'static str {
     "float64"
 }
 
 /// Result type
-pub fn result_type(arrays: &[&str]) -> &'static str {
+pub fn result_type(_arrays: &[&str]) -> &'static str {
     "float64"
 }
 
