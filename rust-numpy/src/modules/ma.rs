@@ -720,7 +720,13 @@ where
 /// Variance of masked array elements
 pub fn var<T>(ma: &MaskedArray<T>, ddof: Option<usize>) -> Result<T>
 where
-    T: Clone + Default + std::fmt::Debug + num_traits::Float + num_traits::FromPrimitive + std::iter::Sum + 'static,
+    T: Clone
+        + Default
+        + std::fmt::Debug
+        + num_traits::Float
+        + num_traits::FromPrimitive
+        + std::iter::Sum
+        + 'static,
 {
     ma.var(ddof)
 }
@@ -728,7 +734,13 @@ where
 /// Standard deviation of masked array elements
 pub fn std<T>(ma: &MaskedArray<T>, ddof: Option<usize>) -> Result<T>
 where
-    T: Clone + Default + std::fmt::Debug + num_traits::Float + num_traits::FromPrimitive + std::iter::Sum + 'static,
+    T: Clone
+        + Default
+        + std::fmt::Debug
+        + num_traits::Float
+        + num_traits::FromPrimitive
+        + std::iter::Sum
+        + 'static,
 {
     ma.std(ddof)
 }
@@ -736,7 +748,13 @@ where
 /// Median of masked array elements
 pub fn median<T>(ma: &MaskedArray<T>) -> Result<T>
 where
-    T: Clone + Default + std::fmt::Debug + PartialOrd + num_traits::FromPrimitive + num_traits::NumCast + 'static,
+    T: Clone
+        + Default
+        + std::fmt::Debug
+        + PartialOrd
+        + num_traits::FromPrimitive
+        + num_traits::NumCast
+        + 'static,
 {
     ma.median()
 }
@@ -828,7 +846,11 @@ pub fn swapaxes<T>(ma: &MaskedArray<T>, axis1: isize, axis2: isize) -> MaskedArr
 }
 
 /// Take elements from a masked array
-pub fn take<T>(ma: &MaskedArray<T>, indices: &[usize], axis: Option<usize>) -> Result<MaskedArray<T>> {
+pub fn take<T>(
+    ma: &MaskedArray<T>,
+    indices: &[usize],
+    axis: Option<usize>,
+) -> Result<MaskedArray<T>> {
     ma.take(indices, axis)
 }
 
@@ -867,7 +889,8 @@ pub fn allclose<T>(a: &MaskedArray<T>, b: &MaskedArray<T>, rtol: Option<T>, atol
 where
     T: num_traits::Float + Clone + PartialEq,
 {
-    let rtol_val = rtol.unwrap_or_else(|| num_traits::Float::epsilon() * T::from(10.0).unwrap_or(T::one()));
+    let rtol_val =
+        rtol.unwrap_or_else(|| num_traits::Float::epsilon() * T::from(10.0).unwrap_or(T::one()));
     let atol_val = atol.unwrap_or_else(num_traits::Float::epsilon);
 
     let a_data = a.data().data();
@@ -879,7 +902,11 @@ where
         return false;
     }
 
-    for ((a_val, b_val), (&a_m, &b_m)) in a_data.iter().zip(b_data.iter()).zip(a_mask.iter().zip(b_mask.iter())) {
+    for ((a_val, b_val), (&a_m, &b_m)) in a_data
+        .iter()
+        .zip(b_data.iter())
+        .zip(a_mask.iter().zip(b_mask.iter()))
+    {
         if a_m || b_m {
             continue;
         }
@@ -893,11 +920,17 @@ where
 }
 
 /// Check if masked array elements are close to each other
-pub fn isclose<T>(a: &MaskedArray<T>, b: &MaskedArray<T>, rtol: Option<T>, atol: Option<T>) -> Result<MaskedArray<bool>>
+pub fn isclose<T>(
+    a: &MaskedArray<T>,
+    b: &MaskedArray<T>,
+    rtol: Option<T>,
+    atol: Option<T>,
+) -> Result<MaskedArray<bool>>
 where
     T: num_traits::Float + Clone + PartialEq + 'static,
 {
-    let rtol_val = rtol.unwrap_or_else(|| num_traits::Float::epsilon() * T::from(10.0).unwrap_or(T::one()));
+    let rtol_val =
+        rtol.unwrap_or_else(|| num_traits::Float::epsilon() * T::from(10.0).unwrap_or(T::one()));
     let atol_val = atol.unwrap_or_else(num_traits::Float::epsilon);
 
     let a_data = a.data().data();
@@ -908,7 +941,11 @@ where
     let mut result_data = Vec::with_capacity(a_data.len());
     let mut result_mask = Vec::with_capacity(a_data.len());
 
-    for ((a_val, b_val), (&a_m, &b_m)) in a_data.iter().zip(b_data.iter()).zip(a_mask.iter().zip(b_mask.iter())) {
+    for ((a_val, b_val), (&a_m, &b_m)) in a_data
+        .iter()
+        .zip(b_data.iter())
+        .zip(a_mask.iter().zip(b_mask.iter()))
+    {
         let is_masked = a_m || b_m;
         if is_masked {
             result_data.push(false);
@@ -940,7 +977,11 @@ where
     let a_mask = a.mask().data();
     let b_mask = b.mask().data();
 
-    for ((a_val, b_val), (&a_m, &b_m)) in a_data.iter().zip(b_data.iter()).zip(a_mask.iter().zip(b_mask.iter())) {
+    for ((a_val, b_val), (&a_m, &b_m)) in a_data
+        .iter()
+        .zip(b_data.iter())
+        .zip(a_mask.iter().zip(b_mask.iter()))
+    {
         if a_m || b_m {
             continue;
         }
@@ -965,7 +1006,11 @@ where
 }
 
 /// Append values to the end of a masked array
-pub fn append<T>(ma: &MaskedArray<T>, values: &Array<T>, axis: Option<isize>) -> Result<MaskedArray<T>>
+pub fn append<T>(
+    ma: &MaskedArray<T>,
+    values: &Array<T>,
+    axis: Option<isize>,
+) -> Result<MaskedArray<T>>
 where
     T: Clone + Debug + Default + 'static,
 {
@@ -1164,19 +1209,14 @@ pub fn compress<T>(condition: &Array<bool>, a: &Array<T>, axis: Option<isize>) -
 
 pub mod exports {
     pub use super::{
-<<<<<<< HEAD
-        all, allequal, any, append, array, average, compress, concatenate,
-        copy, count, empty, filled, full, full_like, getdata,
-=======
-        all, allequal, any, append, argmax, argmin, argsort, array, average, concatenate,
-        copy, count, cumprod, cumsum, empty, filled, full, full_like, getdata,
->>>>>>> cb6090710ebf438bf4ca2ae74bb3371e0cb13b81
-        getmask, getmaskarray, harden_mask, isclose, is_masked_array, is_masked_array_type,
-        isnan, masked_array, masked_equal, masked_greater, masked_greater_equal,
+        all, all, allequal, allequal, any, any, append, append, argmax, argmin, argsort, array,
+        array, average, average, compress, concatenate, concatenate, copy, copy, count, count,
+        cumprod, cumsum, empty, empty, filled, filled, full, full, full_like, full_like, getdata,
+        getdata, getmask, getmaskarray, harden_mask, is_masked_array, is_masked_array_type,
+        isclose, isnan, masked_array, masked_equal, masked_greater, masked_greater_equal,
         masked_inside, masked_less, masked_less_equal, masked_not_equal, masked_object,
-        masked_outside, masked_values, masked_where, MaskedArray, median,
-        ones, place, ptp, put, reshape, resize, set_fill_value, shrink_mask,
-        swapaxes, take, transpose, zeros,
+        masked_outside, masked_values, masked_where, median, ones, place, ptp, put, reshape,
+        resize, set_fill_value, shrink_mask, swapaxes, take, transpose, zeros, MaskedArray,
     };
 }
 
