@@ -9,8 +9,9 @@
 
 use crate::dtype::Dtype;
 use crate::error::Result;
+use crate::kernels::UfuncType;
 use crate::ufunc::{ArrayView, ArrayViewMut};
-use std::any::{Any, TypeId};
+use std::any::TypeId;
 use std::collections::HashMap;
 
 /// Kernel signature describing input and output types
@@ -72,7 +73,7 @@ pub trait Kernel<T: 'static>: Send + Sync {
 /// This registry stores and manages dtype-specific kernels using TypeId
 /// for efficient lookup and dispatch.
 pub struct KernelRegistry {
-    kernels: HashMap<(TypeId, crate::kernels::UfuncType), Box<dyn Any>>,
+    kernels: HashMap<(TypeId, UfuncType), Box<dyn Kernel + Send + Sync>>,
 }
 
 impl KernelRegistry {
@@ -105,17 +106,10 @@ impl KernelRegistry {
     ///
     /// # Returns
     /// * `Some(kernel)` if found, `None` otherwise
-    ///
-    /// TODO: This method needs architectural redesign. We cannot downcast from
-    /// `dyn Any` to `dyn Kernel<T>` directly because `dyn Kernel<T>` is unsized.
-    /// The registry needs to store kernels differently to support retrieval.
-    pub fn get<T>(&self, _ufunc: crate::kernels::UfuncType, _dtype: TypeId) -> Option<&dyn Kernel<T>>
-    where
-        T: 'static,
-    {
-        // Cannot downcast to unsized trait object
-        // This requires redesign of the kernel storage approach
-        None
+    pub fn get<T: 'static>(&self, ufunc: UfuncType) -> Option<&dyn Kernel> {
+        self.kernels
+            .get(&(TypeId::of::<T>(), ufunc))
+            .map(|k| k.as_ref() as &dyn Kernel)
     }
 
     /// Get all registered kernels for a ufunc type
@@ -125,20 +119,103 @@ impl KernelRegistry {
     ///
     /// # Returns
     /// * Vector of kernel references that match the ufunc type
-    ///
-    /// TODO: This method needs architectural redesign. We cannot downcast from
-    /// `dyn Any` to `dyn Kernel<T>` directly because `dyn Kernel<T>` is unsized.
-    pub fn get_all<T: 'static>(&self, _ufunc: crate::kernels::UfuncType) -> Vec<&dyn Kernel<T>> {
-        // Cannot downcast to unsized trait object
-        // This requires redesign of the kernel storage approach
-        Vec::new()
+    pub fn get_all(&self, ufunc: UfuncType) -> Vec<&dyn Kernel> {
+        self.kernels
+            .iter()
+            .filter(|((_, ufunc_type), _)| ufunc_type == &ufunc)
+            .map(|(_, kernel)| kernel.as_ref() as &dyn Kernel)
+            .collect()
     }
+}
+
+/// Performance hint for kernel optimization
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum PerformanceHint {
+    /// Kernel is vectorized (SIMD)
+    Vectorized,
+    /// Kernel is memory bandwidth bound
+    MemoryBound,
+    /// Kernel is compute bound
+    ComputeBound,
+    /// No specific optimization hints
+    General,
+}
+
+/// Statistics about the kernel registry
+#[derive(Debug, Clone)]
+pub struct RegistryStats {
+    /// Total number of registered kernels
+    pub total_kernels: usize,
+    /// Number of kernels by ufunc type
+    pub kernels_by_type: HashMap<String, usize>,
+}
+
+/// Global kernel registry instance
+static GLOBAL_REGISTRY: std::sync::OnceLock<std::sync::RwLock<KernelRegistry>> =
+    std::sync::OnceLock::new();
+
+/// Get the global kernel registry
+fn get_global_registry() -> &'static std::sync::RwLock<KernelRegistry> {
+    GLOBAL_REGISTRY.get_or_init(|| std::sync::RwLock::new(KernelRegistry::new()))
+}
+
+/// Get the global kernel registry (public API)
+pub fn get_kernel_registry() -> std::sync::RwLockReadGuard<'static, KernelRegistry> {
+    get_global_registry().read().unwrap()
+}
+
+/// Register a kernel in the global registry
+pub fn register_kernel<T: 'static>(kernel: impl Kernel + 'static, ufunc: UfuncType) -> Result<()> {
+    let mut registry = get_global_registry().write().unwrap();
+    registry.register::<T>(ufunc, kernel);
+    Ok(())
+}
+
+/// Execute a function with a kernel from the registry
+pub fn with_kernel<T: 'static, R, F>(ufunc: UfuncType, f: F) -> Option<R>
+where
+    F: FnOnce(&dyn Kernel) -> R,
+{
+    let registry = get_global_registry().read().unwrap();
+    let kernel = registry.get::<T>(ufunc)?;
+    Some(f(kernel))
+}
+
+/// Get statistics about the global registry
+pub fn get_registry_stats() -> RegistryStats {
+    let registry = get_global_registry().read().unwrap();
+    let mut stats = RegistryStats {
+        total_kernels: 0,
+        kernels_by_type: HashMap::new(),
+    };
+    // Count kernels by type
+    for ((_, ufunc_type), _) in &registry.kernels {
+        let count = stats
+            .kernels_by_type
+            .entry(ufunc_type.as_str().to_string())
+            .or_insert(0);
+        *count += 1;
+    }
+    stats.total_kernels = registry.kernels.len();
+    stats
+}
+
+/// List all registered kernels
+pub fn list_kernels() -> Vec<(UfuncType, String)> {
+    let registry = get_global_registry().read().unwrap();
+    let mut kernels = Vec::new();
+    for ((_, ufunc_type), kernel) in &registry.kernels {
+        kernels.push((*ufunc_type, kernel.name().to_string()));
+    }
+    kernels
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::array::Array;
 
+    #[test]
     #[test]
     fn test_registry_creation() {
         let mut registry = KernelRegistry::new();
@@ -146,42 +223,66 @@ mod tests {
         // Test that registry can be created
         assert_eq!(registry.kernels.len(), 0);
 
-        // Register a test kernel
-        struct TestAddKernel;
-        impl Kernel<f64> for TestAddKernel {
-            fn name(&self) -> &str {
-                "test_add"
-            }
-            fn execute(
-                &self,
-                input: &[&dyn ArrayView],
-                output: &mut [&mut dyn ArrayViewMut],
-            ) -> Result<()> {
-                // Simple addition for testing
-                let in0 = unsafe { &*(input[0] as *const Array<f64>) };
-                let in1 = unsafe { &*(input[1] as *const Array<f64>) };
-                let out = unsafe { &mut *(output[0] as *mut Array<f64>) };
-
-                if let (Some(a), Some(b)) = (in0.get(0), in1.get(0)) {
-                    out.set(0, a + b)?;
-                }
-                Ok(())
-            }
-            fn is_vectorized(&self) -> bool {
-                false
-            }
-            fn signature(&self) -> KernelSignature {
-                KernelSignature::new(vec![Dtype::from_type::<f64>()], Dtype::from_type::<f64>())
-            }
-        }
-
-        registry.register::<f64, TestAddKernel>(crate::kernels::UfuncType::Add, TestAddKernel);
+        registry.register::<f64>(UfuncType::Add, TestAddKernel);
 
         // Verify kernel was stored (internal check)
         assert_eq!(registry.kernels.len(), 1);
     }
 
-    // TODO: Re-enable retrieval tests once the downcasting issue is resolved
-    // The current architecture doesn't support retrieving kernels as trait objects
-    // because dyn Kernel<T> is unsized and cannot be used with downcast_ref
+    struct TestAddKernel;
+    impl Kernel for TestAddKernel {
+        fn name(&self) -> &str {
+            "test_add"
+        }
+        fn execute(
+            &self,
+            input: &[&dyn ArrayView],
+            output: &mut [&mut dyn ArrayViewMut],
+        ) -> Result<()> {
+            // Simple addition for testing
+            let in0 = input[0]
+                .as_any()
+                .downcast_ref::<Array<f64>>()
+                .expect("Type mismatch");
+            let in1 = input[1]
+                .as_any()
+                .downcast_ref::<Array<f64>>()
+                .expect("Type mismatch");
+            let out_array = output[0]
+                .as_any_mut()
+                .downcast_mut::<Array<f64>>()
+                .expect("Type mismatch");
+
+            if let (Some(a), Some(b)) = (in0.get(0), in1.get(0)) {
+                out_array.set(0, a + b)?;
+            }
+            Ok(())
+        }
+        fn is_vectorized(&self) -> bool {
+            false
+        }
+        fn signature(&self) -> KernelSignature {
+            KernelSignature::new(vec![Dtype::from_type::<f64>()], Dtype::from_type::<f64>())
+        }
+    }
+
+    #[test]
+    fn test_multiple_dtypes() {
+        let mut registry = KernelRegistry::new();
+
+        // Register kernels for different types
+        registry.register::<f64>(UfuncType::Add, TestAddKernel);
+        registry.register::<f32>(UfuncType::Add, TestAddKernel);
+
+        // Verify we can retrieve all kernels for Add ufunc
+        let add_kernels = registry.get_all(UfuncType::Add);
+        assert_eq!(add_kernels.len(), 2);
+
+        // Verify type safety
+        let f64_kernel = add_kernels[0];
+        let f32_kernel = add_kernels[1];
+
+        // Should be able to downcast to correct types
+        assert!(!std::any::TypeId::of::<f64>().eq(&std::any::TypeId::of::<f32>()));
+    }
 }

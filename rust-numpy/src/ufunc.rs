@@ -234,10 +234,16 @@ where
         let in1 = unsafe { &*(inputs[1] as *const _ as *const Array<T>) };
         let output = unsafe { &mut *(outputs[0] as *mut _ as *mut Array<T>) };
 
-        // Fall back to original implementation using iterators
-        let broadcasted = crate::broadcasting::broadcast_arrays(&[in0, in1])?;
-        let arr0 = &broadcasted[0];
-        let arr1 = &broadcasted[1];
+        // Try kernel registry for type-specific optimization
+        if let Some(kernel) =
+            crate::kernel_registry::get_kernel_registry().get::<T>(crate::kernels::UfuncType::Add)
+        {
+            kernel.execute(&[in0, in1], &mut [output])?;
+        } else {
+            // Fall back to original implementation using iterators
+            let broadcasted = crate::broadcasting::broadcast_arrays(&[in0, in1])?;
+            let arr0 = &broadcasted[0];
+            let arr1 = &broadcasted[1];
 
         for i in 0..output.size() {
             if where_mask
@@ -441,12 +447,20 @@ impl UfuncRegistry {
         casting: crate::dtype::Casting,
     ) -> Option<(&dyn Ufunc, Vec<Dtype>)> {
         if let Some(candidates) = self.ufuncs.get(name) {
-            // Find first candidate where all inputs can be cast safely
-            // TODO: Implement better "common type" promotion logic if multiple match (e.g. smallest safe type)
-            // For now, linear search is acceptable as we register types in a reasonable order?
-            // Actually, we usually register f64, f32, i64...
-            // If we have i32 inputs, and i64 is registered, it triggers cast.
+            // First pass: look for exact match
+            for ufunc in candidates {
+                let target_dtypes = ufunc.input_dtypes();
+                if target_dtypes.len() == input_dtypes.len()
+                    && target_dtypes
+                        .iter()
+                        .zip(input_dtypes.iter())
+                        .all(|(t, i)| t == i)
+                {
+                    return Some((ufunc.as_ref(), target_dtypes));
+                }
+            }
 
+            // Second pass: look for match with casting
             for ufunc in candidates {
                 let target_dtypes = ufunc.input_dtypes();
 
@@ -1382,7 +1396,7 @@ impl CustomUfuncRegistry {
         );
 
         // Store dtype info for validation
-        let mut _metrics = self.metrics.get(&name).unwrap().write().unwrap();
+        let _metrics = self.metrics.get(&name).unwrap().write().unwrap();
         // Could add more metadata tracking here
     }
 

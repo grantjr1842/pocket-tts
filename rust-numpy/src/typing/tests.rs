@@ -3,6 +3,8 @@ mod tests {
     use super::*;
     use crate::array::Array;
     use crate::dtype::Dtype;
+    use crate::typing::prelude::*;
+    use crate::typing::DtypeLike;
 
     #[test]
     fn test_ndarray_type_alias() {

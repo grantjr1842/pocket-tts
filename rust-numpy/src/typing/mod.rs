@@ -112,6 +112,12 @@ impl<T: Clone + Default + 'static, const N: usize> ArrayLike<T> for [T; N] {
     }
 }
 
+impl<T: Clone + Default + 'static, const N: usize> ArrayLike<T> for &[T; N] {
+    fn to_array(&self) -> Result<Array<T>, crate::error::NumPyError> {
+        Ok(Array::from_data(self.to_vec(), vec![N]))
+    }
+}
+
 impl<T: Clone + Default + 'static> ArrayLike<T> for &[T] {
     fn to_array(&self) -> Result<Array<T>, crate::error::NumPyError> {
         Ok(Array::from_data(self.to_vec(), vec![self.len()]))
@@ -226,6 +232,9 @@ pub mod prelude {
 /// Additional type aliases matching NumPy's typing module
 /// These provide compatibility with NumPy's type annotations
 pub mod aliases {
+    
+    
+
     /// Shape-like type for array shapes
     /// Represents the shape parameter in NumPy arrays
     pub type ShapeLike = Vec<usize>;

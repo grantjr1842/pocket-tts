@@ -364,13 +364,14 @@ mod tests {
 
     #[test]
     fn test_cpu_features() {
-        let features = crate::simd_intrinsics::CpuFeatures::detect();
+        let features = crate::cpu_features::CpuFeatures::detect();
         // Should not panic
         let _width_f64 = features.best_vector_width_f64();
         let _width_f32 = features.best_vector_width_f32();
     }
 
     #[test]
+    #[cfg(feature = "simd")]
     fn test_simd_chunk_size() {
         let chunk_size = SimdChunkSize::new();
         let _size_f64 = chunk_size.chunk_size_f64();

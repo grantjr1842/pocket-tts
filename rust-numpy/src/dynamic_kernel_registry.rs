@@ -253,8 +253,8 @@ pub fn register_kernel(
     input_dtypes: Vec<Dtype>,
 ) -> Result<()> {
     let registry = DynamicKernelRegistry::instance();
-    let mut registry = registry.write().map_err(|_| {
-        NumPyError::internal_error("Failed to acquire write lock for kernel registry")
+    let mut registry = registry.write().map_err(|_| NumPyError::InternalError {
+        message: "Failed to acquire write lock for kernel registry".to_string(),
     })?;
 
     registry.register_kernel(ufunc_name, kernel, input_dtypes)

@@ -1,7 +1,7 @@
 use crate::array::Array;
 use crate::dtype::Dtype;
 use crate::error::{NumPyError, Result};
-use crate::kernel_registry::{Kernel, KernelSignature};
+use crate::kernel_registry::{Kernel, KernelSignature, PerformanceHint};
 use crate::ufunc::ArrayViewMut;
 use std::marker::PhantomData;
 

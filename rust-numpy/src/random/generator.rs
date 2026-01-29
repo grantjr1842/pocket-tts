@@ -235,28 +235,19 @@ impl Generator {
         Ok(Array::from_data(data, shape.to_vec()))
     }
 
-    // TODO: Logistic distribution not available in rand_distr
-    // pub fn logistic<T>(
-    //     &mut self,
-    //     loc: f64,
-    //     scale: f64,
-    //     shape: &[usize],
-    // ) -> Result<Array<T>, NumPyError>
-    // where
-    //     T: Clone + Default + 'static + From<f64>,
-    // {
-    //     if scale <= 0.0 {
-    //         return Err(NumPyError::invalid_value("scale must be positive"));
-    //     }
-    //     let dist =
-    //         Logistic::new(loc, scale).map_err(|e| NumPyError::invalid_value(e.to_string()))?;
-    //     let size = shape.iter().product();
-    //     let mut data = Vec::with_capacity(size);
-    //     for _ in 0..size {
-    //         data.push(T::from(dist.sample(&mut self.bit_gen)));
-    //     }
-    //     Ok(Array::from_data(data, shape.to_vec()))
-    // }
+    pub fn logistic<T>(
+        &mut self,
+        _loc: f64,
+        _scale: f64,
+        _shape: &[usize],
+    ) -> Result<Array<T>, NumPyError>
+    where
+        T: Clone + Default + 'static + From<f64>,
+    {
+        Err(NumPyError::internal_error(
+            "logistic distribution not supported in this build",
+        ))
+    }
 
     pub fn lognormal<T>(
         &mut self,
@@ -670,45 +661,28 @@ impl Generator {
         Ok(Array::from_data(data, shape.to_vec()))
     }
 
-    // TODO: Power distribution not available in rand_distr
-    // pub fn power<T>(&mut self, a: f64, shape: &[usize]) -> Result<Array<T>, NumPyError>
-    // where
-    //     T: Clone + Default + 'static + From<f64>,
-    // {
-    //     if a <= 0.0 {
-    //         return Err(NumPyError::invalid_value("a must be positive"));
-    //     }
-    //     let dist = Power::new(a).map_err(|e| NumPyError::invalid_value(e.to_string()))?;
-    //     let size = shape.iter().product();
-    //     let mut data = Vec::with_capacity(size);
-    //     for _ in 0..size {
-    //         data.push(T::from(dist.sample(&mut self.bit_gen)));
-    //     }
-    //     Ok(Array::from_data(data, shape.to_vec()))
-    // }
+    pub fn power<T>(&mut self, _a: f64, _shape: &[usize]) -> Result<Array<T>, NumPyError>
+    where
+        T: Clone + Default + 'static + From<f64>,
+    {
+        Err(NumPyError::internal_error(
+            "power distribution not supported in this build",
+        ))
+    }
 
-    // TODO: VonMises distribution not available in rand_distr
-    // pub fn vonmises<T>(
-    //     &mut self,
-    //     mu: f64,
-    //     kappa: f64,
-    //     shape: &[usize],
-    // ) -> Result<Array<T>, NumPyError>
-    // where
-    //     T: Clone + Default + 'static + From<f64>,
-    // {
-    //     if kappa < 0.0 {
-    //         return Err(NumPyError::invalid_value("kappa must be non-negative"));
-    //     }
-    //     let dist =
-    //         VonMises::new(mu, kappa).map_err(|e| NumPyError::invalid_value(e.to_string()))?;
-    //     let size = shape.iter().product();
-    //     let mut data = Vec::with_capacity(size);
-    //     for _ in 0..size {
-    //         data.push(T::from(dist.sample(&mut self.bit_gen)));
-    //     }
-    //     Ok(Array::from_data(data, shape.to_vec()))
-    // }
+    pub fn vonmises<T>(
+        &mut self,
+        _mu: f64,
+        _kappa: f64,
+        _shape: &[usize],
+    ) -> Result<Array<T>, NumPyError>
+    where
+        T: Clone + Default + 'static + From<f64>,
+    {
+        Err(NumPyError::internal_error(
+            "vonmises distribution not supported in this build",
+        ))
+    }
 
     // --- Utility Methods ---
 
@@ -749,7 +723,7 @@ impl Generator {
             }
 
             // Replace the data
-            data.copy_from_slice(&new_data);
+            data.clone_from_slice(&new_data);
         }
 
         Ok(())
