@@ -254,7 +254,8 @@ pub use dtype::{
 };
 pub use error::{NumPyError, Result};
 pub use linalg::{
-    cross, det, dot, eig, inner, kron, matrix_power, norm, outer, qr, svd, trace, LinAlgError,
+    cross, det, dot, eig, inner, kron, lstsq, matrix_power, multi_dot, norm, outer, qr, svd,
+    tensorinv, tensorsolve, trace, LinAlgError,
 };
 pub use performance_metrics::{
     Bottleneck, BottleneckType, MemoryTracker, OptimizationRecommendation, PerformanceMetrics,

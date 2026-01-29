@@ -494,6 +494,12 @@ where
     x_2d.reshape(&x_shape)
 }
 
+/// Alias for tensor_inv following NumPy naming convention
+pub use tensor_inv as tensorinv;
+
+/// Alias for tensor_solve following NumPy naming convention
+pub use tensor_solve as tensorsolve;
+
 /// Tensor inverse with axes support
 /// Computes inverse of tensor matrices along specified axes
 pub fn tensor_inv<T>(a: &Array<T>, axes: Option<&[usize]>) -> Result<Array<T>, NumPyError>
