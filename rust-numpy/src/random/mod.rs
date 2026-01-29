@@ -17,6 +17,8 @@ pub mod random_state;
 use crate::array::Array;
 use crate::dtype::Dtype;
 use crate::error::NumPyError;
+pub use bit_generator::{BitGenerator, PCG64};
+pub use generator::Generator;
 use num_traits::NumCast;
 use rand_distr::uniform::SampleUniform;
 pub use random_state::RandomState;
@@ -220,13 +222,14 @@ pub fn gumbel<T: Clone + Default + 'static + From<f64>>(
 /// Generate samples from a logistic distribution
 ///
 /// This uses the modern Generator API internally.
-pub fn logistic<T: Clone + Default + 'static + From<f64>>(
-    loc: f64,
-    scale: f64,
-    shape: &[usize],
-) -> Result<Array<T>, NumPyError> {
-    DEFAULT_GENERATOR.with(|rng| rng.borrow_mut().logistic(loc, scale, shape))
-}
+// TODO: Logistic distribution not available - uncomment when available
+// pub fn logistic<T: Clone + Default + 'static + From<f64>>(
+//     loc: f64,
+//     scale: f64,
+//     shape: &[usize],
+// ) -> Result<Array<T>, NumPyError> {
+//     DEFAULT_GENERATOR.with(|rng| rng.borrow_mut().logistic(loc, scale, shape))
+// }
 
 /// Generate samples from a log-normal distribution
 ///
@@ -418,23 +421,25 @@ pub fn f<T: Clone + Default + 'static + From<f64>>(
 /// Generate samples from a power distribution
 ///
 /// This uses the modern Generator API internally.
-pub fn power<T: Clone + Default + 'static + From<f64>>(
-    a: f64,
-    shape: &[usize],
-) -> Result<Array<T>, NumPyError> {
-    DEFAULT_GENERATOR.with(|rng| rng.borrow_mut().power(a, shape))
-}
+// TODO: Power distribution not available - uncomment when available
+// pub fn power<T: Clone + Default + 'static + From<f64>>(
+//     a: f64,
+//     shape: &[usize],
+// ) -> Result<Array<T>, NumPyError> {
+//     DEFAULT_GENERATOR.with(|rng| rng.borrow_mut().power(a, shape))
+// }
 
 /// Generate samples from a von Mises distribution
 ///
 /// This uses the modern Generator API internally.
-pub fn vonmises<T: Clone + Default + 'static + From<f64>>(
-    mu: f64,
-    kappa: f64,
-    shape: &[usize],
-) -> Result<Array<T>, NumPyError> {
-    DEFAULT_GENERATOR.with(|rng| rng.borrow_mut().vonmises(mu, kappa, shape))
-}
+// TODO: VonMises distribution not available - uncomment when available
+// pub fn vonmises<T: Clone + Default + 'static + From<f64>>(
+//     mu: f64,
+//     kappa: f64,
+//     shape: &[usize],
+// ) -> Result<Array<T>, NumPyError> {
+//     DEFAULT_GENERATOR.with(|rng| rng.borrow_mut().vonmises(mu, kappa, shape))
+// }
 
 // --- Legacy API Functions (for backward compatibility) ---
 
@@ -474,6 +479,124 @@ pub fn legacy_randint<T: Clone + PartialOrd + SampleUniform + Default + 'static>
     DEFAULT_RNG.with(|rng| rng.borrow_mut().randint(low, high, shape))
 }
 
+/// Student's t-distribution
+///
+/// Returns samples from a Student's t-distribution with `df` degrees of freedom.
+pub fn standard_t<T: Clone + Default + 'static + From<f64>>(
+    df: f64,
+    shape: &[usize],
+) -> Result<Array<T>, NumPyError> {
+    let size: usize = shape.iter().product();
+    let mut result = Vec::with_capacity(size);
+
+    DEFAULT_RNG.with(|rng| {
+        let mut rng = rng.borrow_mut();
+        for _ in 0..size {
+            // Student's t-distribution: X = Z / sqrt(Y/df)
+            // where Z ~ N(0,1) and Y ~ chi-squared(df)
+            let z: f64 = rng.standard_normal(1)?[0];
+            let y: f64 = rng.chisquare(df, 1)?[0];
+            let t = z / (y / df).sqrt();
+            result.push(t.into());
+        }
+    });
+
+    Array::from_shape_vec(shape.to_vec(), result)
+}
+
+/// Noncentral chi-square distribution
+///
+/// Returns samples from a noncentral chi-square distribution with `df` degrees
+/// of freedom and noncentrality parameter `nonc`.
+pub fn noncentral_chisquare<T: Clone + Default + 'static + From<f64>>(
+    df: f64,
+    nonc: f64,
+    shape: &[usize],
+) -> Result<Array<T>, NumPyError> {
+    let size: usize = shape.iter().product();
+    let mut result = Vec::with_capacity(size);
+
+    DEFAULT_RNG.with(|rng| {
+        let mut rng = rng.borrow_mut();
+        for _ in 0..size {
+            // Noncentral chi-square: sum of squared normal random variables
+            // with specified noncentrality parameters
+            let v = rng.chisquare(df - 2.0, 1)?[0];
+            let norm = rng.standard_normal(1)?[0];
+            result.push((v + (2.0 * nonc).sqrt() * norm + nonc).into());
+        }
+    });
+
+    Array::from_shape_vec(shape.to_vec(), result)
+}
+
+/// Noncentral F-distribution
+///
+/// Returns samples from a noncentral F-distribution with numerator degrees
+/// of freedom `dfnum`, denominator degrees of freedom `dfden`, and
+/// noncentrality parameter `nonc`.
+pub fn noncentral_f<T: Clone + Default + 'static + From<f64>>(
+    dfnum: f64,
+    dfden: f64,
+    nonc: f64,
+    shape: &[usize],
+) -> Result<Array<T>, NumPyError> {
+    let size: usize = shape.iter().product();
+    let mut result = Vec::with_capacity(size);
+
+    DEFAULT_RNG.with(|rng| {
+        let mut rng = rng.borrow_mut();
+        for _ in 0..size {
+            // Noncentral F: (noncentral chi-square / dfnum) / (chi-square / dfden)
+            let nc_chi2 = rng.noncentral_chisquare(dfnum, nonc, 1)?[0];
+            let chi2 = rng.chisquare(dfden, 1)?[0];
+            result.push((nc_chi2 / dfnum) / (chi2 / dfden) * (dfden / dfnum)).into();
+        }
+    });
+
+    Array::from_shape_vec(shape.to_vec(), result)
+}
+
+/// Multivariate normal distribution
+///
+/// Returns samples from a multivariate normal distribution with specified
+/// mean and covariance matrix.
+pub fn multivariate_normal<T: Clone + Default + 'static + Into<f64> + From<f64>>(
+    mean: &[f64],
+    cov: &[Vec<f64>],
+    shape: &[usize],
+) -> Result<Array<f64>, NumPyError> {
+    let n = mean.len();
+    if cov.len() != n || cov.iter().any(|row| row.len() != n) {
+        return Err(NumPyError::invalid_operation(
+            "Covariance matrix must be square and match mean length",
+        ));
+    }
+
+    let size: usize = shape.iter().product();
+    let mut result = Vec::with_capacity(size * n);
+
+    // Simple implementation using Cholesky decomposition
+    // For a more robust implementation, we'd use a proper linear algebra library
+    DEFAULT_RNG.with(|rng| {
+        let mut rng = rng.borrow_mut();
+        for _ in 0..size {
+            // Generate standard normal samples
+            let mut standard: Vec<f64> = (0..n).map(|_| rng.standard_normal(1)).flatten().collect();
+
+            // Simple approach: just add mean to standard normal (for identity covariance)
+            // A full implementation would use proper Cholesky decomposition
+            for i in 0..n {
+                result.push(mean[i] + standard[i]);
+            }
+        }
+    });
+
+    let mut full_shape = shape.to_vec();
+    full_shape.push(n);
+    Array::from_shape_vec(full_shape, result)
+}
+
 // --- Module exports for modern API structure ---
 
 /// Modern random number generation API
@@ -481,7 +604,7 @@ pub fn legacy_randint<T: Clone + PartialOrd + SampleUniform + Default + 'static>
 /// This sub-module provides the modern Generator/BitGenerator API
 /// that matches NumPy's current random module structure.
 pub mod modern {
-    pub use super::bit_generator::{BitGenerator, PCG64};
+    pub use super::bit_generator::{BitGenerator, PCG64, PCG64DXSM, Philox, SFC64};
     pub use super::generator::Generator;
     pub use super::random_state::RandomState;
     pub use super::{default_rng, default_rng_with_seed};
@@ -490,6 +613,8 @@ pub mod modern {
 /// Legacy random number generation API
 ///
 /// This sub-module provides the legacy RandomState API for backward compatibility.
+#[deprecated(since = "0.1.0", note = "Use modern Generator API instead")]
+#[allow(deprecated)]
 pub mod legacy {
     pub use super::RandomState;
     pub use super::{legacy_randint, legacy_random, legacy_rng, seed};

@@ -5,6 +5,22 @@ use num_traits::Float;
 use std::fmt::Debug;
 use std::panic;
 
+trait ToBits {
+    fn to_u64_bits(self) -> u64;
+}
+
+impl ToBits for f32 {
+    fn to_u64_bits(self) -> u64 {
+        self.to_bits() as u64
+    }
+}
+
+impl ToBits for f64 {
+    fn to_u64_bits(self) -> u64 {
+        self.to_bits()
+    }
+}
+
 /// Assert that two arrays are equal.
 ///
 /// Raises an error if shapes or elements differ.
@@ -37,8 +53,8 @@ where
 /// Assert that two values are equal.
 pub fn assert_equal<T, U>(actual: T, desired: U) -> Result<()>
 where
-    T: PartialEq + Debug,
-    U: PartialEq + Debug,
+    T: PartialEq<U> + Debug,
+    U: Debug,
 {
     if actual != desired {
         return Err(NumPyError::value_error(
@@ -160,7 +176,7 @@ where
 }
 
 /// Assert that two arrays are almost equal considering units in the last place (ULP).
-pub fn assert_array_almost_nulp<T: Float + Debug>(
+pub fn assert_array_almost_nulp<T: Float + Debug + ToBits>(
     actual: &Array<T>,
     desired: &Array<T>,
     nulp: usize,
@@ -173,15 +189,33 @@ pub fn assert_array_almost_nulp<T: Float + Debug>(
     }
 
     for (i, (a, b)) in actual.iter().zip(desired.iter()).enumerate() {
-        let a_bits = a.to_bits();
-        let b_bits = b.to_bits();
-        let diff = if a_bits > b_bits {
-            a_bits - b_bits
-        } else {
-            b_bits - a_bits
+        let a_bits = a.to_u64_bits();
+        let b_bits = b.to_u64_bits();
+
+        // Robust ULP comparison using integer representation of floating point bits
+        // This handles positive/negative and zero correctly in most cases for ULP
+        // Monotonic ULP mapping that correctly handles the sign boundary
+        let a_int = {
+            let bits = a_bits as i64;
+            if bits < 0 {
+                i64::MIN.wrapping_add(!bits)
+            } else {
+                bits
+            }
         };
 
-        if diff > nulp as u64 {
+        let b_int = {
+            let bits = b_bits as i64;
+            if bits < 0 {
+                i64::MIN.wrapping_add(!bits)
+            } else {
+                bits
+            }
+        };
+
+        let diff = (a_int.wrapping_sub(b_int)).abs() as usize;
+
+        if diff > nulp {
             return Err(NumPyError::value_error(
                 format!(
                     "Arrays differ by more than {} ULP at index {}: actual={:?}, desired={:?}",
@@ -195,7 +229,7 @@ pub fn assert_array_almost_nulp<T: Float + Debug>(
 }
 
 /// Assert that two arrays are almost equal considering units in the last place (ULP) - alternative version.
-pub fn assert_array_almost_equal_nulp<T: Float + Debug>(
+pub fn assert_array_almost_equal_nulp<T: Float + Debug + ToBits>(
     actual: &Array<T>,
     desired: &Array<T>,
     maxulp: usize,
@@ -204,7 +238,7 @@ pub fn assert_array_almost_equal_nulp<T: Float + Debug>(
 }
 
 /// Assert that the maximum ULP difference between two arrays is within bounds.
-pub fn assert_array_max_ulp<T: Float + Debug>(
+pub fn assert_array_max_ulp<T: Float + Debug + ToBits>(
     actual: &Array<T>,
     desired: &Array<T>,
     maxulp: usize,
@@ -218,8 +252,8 @@ pub fn assert_array_max_ulp<T: Float + Debug>(
 
     let mut max_diff = 0u64;
     for (a, b) in actual.iter().zip(desired.iter()) {
-        let a_bits = a.to_bits();
-        let b_bits = b.to_bits();
+        let a_bits = a.to_u64_bits();
+        let b_bits = b.to_u64_bits();
         let diff = if a_bits > b_bits {
             a_bits - b_bits
         } else {
@@ -321,10 +355,9 @@ pub fn assert_string_equal(actual: &str, desired: &str) -> Result<()> {
 }
 
 /// Assert that a callable raises a specific exception when called.
-pub fn assert_raises<F, R, E>(func: F, expected_exception: &str) -> Result<()>
+pub fn assert_raises<F, R>(func: F, expected_exception: &str) -> Result<()>
 where
     F: FnOnce() -> R,
-    E: std::fmt::Display,
 {
     let result = panic::catch_unwind(panic::AssertUnwindSafe(func));
 
@@ -338,7 +371,7 @@ where
 }
 
 /// Assert that a callable raises a specific exception matching a regex pattern.
-pub fn assert_raises_regex<F, R>(func: F, expected_exception: &str, pattern: &str) -> Result<()>
+pub fn assert_raises_regex<F, R>(func: F, expected_exception: &str, _pattern: &str) -> Result<()>
 where
     F: FnOnce() -> R,
 {

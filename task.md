@@ -1,5 +1,0 @@
-- [x] Draft rust-numpy/PARITY_NUMPY_2_4.md consolidating parity, gap analysis, checklist, and baseline summary with updated dates and references to the CSV/function list.
-- [x] Remove or archive redundant parity/gap docs listed in the plan and fix any intra-doc references to the new report.
-- [x] Update rust-numpy/scripts/inventory_scanner.py to de-duplicate outputs (and emit enum inventory if needed); regenerate rust-numpy/INVENTORY.md.
-- [x] Add rust-numpy/scripts/enum_audit.py to collect NumPy 2.4 enums and compare against rust-numpy enums; generate rust-numpy/ENUM_PARITY_NUMPY_2_4.csv and add a summary section in the report.
-- [x] Run verification commands from implementation_plan.md and capture results.
