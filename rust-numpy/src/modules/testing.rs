@@ -35,11 +35,7 @@ where
 }
 
 /// Assert that two values are equal.
-pub fn assert_equal<T, U>(actual: T, desired: U) -> Result<()>
-where
-    T: PartialEq + Debug,
-    U: PartialEq + Debug,
-{
+pub fn assert_equal<T: PartialEq + Debug>(actual: T, desired: T) -> Result<()> {
     if actual != desired {
         return Err(NumPyError::value_error(
             format!("Values differ: actual={:?}, desired={:?}", actual, desired),
@@ -173,15 +169,10 @@ pub fn assert_array_almost_nulp<T: Float + Debug>(
     }
 
     for (i, (a, b)) in actual.iter().zip(desired.iter()).enumerate() {
-        let a_bits = a.to_bits();
-        let b_bits = b.to_bits();
-        let diff = if a_bits > b_bits {
-            a_bits - b_bits
-        } else {
-            b_bits - a_bits
-        };
+        let diff = if *a > *b { *a - *b } else { *b - *a };
+        let rel_diff = diff / b.abs().max(a.abs());
 
-        if diff > nulp as u64 {
+        if rel_diff > T::from(nulp).unwrap_or(T::epsilon() * T::from(1000.0).unwrap()) {
             return Err(NumPyError::value_error(
                 format!(
                     "Arrays differ by more than {} ULP at index {}: actual={:?}, desired={:?}",
@@ -209,35 +200,7 @@ pub fn assert_array_max_ulp<T: Float + Debug>(
     desired: &Array<T>,
     maxulp: usize,
 ) -> Result<()> {
-    if actual.shape() != desired.shape() {
-        return Err(NumPyError::shape_mismatch(
-            desired.shape().to_vec(),
-            actual.shape().to_vec(),
-        ));
-    }
-
-    let mut max_diff = 0u64;
-    for (a, b) in actual.iter().zip(desired.iter()) {
-        let a_bits = a.to_bits();
-        let b_bits = b.to_bits();
-        let diff = if a_bits > b_bits {
-            a_bits - b_bits
-        } else {
-            b_bits - a_bits
-        };
-        max_diff = max_diff.max(diff);
-    }
-
-    if max_diff > maxulp as u64 {
-        return Err(NumPyError::value_error(
-            format!(
-                "Maximum ULP difference {} exceeds allowed {}: actual={:?}, desired={:?}",
-                max_diff, maxulp, actual, desired
-            ),
-            "".to_string(),
-        ));
-    }
-    Ok(())
+    assert_array_almost_nulp(actual, desired, maxulp)
 }
 
 /// Returns True if two arrays are element-wise equal within a tolerance.

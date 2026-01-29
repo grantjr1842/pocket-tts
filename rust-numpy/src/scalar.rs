@@ -3,7 +3,7 @@
 use num_traits::Float;
 
 /// Generic scalar type (placeholder for Python object compatibility)
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct Generic(pub Box<dyn std::any::Any>);
 
 /// Complex floating point type

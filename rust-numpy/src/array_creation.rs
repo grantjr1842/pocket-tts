@@ -545,7 +545,7 @@ pub fn indices(shape: &[usize]) -> Result<Array<usize>> {
         index_base += dim_size * stride * block_size;
     }
 
-    Ok(Array::from_shape_vec(result_shape, data)?)
+    Ok(Array::from_shape_vec(result_shape, data))
 }
 
 /// Compute the indices to access the main diagonal of an n-dimensional array.
@@ -567,10 +567,9 @@ pub fn tril_indices(n: usize, k: isize, m: Option<usize>) -> (Array<usize>, Arra
     let mut row = Vec::new();
     let mut col = Vec::new();
 
-    let k = k as isize;
     for i in 0..n {
         for j in 0..m {
-            if j <= i + k {
+            if j as isize <= i as isize + k {
                 row.push(i);
                 col.push(j);
             }
@@ -586,10 +585,9 @@ pub fn triu_indices(n: usize, k: isize, m: Option<usize>) -> (Array<usize>, Arra
     let mut row = Vec::new();
     let mut col = Vec::new();
 
-    let k = k as isize;
     for i in 0..n {
         for j in 0..m {
-            if j >= i + k {
+            if j as isize >= i as isize + k {
                 row.push(i);
                 col.push(j);
             }

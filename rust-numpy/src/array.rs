@@ -979,7 +979,7 @@ impl<T> Array<T> {
         // For non-complex types, return the array itself
         if std::any::TypeId::of::<T>() == std::any::TypeId::of::<num_complex::Complex<f64>>()
             || std::any::TypeId::of::<T>() == std::any::TypeId::of::<num_complex::Complex<f32>>() {
-            let new_data: Vec<T> = self.iter().map(|&x| x.element_conj()).collect();
+            let new_data: Vec<T> = self.iter().map(|x| x.element_conj()).collect();
             Ok(Array::from_shape_vec(self.shape.clone(), new_data))
         } else {
             Ok(self.clone())
