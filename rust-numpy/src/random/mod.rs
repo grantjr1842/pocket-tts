@@ -637,7 +637,7 @@ pub fn legacy_randint<T: Clone + PartialOrd + SampleUniform + Default + 'static>
 /// This sub-module provides the modern Generator/BitGenerator API
 /// that matches NumPy's current random module structure.
 pub mod modern {
-    pub use super::bit_generator::{BitGenerator, PCG64};
+    pub use super::bit_generator::{BitGenerator, MT19937, PCG64, Philox, SFC64};
     pub use super::generator::Generator;
     pub use super::random_state::RandomState;
     pub use super::{default_rng, default_rng_with_seed};
