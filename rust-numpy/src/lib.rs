@@ -478,3 +478,12 @@ macro_rules! array3 {
         }
     };
 }
+
+// Centralized export registry for NumPy API
+pub mod exports;
+
+// Convenience re-export of all API modules
+pub use exports::{
+    array_api, math_api, stats_api, linalg_api, random_api, fft_api,
+    comparison_api, setops_api, bitwise_api, constants_api, testing_api, ma_api,
+};
