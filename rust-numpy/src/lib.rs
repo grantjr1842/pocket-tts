@@ -483,3 +483,19 @@ macro_rules! array3 {
         }
     };
 }
+
+// NumPy-compatible submodule structure
+pub mod emath;
+pub mod exceptions;
+pub mod ctypeslib;
+
+// Re-export submodules at root level (NumPy compatibility)
+pub use ma::{
+    all as ma_all, allequal as ma_allequal, any as ma_any, append as ma_append,
+    average as ma_average, MaskedArray, NOMASK,
+};
+
+pub use fft::{
+    fft, ifft, fftshift, ifftshift, fftfreq, rfftfreq, rfft, irfft,
+    fftn, ifftn, rfftn, irfftn, fft2, ifft2, rfft2, irfft2,
+};
