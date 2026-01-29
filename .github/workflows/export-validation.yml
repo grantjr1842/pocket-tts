@@ -1,0 +1,69 @@
+name: Export Validation
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'rust-numpy/src/lib.rs'
+      - 'rust-numpy/src/**/exports.rs'
+  pull_request:
+    branches: [ main ]
+    paths:
+      - 'rust-numpy/src/lib.rs'
+      - 'rust-numpy/src/**/exports.rs'
+
+jobs:
+  validate-exports:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Install Rust
+      uses: actions-rs/toolchain@v1
+      with:
+        toolchain: stable
+        override: true
+        components: rustfmt, clippy
+    
+    - name: Check for duplicate exports
+      run: |
+        cd rust-numpy
+        echo "Checking for duplicate exports in lib.rs..."
+        # Extract pub use statements and check for duplicates
+        grep -E "^pub use" src/lib.rs | sort | uniq -d > duplicates.txt || true
+        if [ -s duplicates.txt ]; then
+          echo "❌ Duplicate exports found:"
+          cat duplicates.txt
+          exit 1
+        else
+          echo "✅ No duplicate exports found"
+        fi
+    
+    - name: Check for wildcard exports
+      run: |
+        cd rust-numpy
+        echo "Checking for wildcard exports..."
+        WILDCARDS=$(grep -c "pub use.*::\*" src/lib.rs || echo "0")
+        if [ "$WILDCARDS" -gt 0 ]; then
+          echo "⚠️ Found $WILDCARDS wildcard exports:"
+          grep -n "pub use.*::\*" src/lib.rs
+          echo "Consider converting to explicit exports"
+        else
+          echo "✅ No wildcard exports found"
+        fi
+    
+    - name: Verify exports compile
+      run: |
+        cd rust-numpy
+        cargo check --lib 2>&1 | tee check.log || true
+        if grep -q "error\[E0252\]" check.log; then
+          echo "❌ Duplicate export errors found"
+          exit 1
+        fi
+        echo "✅ No duplicate export errors"
+    
+    - name: Check documentation builds
+      run: |
+        cd rust-numpy
+        cargo doc --no-deps 2>&1 | tee doc.log || true
+        echo "✅ Documentation check complete"

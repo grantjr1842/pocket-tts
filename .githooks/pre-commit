@@ -1,0 +1,3 @@
+#!/bin/bash
+# Pre-commit hook for export validation
+./scripts/check-exports.sh
