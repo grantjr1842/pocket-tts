@@ -595,3 +595,72 @@ where
 
     Ok([shift, scale])
 }
+
+/// Polynomial division
+///
+/// Returns the quotient and remainder of polynomial division.
+pub fn polydiv<T>(
+    p1: &Polynomial<T>,
+    p2: &Polynomial<T>,
+) -> Result<(Polynomial<T>, Polynomial<T>), NumPyError>
+where
+    T: Float + Num + std::fmt::Debug + 'static,
+{
+    let c1 = p1.coeffs();
+    let c2 = p2.coeffs();
+
+    if c2.is_empty() || c2.iter().all(|&x| x == T::zero()) {
+        return Err(NumPyError::invalid_value("Division by zero polynomial"));
+    }
+
+    let n1 = c1.len();
+    let n2 = c2.len();
+
+    if n1 < n2 {
+        // Quotient is zero, remainder is p1
+        let zero_poly = Polynomial::new(&Array1::from_elem(1, T::zero()))?;
+        let remainder = Polynomial::new(c1)?;
+        return Ok((zero_poly, remainder));
+    }
+
+    // Make copies to work with
+    let mut remainder = c1.to_owned();
+    let divisor_leading = c2[n2 - 1];
+
+    // Quotient length
+    let n_quot = n1 - n2 + 1;
+    let mut quotient = Array1::zeros(n_quot);
+
+    // Long division algorithm
+    for i in (n2 - 1..n1).rev() {
+        let coeff = remainder[i] / divisor_leading;
+        let pos = i - (n2 - 1);
+
+        if coeff != T::zero() {
+            quotient[pos] = coeff;
+            // Subtract coeff * (c2 shifted by pos) from remainder
+            for j in 0..n2 {
+                if i - n2 + 1 + j < n1 {
+                    remainder[i - n2 + 1 + j] = remainder[i - n2 + 1 + j] - coeff * c2[j];
+                }
+            }
+        }
+    }
+
+    // Trim trailing zeros from remainder
+    let mut rem_len = remainder.len();
+    while rem_len > 0 && remainder[rem_len - 1] == T::zero() {
+        rem_len -= 1;
+    }
+    remainder = remainder.slice(s![..rem_len]).to_owned();
+
+    // Handle case where remainder becomes zero polynomial
+    if remainder.is_empty() {
+        remainder = Array1::from_elem(1, T::zero());
+    }
+
+    let quotient_poly = Polynomial::new(&quotient)?;
+    let remainder_poly = Polynomial::new(&remainder)?;
+
+    Ok((quotient_poly, remainder_poly))
+}

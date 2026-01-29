@@ -3,8 +3,8 @@
 //! This file shows how to use PCG64, MT19937, and Philox BitGenerators
 //! for NumPy-compatible random number generation.
 
-use rand::RngCore;
-use rust_numpy::random::bit_generator::*;
+use numpy::random::bit_generator::*;
+use rand::{Rng, RngCore};
 
 /// Example 1: Basic BitGenerator usage
 fn example_basic_usage() {
@@ -159,9 +159,9 @@ fn example_factory_functions() {
 
     // Create seeded generators
     let seed = 98765;
-    let seeded_pcg = factory::create_seeded_bitgenerator("PCG64", seed).unwrap();
-    let seeded_mt = factory::create_seeded_bitgenerator("MT19937", seed).unwrap();
-    let seeded_philox = factory::create_seeded_bitgenerator("Philox", seed).unwrap();
+    let mut seeded_pcg = factory::create_seeded_bitgenerator("PCG64", seed).unwrap();
+    let mut seeded_mt = factory::create_seeded_bitgenerator("MT19937", seed).unwrap();
+    let mut seeded_philox = factory::create_seeded_bitgenerator("Philox", seed).unwrap();
 
     println!("\nSeeded generators (seed={}):", seed);
     println!("  PCG64: {}", seeded_pcg.next_u32());
@@ -182,8 +182,8 @@ fn example_legacy_compatibility() {
     println!("\n=== Legacy Compatibility ===");
 
     // Legacy functions
-    let legacy1 = legacy::new();
-    let legacy2 = legacy::seed_from_u64(12345);
+    let mut legacy1 = legacy::new();
+    let mut legacy2 = legacy::seed_from_u64(12345);
 
     println!("Legacy generators:");
     println!("  Random: {}", legacy1.name());
@@ -276,7 +276,7 @@ fn example_parallel_streams() {
     let mut streams: Vec<PCG64> = (0..num_streams)
         .map(|i| {
             let mut stream = PCG64::seed_from_u64(base_seed);
-            stream.jump(params.jump_size * i as u64);
+            stream.jump((params.jump_size * i as u128).try_into().unwrap());
             stream
         })
         .collect();
@@ -435,7 +435,7 @@ fn example_thread_safety_simulation() {
 
     // Verify means are different (high probability)
     let mut unique_means: Vec<f64> = means.clone();
-    unique_means.sort();
+    unique_means.sort_by(|a, b| a.partial_cmp(b).unwrap());
     unique_means.dedup();
 
     println!("Unique means: {} (should be 4)", unique_means.len());

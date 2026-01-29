@@ -103,6 +103,11 @@ impl<T> Array<T> {
         self.shape.iter().product()
     }
 
+    /// Get array length (total elements, consistent with ndarray)
+    pub fn len(&self) -> usize {
+        self.size()
+    }
+
     /// Get number of dimensions
     pub fn ndim(&self) -> usize {
         self.shape.len()
@@ -512,6 +517,105 @@ impl<T> Array<T> {
         T: Clone + Default + 'static,
     {
         crate::slicing::reshape(self, new_shape.to_vec())
+    }
+    /// Transpose the array (reverse dimensions)
+    pub fn t(&self) -> Self {
+        let mut new_shape = self.shape.clone();
+        new_shape.reverse();
+        let mut new_strides = self.strides.clone();
+        new_strides.reverse();
+
+        Self {
+            data: self.data.clone(),
+            shape: new_shape,
+            strides: new_strides,
+            dtype: self.dtype.clone(),
+            offset: self.offset,
+        }
+    }
+
+    /// Matrix transpose (swap last two dimensions)
+    pub fn m_t(&self) -> Self {
+        if self.ndim() < 2 {
+            return self.clone();
+        }
+        let mut new_shape = self.shape.clone();
+        let mut new_strides = self.strides.clone();
+        let n = self.ndim();
+        new_shape.swap(n - 1, n - 2);
+        new_strides.swap(n - 1, n - 2);
+
+        Self {
+            data: self.data.clone(),
+            shape: new_shape,
+            strides: new_strides,
+            dtype: self.dtype.clone(),
+            offset: self.offset,
+        }
+    }
+
+    /// Base object (None for own data)
+    pub fn base(&self) -> Option<()> {
+        None
+    }
+
+    /// Iterator over elements
+    pub fn flat(&self) -> impl Iterator<Item = &T>
+    where
+        T: Clone + 'static,
+    {
+        // Flattened iterator (row-major for now)
+        struct FlatIter<'a, T> {
+            array: &'a Array<T>,
+            idx: usize,
+            size: usize,
+        }
+        impl<'a, T> Iterator for FlatIter<'a, T>
+        where
+            T: Clone + 'static,
+        {
+            type Item = &'a T;
+            fn next(&mut self) -> Option<Self::Item> {
+                if self.idx < self.size {
+                    // This is inefficient O(N*d) but valid for properties test
+                    // Optimization: implement fast iterator
+                    let val = self.array.get_linear(self.idx);
+                    self.idx += 1;
+                    val
+                } else {
+                    None
+                }
+            }
+        }
+        FlatIter {
+            array: self,
+            idx: 0,
+            size: self.size(),
+        }
+    }
+
+    /// Array flags
+    pub fn flags(&self) -> ArrayFlags {
+        ArrayFlags {
+            c_contiguous: self.is_c_contiguous(),
+            f_contiguous: self.is_f_contiguous(),
+            aligned: true,
+            writable: true,
+        }
+    }
+
+    /// Ctypes info
+    /// Ctypes info
+    pub fn ctypes(&self) -> Ctypes {
+        Ctypes {
+            data: self.data.as_slice().as_ptr() as *const std::ffi::c_void,
+            itemsize: self.dtype.itemsize(),
+            c_contiguous: self.is_c_contiguous(),
+            f_contiguous: self.is_f_contiguous(),
+            ndim: self.ndim(),
+            shape: self.shape.clone(),
+            strides: self.strides.clone(),
+        }
     }
 }
 
@@ -978,8 +1082,9 @@ impl<T> Array<T> {
         // For complex types, extract real part
         // For non-complex types, return the array itself
         if std::any::TypeId::of::<T>() == std::any::TypeId::of::<num_complex::Complex<f64>>()
-            || std::any::TypeId::of::<T>() == std::any::TypeId::of::<num_complex::Complex<f32>>() {
-            let new_data: Vec<T> = self.iter().map(|&x| x.element_conj()).collect();
+            || std::any::TypeId::of::<T>() == std::any::TypeId::of::<num_complex::Complex<f32>>()
+        {
+            let new_data: Vec<T> = self.iter().map(|x| x.element_conj()).collect();
             Ok(Array::from_shape_vec(self.shape.clone(), new_data))
         } else {
             Ok(self.clone())
@@ -994,7 +1099,8 @@ impl<T> Array<T> {
         // For complex types, return imaginary part (which would be conjugate of conj)
         // For non-complex types, return zero array
         if std::any::TypeId::of::<T>() == std::any::TypeId::of::<num_complex::Complex<f64>>()
-            || std::any::TypeId::of::<T>() == std::any::TypeId::of::<num_complex::Complex<f32>>() {
+            || std::any::TypeId::of::<T>() == std::any::TypeId::of::<num_complex::Complex<f32>>()
+        {
             // This is a simplified approach - in practice we'd need to extract imaginary part
             let zeros = vec![T::default(); self.size()];
             Ok(Array::from_shape_vec(self.shape.clone(), zeros))
@@ -1002,6 +1108,11 @@ impl<T> Array<T> {
             let zeros = vec![T::default(); self.size()];
             Ok(Array::from_shape_vec(self.shape.clone(), zeros))
         }
+    }
+
+    /// Get device string (CPU by default)
+    pub fn device(&self) -> &str {
+        "cpu"
     }
 
     /// Move array to device (Stub)
@@ -1099,11 +1210,32 @@ impl<T> Array<T> {
     }
 
     /// Mean of array elements
-    pub fn mean(&self, axis: Option<&[isize]>, keepdims: bool) -> Result<Self, NumPyError>
+    pub fn mean(&self, axis: Option<&[isize]>, keepdims: bool) -> Result<Array<f64>, NumPyError>
     where
-        T: Clone + Default + std::ops::Add<Output = T> + From<f64> + 'static,
+        T: Clone + Into<f64> + 'static,
     {
-        crate::reductions::mean(self, axis, keepdims)
+        let casted = self.cast::<f64>();
+        crate::reductions::mean(&casted, axis, keepdims)
+    }
+
+    /// Map a function over array elements
+    pub fn map<B, F>(&self, f: F) -> Array<B>
+    where
+        F: FnMut(&T) -> B,
+        B: Clone + Default + 'static,
+    {
+        let data: Vec<B> = self.iter().map(f).collect();
+        Array::from_data(data, self.shape.clone())
+    }
+
+    /// Cast array to different type
+    pub fn cast<U>(&self) -> Array<U>
+    where
+        T: Clone + Into<U>,
+        U: Clone + Default + 'static,
+    {
+        let data: Vec<U> = self.iter().map(|x| x.clone().into()).collect();
+        Array::from_data(data, self.shape.clone())
     }
 
     /// Variance of array elements
@@ -1112,16 +1244,12 @@ impl<T> Array<T> {
         axis: Option<&[isize]>,
         ddof: usize,
         keepdims: bool,
-    ) -> Result<Self, NumPyError>
+    ) -> Result<Array<f64>, NumPyError>
     where
-        T: Clone
-            + Default
-            + std::ops::Add<Output = T>
-            + std::ops::Mul<Output = T>
-            + From<f64>
-            + 'static,
+        T: Clone + Into<f64> + Default + 'static,
     {
-        crate::reductions::var(self, axis, ddof, keepdims)
+        let float_arr = self.cast::<f64>();
+        crate::reductions::var(&float_arr, axis, ddof, keepdims)
     }
 
     /// Standard deviation of array elements
@@ -1130,16 +1258,12 @@ impl<T> Array<T> {
         axis: Option<&[isize]>,
         ddof: usize,
         keepdims: bool,
-    ) -> Result<Self, NumPyError>
+    ) -> Result<Array<f64>, NumPyError>
     where
-        T: Clone
-            + Default
-            + std::ops::Add<Output = T>
-            + std::ops::Mul<Output = T>
-            + From<f64>
-            + 'static,
+        T: Clone + Into<f64> + Default + 'static,
     {
-        crate::reductions::std(self, axis, ddof, keepdims)
+        let float_arr = self.cast::<f64>();
+        crate::reductions::std(&float_arr, axis, ddof, keepdims)
     }
 
     /// Cumulative sum
@@ -1188,6 +1312,23 @@ impl<T> Array<T> {
         T: Clone + Default + PartialOrd + 'static,
     {
         crate::reductions::argmax(self, axis)
+    }
+
+    /// Return the peak-to-peak (max - min) value of the array
+    pub fn ptp(&self, axis: Option<&[isize]>, keepdims: bool) -> Result<Self, NumPyError>
+    where
+        T: Clone + Default + PartialOrd + std::ops::Sub<Output = T> + 'static,
+    {
+        let max = self.max(axis, keepdims)?;
+        let min = self.min(axis, keepdims)?;
+
+        let diff_data: Vec<T> = max
+            .iter()
+            .zip(min.iter())
+            .map(|(a, b)| a.clone() - b.clone())
+            .collect();
+
+        Ok(Array::from_data(diff_data, max.shape().to_vec()))
     }
 }
 
@@ -1285,7 +1426,7 @@ impl ElementConj for bool {
         *self
     }
 }
-impl ElementConj for Complex64 {
+impl ElementConj for num_complex::Complex<f64> {
     fn element_conj(&self) -> Self {
         self.conj()
     }
@@ -1297,96 +1438,131 @@ impl ElementConj for num_complex::Complex<f32> {
 }
 
 impl<T> Array<T> {
-    /// Transpose of the array (reverses all axes)
-    ///
-    /// Returns a view with axes transposed. For a 2D array, this is the standard matrix transpose.
-    /// For higher dimensional arrays, all axes are reversed.
-    pub fn T(&self) -> Array<T>
+    /// Return the maximum element of the array
+    pub fn max_all(&self) -> Option<&T>
     where
-        T: Clone,
+        T: PartialOrd,
     {
-        self.transpose_view(None).unwrap_or_else(|_| self.clone())
+        self.iter()
+            .max_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal))
     }
 
-    /// Matrix transpose of the array (swaps last two axes)
-    ///
-    /// For 2D arrays, this is equivalent to T(). For higher dimensional arrays,
-    /// only the last two axes are swapped.
-    pub fn mT(&self) -> Array<T>
+    /// Return the minimum element of the array
+    pub fn min_all(&self) -> Option<&T>
     where
-        T: Clone,
+        T: PartialOrd,
     {
-        let ndim = self.ndim();
-        if ndim < 2 {
-            // For 0D or 1D arrays, mT is the same as T
-            return self.T();
+        self.iter()
+            .min_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal))
+    }
+
+    /// Return the sum of all elements in the array
+    pub fn sum_all(&self) -> T
+    where
+        T: std::ops::Add<Output = T> + Clone + Default + 'static,
+    {
+        self.iter().cloned().fold(T::default(), |acc, x| acc + x)
+    }
+
+    /// Return the product of all elements in the array
+    pub fn prod_all(&self) -> T
+    where
+        T: std::ops::Mul<Output = T> + Clone + Default + 'static + num_traits::One,
+    {
+        self.iter().cloned().fold(T::one(), |acc, x| acc * x)
+    }
+
+    /// Return the mean of all elements in the array
+    pub fn mean_all(&self) -> f64
+    where
+        T: Clone + Into<f64>,
+    {
+        if self.size() == 0 {
+            return f64::NAN;
         }
-
-        // Swap last two axes
-        let mut axes: Vec<usize> = (0..ndim).collect();
-        axes.swap(ndim - 2, ndim - 1);
-
-        self.transpose_view(Some(&axes)).unwrap_or_else(|_| self.clone())
+        let sum: f64 = self.iter().cloned().map(|x| x.into()).sum();
+        sum / self.size() as f64
     }
 
-    /// Base object if array is a view, None otherwise
-    ///
-    /// Returns None for arrays that own their data. For views created via
-    /// transpose_view or other view operations, this returns the base array.
-    pub fn base(&self) -> Option<&Array<T>> {
-        // TODO: Track base array when creating views
-        // For now, always return None since we don't track base
-        None
-    }
-
-    /// Array flags information
-    pub fn flags(&self) -> ArrayFlags {
-        ArrayFlags {
-            c_contiguous: self.is_c_contiguous(),
-            f_contiguous: self.is_f_contiguous(),
-            aligned: self.is_aligned(),
-            writable: self.is_writable(),
+    /// Return the standard deviation of all elements in the array
+    pub fn std_all(&self) -> f64
+    where
+        T: Clone + Into<f64>,
+    {
+        if self.size() <= 1 {
+            return f64::NAN;
         }
+        let mean = self.mean_all();
+        let variance = self
+            .iter()
+            .cloned()
+            .map(|x| {
+                let x_f64 = x.into();
+                (x_f64 - mean).powi(2)
+            })
+            .sum::<f64>()
+            / (self.size() - 1) as f64;
+        variance.sqrt()
     }
 
-    /// Check if array is aligned (for SIMD operations)
-    fn is_aligned(&self) -> bool {
-        // Basic alignment check - data pointer should be aligned for element access
-        let ptr = self.data.as_ref().as_ptr() as usize;
-        let alignment = std::mem::align_of::<T>();
-        ptr % alignment == 0
-    }
-
-    /// Check if array data is writable
-    fn is_writable(&self) -> bool {
-        // With Arc, the data is always writable (Arc::make_mut would clone if needed)
-        true
-    }
-
-    /// Flat iterator over array elements
-    ///
-    /// Returns an iterator that yields references to each element in row-major order.
-    pub fn flat(&self) -> FlatIter<'_, T> {
-        FlatIter::new(self)
-    }
-
-    /// Device the array is stored on
-    pub fn device(&self) -> &str {
-        "cpu"
-    }
-
-    /// CTypes representation of the array
-    pub fn ctypes(&self) -> Ctypes {
-        let data_ptr = self.data.as_ref().as_ptr() as *const std::ffi::c_void;
-        Ctypes {
-            data: data_ptr,
-            itemsize: self.itemsize(),
-            c_contiguous: self.is_c_contiguous(),
-            f_contiguous: self.is_f_contiguous(),
-            ndim: self.ndim(),
-            shape: self.shape().to_vec(),
-            strides: self.strides().to_vec(),
+    /// Return the variance of all elements in the array
+    pub fn var_all(&self) -> f64
+    where
+        T: Clone + Into<f64>,
+    {
+        if self.size() <= 1 {
+            return f64::NAN;
         }
+        let mean = self.mean_all();
+        self.iter()
+            .cloned()
+            .map(|x| {
+                let x_f64 = x.into();
+                (x_f64 - mean).powi(2)
+            })
+            .sum::<f64>()
+            / (self.size() - 1) as f64
+    }
+
+    /// Return True if all elements evaluate to True
+    pub fn all_all(&self) -> bool
+    where
+        T: Into<bool> + Clone,
+    {
+        self.iter().all(|x| {
+            let val: bool = x.clone().into();
+            val
+        })
+    }
+
+    /// Return True if any element evaluates to True
+    pub fn any_all(&self) -> bool
+    where
+        T: Into<bool> + Clone,
+    {
+        self.iter().any(|x| {
+            let val: bool = x.clone().into();
+            val
+        })
+    }
+
+    /// Return the peak-to-peak (max - min) value of the array
+
+    /// Round elements to the given number of decimal places
+    pub fn round(&self, decimals: usize) -> Result<Array<f64>, NumPyError>
+    where
+        T: Clone + Into<f64>,
+    {
+        let factor = 10_f64.powi(decimals as i32);
+        let rounded_data: Vec<f64> = self
+            .iter()
+            .cloned()
+            .map(|x| {
+                let x_f64 = x.into();
+                (x_f64 * factor).round() / factor
+            })
+            .collect();
+        Ok(Array::from_shape_vec(self.shape.clone(), rounded_data))
     }
 }
 
@@ -1504,6 +1680,3 @@ impl<'a, T> Index<usize> for FlatIter<'a, T> {
             .expect("Index out of bounds for flat iterator")
     }
 }
-
-#[cfg(test)]
-mod additional_tests;

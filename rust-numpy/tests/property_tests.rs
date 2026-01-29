@@ -21,13 +21,13 @@ mod property_tests {
         assert_eq!(array.nbytes(), array.size() * array.itemsize());
 
         // Test T property (transpose view)
-        let transposed = array.T();
+        let transposed = array.t();
         assert_eq!(transposed.shape(), &[2, 2]); // 2x2 transposed is still 2x2
         assert_eq!(transposed.get_linear(0), array.get_linear(0)); // [1] stays [1]
         assert_eq!(transposed.get_linear(1), array.get_linear(2)); // [3] moves to position 1
 
         // Test mT property (matrix transpose, same as T for 2D)
-        let m_transposed = array.mT();
+        let m_transposed = array.m_t();
         assert_eq!(m_transposed.shape(), transposed.shape());
 
         // Test base property (should return None for direct arrays)
@@ -37,12 +37,12 @@ mod property_tests {
         assert_eq!(array.device(), "cpu");
 
         // Test real property (for non-complex, returns copy)
-        let real_array = array.real();
+        let real_array = array.real().unwrap();
         assert_eq!(real_array.shape(), array.shape());
         assert_eq!(real_array.to_vec(), array.to_vec());
 
         // Test imag property (for non-complex, returns zeros)
-        let imag_array = array.imag();
+        let imag_array = array.imag().unwrap();
         assert_eq!(imag_array.shape(), array.shape());
         assert_eq!(imag_array.to_vec(), vec![0; 4]);
 
@@ -71,12 +71,12 @@ mod property_tests {
         let array = Array::from_data(data, shape);
 
         // Test mT property for 3D array (swaps last two axes)
-        let m_transposed = array.mT();
+        let m_transposed = array.m_t();
         // Original shape: [3, 2, 2] -> mT shape: [3, 2, 2] (swap last two axes)
         assert_eq!(m_transposed.shape(), &[3, 2, 2]);
 
         // Verify that mT produces a different view than T for non-cubic arrays
-        let t_view = array.T();
+        let t_view = array.t();
         // T() reverses all axes: [3, 2, 2] -> [2, 2, 3]
         // mT() swaps last two axes: [3, 2, 2] -> [3, 2, 2]
         assert_ne!(m_transposed.shape(), t_view.shape());
@@ -96,7 +96,7 @@ mod property_tests {
         assert_eq!(flags.ownership(), "OWNDATA");
 
         // Test with non-contiguous array (using transpose view)
-        let transposed = array.T();
+        let transposed = array.t();
         let t_flags = transposed.flags();
         // Transpose view might not be C-contiguous
         assert!(t_flags.aligned);

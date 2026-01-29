@@ -148,7 +148,7 @@ where
 }
 
 /// Save array to file (NumPy-compatible)
-pub fn save<T>(file: &str, arr: &Array<T>, allow_pickle: bool, fix_imports: bool) -> Result<()>
+pub fn save<T>(file: &str, arr: &Array<T>, allow_pickle: bool, _fix_imports: bool) -> Result<()>
 where
     T: Clone + Default + Pod + 'static,
     T: std::fmt::Display,
@@ -188,7 +188,7 @@ where
 /// Load array from text file with configurable parsing
 pub fn loadtxt<T>(
     fname: &str,
-    dtype: Option<Dtype>,
+    _dtype: Option<Dtype>,
     comments: &str,
     delimiter: &str,
     converters: Option<Vec<fn(&str) -> T>>,
@@ -196,7 +196,7 @@ pub fn loadtxt<T>(
     usecols: Option<&[usize]>,
     unpack: bool,
     ndmin: isize,
-    encoding: &str,
+    _encoding: &str,
     max_rows: Option<usize>,
 ) -> Result<Array<T>>
 where
@@ -596,10 +596,10 @@ where
         }
         
         let line = line_result.map_err(|e| NumPyError::io_error(format!("Read error: {}", e)))?;
-        let trimmed = if autostrip {
+        let trimmed: &str = if autostrip {
             line.trim()
         } else {
-            line
+            &line
         };
         
         // Skip comments and empty lines
@@ -613,19 +613,20 @@ where
         } else {
             trimmed.to_string()
         };
-        
+
         // Handle replace_space
         let processed = if let Some(replacement) = replace_space {
-            processed.replace(' ', replacement)
+            processed.replace(' ', &replacement.to_string())
         } else {
             processed
         };
-        
+
         // Handle case sensitivity for missing values
         let is_missing = |val: &str| {
             if let Some(ref mv) = missing_values {
                 if case_sensitive {
-                    mv.contains(&val.to_string())
+                    let val_string = val.to_string();
+                    mv.iter().any(|m| m == &val_string)
                 } else {
                     mv.iter().any(|m| m.to_lowercase() == val.to_lowercase())
                 }
@@ -633,20 +634,20 @@ where
                 false
             }
         };
-        
+
         // Split by delimiter
         let parts: Vec<&str> = if delimiter.is_empty() {
             processed.split_whitespace().collect()
         } else {
             processed.split(delimiter).collect()
         };
-        
+
         // Filter excluded columns
-        let selected_parts = if let Some(ref excl) = excludelist {
+        let selected_parts: Vec<&str> = if let Some(ref excl) = excludelist {
             parts.iter()
                 .enumerate()
-                .filter(|(i, _)| !excl.contains(&i.to_string()))
-                .map(|(_, &p)| *p)
+                .filter(|(i, _)| !excl.iter().any(|e| e == &i.to_string()))
+                .map(|(_, &p)| p)
                 .collect()
         } else {
             parts.iter().copied().collect()
@@ -655,7 +656,7 @@ where
         // Select specific columns
         let selected_parts = if let Some(cols) = usecols {
             cols.iter()
-                .filter_map(|&col| selected_parts.get(*col).copied())
+                .filter_map(|&col| selected_parts.get(col).copied())
                 .collect()
         } else {
             selected_parts
@@ -665,20 +666,20 @@ where
         let row_data: Result<Vec<T>> = selected_parts
             .iter()
             .enumerate()
-            .map(|(i, part)| {
+            .map(|(i, part): (usize, &&str)| {
                 let part = part.trim();
-                
+
                 if is_missing(part) {
                     if let Some(ref fv) = filling_values {
                         if i < fv.len() {
                             Ok(fv[i].clone())
                         } else {
                             // Use default filling value if not specified
-                            T::default().map_err(|_| NumPyError::value_error(part.to_string(), "conversion"))
+                            Ok(T::default())
                         }
                     } else {
                         // Return default value for missing data
-                        T::default().map_err(|_| NumPyError::value_error(part.to_string(), "conversion"))
+                        Ok(T::default())
                     }
                 } else {
                     if let Some(ref conv) = converters {
@@ -843,7 +844,7 @@ where
         let zip_writer = ZipWriter::new(file);
         savez_to_zip(zip_writer, args)
     } else {
-        let mut zip_writer = ZipWriter::new(file);
+        let zip_writer = ZipWriter::new(file);
         savez_to_zip(zip_writer, args)
     }
 }
@@ -855,7 +856,7 @@ fn savez_to_zip<T, W: Write + Seek>(
 where
     T: Clone + Default + Pod + 'static,
 {
-    use std::io::Seek;
+    
     use zip::write::FileOptions;
 
     for (name, array) in args {
@@ -1110,6 +1111,50 @@ fn parse_npy_shape(header: &str) -> Result<Vec<usize>> {
         .collect();
 
     dimensions
+}
+
+/// Write array to binary file
+pub fn tofile<T>(arr: &Array<T>, file: &str, sep: &str, format_: &str) -> Result<()>
+where
+    T: Clone + Default + Pod + std::fmt::Display + 'static,
+{
+    use std::fs::File;
+    use std::io::Write;
+
+    let mut output_file = File::create(file)
+        .map_err(|e| NumPyError::io_error(format!("Failed to create file: {}", e)))?;
+
+    if sep.is_empty() {
+        // Binary format
+        let bytes = unsafe {
+            std::slice::from_raw_parts(
+                arr.as_ptr() as *const u8,
+                arr.len() * std::mem::size_of::<T>(),
+            )
+        };
+        output_file
+            .write_all(bytes)
+            .map_err(|e| NumPyError::io_error(format!("Failed to write: {}", e)))?;
+    } else {
+        // Text format with separator
+        for (i, item) in arr.iter().enumerate() {
+            if i > 0 {
+                output_file
+                    .write_all(sep.as_bytes())
+                    .map_err(|e| NumPyError::io_error(format!("Failed to write separator: {}", e)))?;
+            }
+            if format_.is_empty() || format_ == "%s" {
+                write!(output_file, "{}", item)
+                    .map_err(|e| NumPyError::io_error(format!("Failed to write: {}", e)))?;
+            } else {
+                // Handle format string (simplified)
+                write!(output_file, "{}", item)
+                    .map_err(|e| NumPyError::io_error(format!("Failed to write: {}", e)))?;
+            }
+        }
+    }
+
+    Ok(())
 }
 
 #[cfg(test)]

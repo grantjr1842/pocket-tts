@@ -37,7 +37,7 @@ fn test_fft_backward_normalization() {
     let x_reconstructed = ifft(&y, None, 0, Some(FFTNorm::Backward)).unwrap();
 
     for i in 0..4 {
-        assert!((x_reconstructed.get(i).unwrap().re - input.get(i).unwrap().re).abs() < 1e-10);
+        assert!((x_reconstructed.get(i).unwrap().re - *input.get(i).unwrap()).abs() < 1e-10);
     }
 }
 
@@ -51,7 +51,7 @@ fn test_fft_ortho_normalization() {
     let x_reconstructed = ifft(&y, None, 0, Some(FFTNorm::Ortho)).unwrap();
 
     for i in 0..4 {
-        assert!((x_reconstructed.get(i).unwrap().re - input.get(i).unwrap().re).abs() < 1e-10);
+        assert!((x_reconstructed.get(i).unwrap().re - *input.get(i).unwrap()).abs() < 1e-10);
     }
 }
 
@@ -65,7 +65,7 @@ fn test_fft_forward_normalization() {
     let x_reconstructed = ifft(&y, None, 0, Some(FFTNorm::Forward)).unwrap();
 
     for i in 0..4 {
-        assert!((x_reconstructed.get(i).unwrap().re - input.get(i).unwrap().re).abs() < 1e-10);
+        assert!((x_reconstructed.get(i).unwrap().re - *input.get(i).unwrap()).abs() < 1e-10);
     }
 }
 
@@ -101,7 +101,7 @@ fn test_fft2_normalization() {
     let x_reconstructed = ifft2(&y, None, None, Some(FFTNorm::Ortho)).unwrap();
 
     for i in 0..4 {
-        assert!((x_reconstructed.get(i).unwrap().re - input.get(i).unwrap().re).abs() < 1e-10);
+        assert!((x_reconstructed.get(i).unwrap().re - *input.get(i).unwrap()).abs() < 1e-10);
     }
 }
 
