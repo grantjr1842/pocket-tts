@@ -288,7 +288,7 @@ where
 {
     // Use to_vec() to get all elements (handles non-contiguous arrays)
     let data = a.to_vec();
-    Ok(Array::from_vec(data))
+    Ok(Array::from_shape_vec(a.shape().to_vec(), data))
 }
 
 /// Convert input to array (already exists as array, but adding asanyarray compatibility)
@@ -398,6 +398,203 @@ where
         dst.set(i, val.clone()).unwrap();
     }
     Ok(())
+}
+
+/// Return a new array of given shape and type, without initializing entries.
+/// Similar to np.empty.
+pub fn empty<T>(shape: &[usize]) -> Result<Array<T>>
+where
+    T: Clone + Default + 'static,
+{
+    let size: usize = shape.iter().product();
+    // Create uninitialized memory (using Default for safety)
+    let data: Vec<T> = (0..size).map(|_| T::default()).collect();
+    Ok(Array::from_data(data, shape.to_vec()))
+}
+
+/// Return a new array with the same shape and type as a given array, without initializing entries.
+/// Similar to np.empty_like.
+pub fn empty_like<T>(prototype: &Array<T>) -> Result<Array<T>>
+where
+    T: Clone + Default + 'static,
+{
+    let shape = prototype.shape();
+    let size: usize = shape.iter().product();
+    let data: Vec<T> = (0..size).map(|_| T::default()).collect();
+    Ok(Array::from_data(data, shape.to_vec()))
+}
+
+/// Return a new array of given shape and type, filled with fill_value.
+/// Similar to np.ones.
+pub fn ones<T>(shape: &[usize]) -> Result<Array<T>>
+where
+    T: Clone + Default + num_traits::One + 'static,
+{
+    let size: usize = shape.iter().product();
+    let data: Vec<T> = (0..size).map(|_| T::one()).collect();
+    Ok(Array::from_data(data, shape.to_vec()))
+}
+
+/// Return an array of ones with the same shape and type as a given array.
+/// Similar to np.ones_like.
+pub fn ones_like<T>(prototype: &Array<T>) -> Result<Array<T>>
+where
+    T: Clone + Default + num_traits::One + 'static,
+{
+    let shape = prototype.shape();
+    let size: usize = shape.iter().product();
+    let data: Vec<T> = (0..size).map(|_| T::one()).collect();
+    Ok(Array::from_data(data, shape.to_vec()))
+}
+
+/// Return a new array of given shape and type, filled with zeros.
+/// Similar to np.zeros.
+pub fn zeros<T>(shape: &[usize]) -> Result<Array<T>>
+where
+    T: Clone + Default + num_traits::Zero + 'static,
+{
+    let size: usize = shape.iter().product();
+    let data: Vec<T> = (0..size).map(|_| T::zero()).collect();
+    Ok(Array::from_data(data, shape.to_vec()))
+}
+
+/// Return an array of zeros with the same shape and type as a given array.
+/// Similar to np.zeros_like.
+pub fn zeros_like<T>(prototype: &Array<T>) -> Result<Array<T>>
+where
+    T: Clone + Default + num_traits::Zero + 'static,
+{
+    let shape = prototype.shape();
+    let size: usize = shape.iter().product();
+    let data: Vec<T> = (0..size).map(|_| T::zero()).collect();
+    Ok(Array::from_data(data, shape.to_vec()))
+}
+
+/// Return the identity array.
+/// Similar to np.identity.
+pub fn identity<T>(n: usize) -> Result<Array<T>>
+where
+    T: Clone + Default + num_traits::One + num_traits::Zero + PartialEq + 'static,
+{
+    if n == 0 {
+        return Err(NumPyError::invalid_value("identity: n must be positive"));
+    }
+
+    let size = n * n;
+    let mut data = Vec::with_capacity(size);
+    for i in 0..n {
+        for j in 0..n {
+            data.push(if i == j { T::one() } else { T::zero() });
+        }
+    }
+    Ok(Array::from_shape_vec(vec![n, n], data))
+}
+
+/// Return a full array with the same shape and type as a given array.
+/// Similar to np.full_like.
+pub fn full_like<T>(prototype: &Array<T>, fill_value: T) -> Result<Array<T>>
+where
+    T: Clone + Default + 'static,
+{
+    let shape = prototype.shape();
+    let size: usize = shape.iter().product();
+    let data: Vec<T> = (0..size).map(|_| fill_value.clone()).collect();
+    Ok(Array::from_data(data, shape.to_vec()))
+}
+
+/// Construct an array of indices.
+///
+/// Returns a tuple of arrays, one for each dimension of `a`, containing
+/// the indices of the elements of `a` along that dimension.
+///
+/// # Arguments
+/// * `shape` - Shape of the output array
+/// * `dtype` - Desired data type (defaults to usize)
+pub fn indices(shape: &[usize]) -> Result<Array<usize>> {
+    let ndim = shape.len();
+    if ndim == 0 {
+        return Ok(Array::from_vec(vec![]));
+    }
+
+    let mut result_shape = shape.to_vec();
+    result_shape.insert(0, ndim); // Prepend dimension for indices
+
+    let total_size: usize = result_shape.iter().product();
+    let mut data = vec![0usize; total_size];
+
+    // Fill in indices for each dimension
+    let mut index_base = 0usize;
+    for dim in 0..ndim {
+        let dim_size = shape[dim];
+        let stride: usize = result_shape[1..]
+            .iter()
+            .take(dim)
+            .product();
+        let block_size: usize = result_shape[dim + 1..]
+            .iter()
+            .product();
+
+        for i in 0..dim_size {
+            for block_idx in 0..block_size {
+                let pos = index_base + i * stride + block_idx;
+                if pos < total_size {
+                    data[pos] = i;
+                }
+            }
+        }
+        index_base += dim_size * stride * block_size;
+    }
+
+    Ok(Array::from_shape_vec(result_shape, data))
+}
+
+/// Compute the indices to access the main diagonal of an n-dimensional array.
+pub fn diag_indices(n: usize, ndim: usize) -> Vec<Array<usize>> {
+    let mut indices = Vec::with_capacity(ndim);
+    for dim in 0..ndim {
+        let mut idx = Array::zeros(vec![n]);
+        for i in 0..n {
+            idx[i] = i;
+        }
+        indices.push(idx);
+    }
+    indices
+}
+
+/// Return the indices for the lower-triangle of an (n, m) array.
+pub fn tril_indices(n: usize, k: isize, m: Option<usize>) -> (Array<usize>, Array<usize>) {
+    let m = m.unwrap_or(n);
+    let mut row = Vec::new();
+    let mut col = Vec::new();
+
+    for i in 0..n {
+        for j in 0..m {
+            if j as isize <= i as isize + k {
+                row.push(i);
+                col.push(j);
+            }
+        }
+    }
+
+    (Array::from_vec(row), Array::from_vec(col))
+}
+
+/// Return the indices for the upper-triangle of an (n, m) array.
+pub fn triu_indices(n: usize, k: isize, m: Option<usize>) -> (Array<usize>, Array<usize>) {
+    let m = m.unwrap_or(n);
+    let mut row = Vec::new();
+    let mut col = Vec::new();
+
+    for i in 0..n {
+        for j in 0..m {
+            if j as isize >= i as isize + k {
+                row.push(i);
+                col.push(j);
+            }
+        }
+    }
+
+    (Array::from_vec(row), Array::from_vec(col))
 }
 
 #[cfg(test)]

@@ -180,11 +180,17 @@ impl NBitBase for Complex256Bit {
 impl ComplexType for Complex256Bit {}
 
 // Legacy type aliases for backward compatibility
+#[allow(non_camel_case_types)]
 pub type nbit_8 = Int8Bit;
+#[allow(non_camel_case_types)]
 pub type nbit_16 = Int16Bit;
+#[allow(non_camel_case_types)]
 pub type nbit_32 = Int32Bit;
+#[allow(non_camel_case_types)]
 pub type nbit_64 = Int64Bit;
+#[allow(non_camel_case_types)]
 pub type nbit_128 = Complex128Bit;
+#[allow(non_camel_case_types)]
 pub type nbit_256 = Complex256Bit;
 
 // NumPy-compatible type aliases

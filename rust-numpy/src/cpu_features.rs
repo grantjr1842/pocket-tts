@@ -139,6 +139,7 @@ static mut CPU_FEATURES_CACHE: Option<CpuFeatures> = None;
 static mut CPU_FEATURES_INIT: std::sync::Once = std::sync::Once::new();
 
 /// Get cached CPU features (detects once and caches the result)
+#[allow(static_mut_refs)]
 pub fn get_cpu_features() -> CpuFeatures {
     unsafe {
         CPU_FEATURES_INIT.call_once(|| {

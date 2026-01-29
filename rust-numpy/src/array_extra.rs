@@ -896,137 +896,6 @@ where
     Ok(Array::from_shape_vec(vec![m, n_val], data))
 }
 
-/// Fill the main diagonal of the given array of any dimensionality.
-pub fn fill_diagonal<T>(a: &mut Array<T>, val: T, wrap: bool) -> Result<()>
-where
-    T: Clone + Default + 'static,
-{
-    let ndim = a.ndim();
-    if ndim < 2 {
-        return Err(NumPyError::invalid_value(
-            "fill_diagonal requires at least 2D array",
-        ));
-    }
-
-    let shape = a.shape();
-    let n = std::cmp::min(shape[0], shape[1]);
-
-    for i in 0..n {
-        let mut idx = vec![0; ndim];
-        idx[0] = i;
-        idx[1] = if wrap && ndim > 2 { i % shape[1] } else { i };
-        a.set_multi(&idx, val.clone())?;
-    }
-    Ok(())
-}
-
-/// Create a 2-D array with the flattened input as a diagonal.
-pub fn diagflat<T>(v: &Array<T>, k: isize) -> Result<Array<T>>
-where
-    T: Clone + Default + num_traits::Num + Send + Sync + 'static,
-{
-    let size = v.shape()[0];
-    let stride = (k.abs() as usize) + size;
-    let mut result_size = stride + size;
-    let mut data = vec![T::default(); result_size * result_size];
-
-    for i in 0..size {
-        let row = i;
-        let col = if k >= 0 { i + k as usize } else { i - k.abs() as usize };
-        if row < result_size && col < result_size {
-            data[row * result_size + col] = v.get_linear(i).cloned().unwrap_or_default();
-        }
-    }
-
-    Ok(Array::from_shape_vec(vec![result_size, result_size], data)?)
-}
-
-/// Construct a matrix of ones at and below the given diagonal.
-pub fn tri<N: Into<usize>, T: Clone + Default>(
-    nrows: N,
-    ncols: Option<N>,
-    k: isize,
-    dtype: Option<Dtype>,
-) -> Result<Array<T>>
-where
-    T: Clone + Default + num_traits::NumCast + Send + Sync + 'static,
-{
-    let nrows = nrows.into();
-    let ncols = ncols.map(Into::into).unwrap_or(nrows);
-    let mut data = vec![T::default(); nrows * ncols];
-
-    let k = k as isize;
-    for i in 0..nrows {
-        let max_j = std::cmp::min(ncols, (i as isize + k + 1) as usize);
-        for j in 0..max_j {
-            let val = num_traits::NumCast::from(1).unwrap_or_default();
-            data[i * ncols + j] = val;
-        }
-    }
-
-    Ok(Array::from_shape_vec(vec![nrows, ncols], data)?)
-}
-
-/// Select elements from an array based on multiple conditions.
-pub fn select<T>(condlist: &[Array<bool>], choicelist: &[Array<T>], default: T) -> Result<Array<T>>
-where
-    T: Clone + Default + Send + Sync + 'static,
-{
-    if condlist.is_empty() {
-        return Err(NumPyError::invalid_operation("select: condlist cannot be empty"));
-    }
-
-    let shape = condlist[0].shape();
-    let size: usize = shape.iter().product();
-
-    let mut result_data = vec![default; size];
-
-    for (idx, condition) in condlist.iter().enumerate() {
-        if idx >= choicelist.len() {
-            break;
-        }
-        let choice = &choicelist[idx];
-
-        for i in 0..size {
-            if *condition.get_linear(i).unwrap_or(&false) {
-                result_data[i] = choice.get_linear(i).cloned().unwrap_or(default.clone());
-            }
-        }
-    }
-
-    Ok(Array::from_shape_vec(shape.to_vec(), result_data)?)
-}
-
-/// Construct an array by repeating A the number of times given by reps.
-pub fn tile<T>(a: &Array<T>, reps: &[usize]) -> Result<Array<T>>
-where
-    T: Clone + Send + Sync + 'static,
-{
-    if reps.is_empty() {
-        return Ok(a.clone());
-    }
-
-    // Simple implementation: flatten, repeat, reshape
-    let flat: Vec<T> = a.iter().cloned().collect();
-    let mut new_data = flat;
-    for &rep in reps {
-        let mut temp = Vec::with_capacity(new_data.len() * rep);
-        for item in &new_data {
-            for _ in 0..rep {
-                temp.push(item.clone());
-            }
-        }
-        new_data = temp;
-    }
-
-    let mut new_shape = a.shape().to_vec();
-    for &rep in reps {
-        new_shape.push(rep);
-    }
-
-    Ok(Array::from_shape_vec(new_shape, new_data)?)
-}
-
 /// Construct an array from an index array and a list of choices
 pub fn choose<T>(indices: &Array<isize>, choices: &[&Array<T>], mode: &str) -> Result<Array<T>>
 where
@@ -1143,8 +1012,8 @@ pub use crate::math_ufuncs::around as round;
 pub mod exports {
     pub use super::{
         array_split, block, choose, column_stack, compress, concatenate, diag, diagonal, diff,
-        dsplit, dstack, ediff1d, fill_diagonal, gradient, hsplit, hstack, place, put,
-        put_along_axis, putmask, round, row_stack, select, split, stack, tile, trim_zeros, tri,
+        dsplit, dstack, ediff1d, gradient, hsplit, hstack, place, put,
+        put_along_axis, putmask, round, row_stack, split, stack, trim_zeros,
         tril, triu, vander, vsplit, vstack,
     };
 }

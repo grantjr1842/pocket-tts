@@ -5,9 +5,9 @@
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use crate::array::Array;
     use crate::dtype::Dtype;
+    use crate::typing::*;
 
     #[test]
     fn test_ndarray_type_alias() {
@@ -56,7 +56,7 @@ mod tests {
 
         let _result1 = process_array_like(&vec_data);
         let _result2 = process_array_like(&array_data);
-        let _result3 = process_array_like(slice_data);
+        let _result3 = process_array_like(&slice_data);
         let _result4 = process_array_like(array_data_ref);
     }
 
@@ -101,7 +101,7 @@ mod tests {
     #[test]
     fn test_prelude_exports() {
         // Test that prelude exports work correctly
-        use super::prelude::*;
+        use crate::typing::prelude::*;
 
         // These should all be available from prelude
         let _arr: NDArray<f64> = Array::from_data(vec![1.0, 2.0], vec![2]);
@@ -115,11 +115,11 @@ mod tests {
 
     #[test]
     fn test_bitwidth_types() {
-        use super::bitwidth::*;
+        use crate::typing::bitwidth::*;
 
         // Test that all bit-width types implement NBitBase
         fn test_nbit_base<T: NBitBase>() -> (u8, bool, bool, bool) {
-            (T::BITS, T::SIGNED, T::FLOAT, T::COMPLEX)
+            (T::BITS as u8, T::SIGNED, T::FLOAT, T::COMPLEX)
         }
 
         // Test integer types
@@ -138,21 +138,21 @@ mod tests {
         // Test float types
         let (bits, signed, float, complex) = test_nbit_base::<Float64Bit>();
         assert_eq!(bits, 64);
-        assert!(!signed);
+        assert!(signed);
         assert!(float);
         assert!(!complex);
 
         // Test complex types
         let (bits, signed, float, complex) = test_nbit_base::<Complex128Bit>();
         assert_eq!(bits, 128);
-        assert!(!signed);
+        assert!(signed);
         assert!(!float);
         assert!(complex);
     }
 
     #[test]
     fn test_dtype_getter() {
-        use super::dtype_getter::*;
+        use crate::typing::dtype_getter::*;
 
         // Test DtypeGetter functionality
         let dtype = DtypeGetter::get::<Int32Bit>();
@@ -176,7 +176,7 @@ mod tests {
 
     #[test]
     fn test_to_dtype_trait() {
-        use super::dtype_getter::*;
+        use crate::typing::dtype_getter::*;
 
         // Test ToDtype trait implementations
         let dtype = Int32Bit::to_dtype();
@@ -194,17 +194,17 @@ mod tests {
 
     #[test]
     fn test_dtype_function() {
-        use super::dtype_getter::*;
+        use crate::typing::dtype_getter::*;
 
         // Test the convenience dtype function
-        let dtype = dtype::<Int32Bit>();
-        match dtype {
+        let dt_i32 = dtype::<Int32Bit>();
+        match dt_i32 {
             Dtype::Int32 { .. } => {} // Expected
             _ => panic!("Expected Int32 dtype"),
         }
 
-        let dtype = dtype::<Float64Bit>();
-        match dtype {
+        let dt_f64 = dtype::<Float64Bit>();
+        match dt_f64 {
             Dtype::Float64 { .. } => {} // Expected
             _ => panic!("Expected Float64 dtype"),
         }
@@ -274,7 +274,7 @@ mod tests {
         let _supports_index: std::any::TypeId = std::any::TypeId::of::<SupportsIndex>();
 
         // 5. Prelude should re-export commonly used types
-        use super::prelude::*;
+        use crate::typing::prelude::*;
         let _prelude_ndarray: std::any::TypeId = std::any::TypeId::of::<NDArray<f64>>();
         let _prelude_array_like: std::any::TypeId = std::any::TypeId::of::<dyn ArrayLike<f64>>();
     }
@@ -311,7 +311,7 @@ mod tests {
 
         // NBitBase - bit-width type hierarchy
         fn test_nbit_base_completeness() {
-            use super::bitwidth::*;
+            use crate::typing::bitwidth::*;
 
             fn check_nbit_base<T: NBitBase>() {
                 assert!(T::BITS > 0);
