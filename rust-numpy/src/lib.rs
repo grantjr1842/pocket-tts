@@ -156,6 +156,18 @@ pub mod performance_metrics;
 pub mod polynomial;
 pub mod profiler;
 pub mod random;
+pub use random::{
+    default_rng, default_rng_with_seed,
+    // Distribution functions
+    bernoulli, beta, binomial, chisquare, exponential, f, gamma, gumbel, geometric,
+    hypergeometric, lognormal, logistic, logseries, multinomial, negative_binomial,
+    normal, pareto, poisson, rayleigh, standard_cauchy, standard_exponential,
+    standard_gamma, standard_normal, triangular, uniform, vonmises, wald, weibull, zipf,
+    // New functions
+    bytes, shuffle, shuffle_axis, multivariate_normal, noncentral_chisquare, noncentral_f, standard_t,
+    // Legacy functions
+    legacy_randint, legacy_random, legacy_rng, random, randint, seed,
+};
 pub mod rec;
 pub mod reductions;
 pub mod set_ops;
@@ -279,8 +291,6 @@ pub use statistics::{
     nanvar, percentile, ptp, quantile, std, var,
 };
 pub use type_promotion::{promote_types, TypePromotionRules};
-<<<<<<< Updated upstream
-=======
 
 // Broadcasting functions
 pub use broadcasting::{broadcast_arrays, broadcast_to};
@@ -351,23 +361,19 @@ pub use ufunc::{
 
 // Array creation and conversion functions
 pub use array_creation::{
-<<<<<<< Updated upstream
-    arange, array, array2string, array_repr, array_str, asanyarray, asarray,
-    asarray_chkfinite, ascontiguousarray, asfortranarray, asmatrix, clip, copy, copyto,
-    frombuffer, fromfunction, fromiter, full, linspace, logspace, geomspace, min, log, vander,
-=======
     array, array2string, array_repr, array_str, asanyarray, asarray, asarray_chkfinite,
     ascontiguousarray, asfortranarray, asmatrix, copy, copyto,
     // Array creation functions
     arange, clip, empty, empty_like, frombuffer, fromfunction, fromiter, full, full_like,
-    geomspace, identity, linspace, logspace, ones, ones_like, vander, zeros, zeros_like,
+    geomspace, identity, indices, linspace, logspace, ones, ones_like, vander, zeros, zeros_like,
+    // Index functions
+    diag_indices, tril_indices, triu_indices,
 };
 
 // Array method wrappers
 pub use array_methods::{
     divide, minimum, nancumprod, nancumsum, negative,
     resize, subtract, take, transpose,
->>>>>>> Stashed changes
 };
 
 // Reduction functions
