@@ -439,6 +439,159 @@ pub fn f<T: Clone + Default + 'static + From<f64>>(
 //     DEFAULT_GENERATOR.with(|rng| rng.borrow_mut().vonmises(mu, kappa, shape))
 // }
 
+// --- Sampling/Permutation Functions ---
+
+/// Shuffle an array in-place
+///
+/// Randomly shuffles the elements of an array along the first axis.
+/// Uses the thread-local default Generator.
+///
+/// # Examples
+///
+/// ```rust
+/// use rust_numpy::random;
+/// use rust_numpy::Array;
+///
+/// let mut arr = Array::from_data(vec![1, 2, 3, 4, 5], vec![5]);
+/// random::shuffle(&mut arr).unwrap();
+/// ```
+pub fn shuffle<T>(arr: &mut Array<T>) -> Result<(), NumPyError>
+where
+    T: Clone + Default + 'static + Copy,
+{
+    DEFAULT_GENERATOR.with(|rng| rng.borrow_mut().shuffle(arr))
+}
+
+/// Generate a random permutation of integers
+///
+/// Returns an array containing a random permutation of integers from 0 to n-1.
+/// Uses the thread-local default Generator.
+///
+/// # Examples
+///
+/// ```rust
+/// use rust_numpy::random;
+///
+/// let perm = random::permutation(5).unwrap();
+/// assert_eq!(perm.shape(), &[5]);
+/// ```
+pub fn permutation(n: usize) -> Result<Array<i64>, NumPyError> {
+    DEFAULT_GENERATOR.with(|rng| rng.borrow_mut().permutation(n))
+}
+
+/// Generate a random sample from an array
+///
+/// Returns a random sample of the given size from the input array.
+/// Sampling can be done with or without replacement.
+/// Uses the thread-local default Generator.
+///
+/// # Arguments
+///
+/// * `a` - Input array to sample from
+/// * `size` - Number of samples to draw
+/// * `replace` - If true, sample with replacement; otherwise sample without replacement
+///
+/// # Examples
+///
+/// ```rust
+/// use rust_numpy::random;
+///
+/// let choices = vec![1, 2, 3, 4, 5];
+/// let sample = random::choice(&choices, 3, true).unwrap();
+/// assert_eq!(sample.shape(), &[3]);
+/// ```
+pub fn choice<T>(a: &[T], size: usize, replace: bool) -> Result<Array<T>, NumPyError>
+where
+    T: Clone + Default + 'static,
+{
+    DEFAULT_GENERATOR.with(|rng| rng.borrow_mut().choice(a, size, replace))
+}
+
+/// Generate random integers in a range
+///
+/// Returns random integers from the range [low, high).
+/// Uses the thread-local default Generator.
+///
+/// # Examples
+///
+/// ```rust
+/// use rust_numpy::random;
+///
+/// let ints = random::integers(0, 100, 5).unwrap();
+/// assert_eq!(ints.shape(), &[5]);
+/// ```
+pub fn integers(low: i64, high: i64, size: usize) -> Result<Array<i64>, NumPyError> {
+    DEFAULT_GENERATOR.with(|rng| rng.borrow_mut().integers(low, high, size))
+}
+
+/// Generate random bytes
+///
+/// Returns an array of random bytes.
+/// Uses the thread-local default Generator.
+///
+/// # Examples
+///
+/// ```rust
+/// use rust_numpy::random;
+///
+/// let bytes = random::bytes(16).unwrap();
+/// assert_eq!(bytes.shape(), &[16]);
+/// ```
+pub fn bytes(length: usize) -> Result<Array<u8>, NumPyError> {
+    DEFAULT_GENERATOR.with(|rng| rng.borrow_mut().bytes(length))
+}
+
+/// Generate random floating point numbers in [0.0, 1.0)
+///
+/// Returns an array of random floats in the half-open interval [0.0, 1.0).
+/// Uses the thread-local default Generator.
+///
+/// # Examples
+///
+/// ```rust
+/// use rust_numpy::random;
+///
+/// let floats = random::random_floats(5).unwrap();
+/// assert_eq!(floats.shape(), &[5]);
+/// ```
+pub fn random_floats(size: usize) -> Result<Array<f64>, NumPyError> {
+    DEFAULT_GENERATOR.with(|rng| rng.borrow_mut().random_floats(size))
+}
+
+/// Generate random floating point numbers in [low, high)
+///
+/// Returns an array of random floats in the specified range.
+/// Uses the thread-local default Generator.
+///
+/// # Examples
+///
+/// ```rust
+/// use rust_numpy::random;
+///
+/// let floats = random::random_floats_range(0.0, 10.0, 5).unwrap();
+/// assert_eq!(floats.shape(), &[5]);
+/// ```
+pub fn random_floats_range(low: f64, high: f64, size: usize) -> Result<Array<f64>, NumPyError> {
+    DEFAULT_GENERATOR.with(|rng| rng.borrow_mut().random_floats_range(low, high, size))
+}
+
+/// Generate random boolean values
+///
+/// Returns an array of random boolean values.
+/// Uses the thread-local default Generator.
+///
+/// # Examples
+///
+/// ```rust
+/// use rust_numpy::random;
+///
+/// let bools = random::random_bools(10).unwrap();
+/// assert_eq!(bools.shape(), &[10]);
+/// ```
+pub fn random_bools(size: usize) -> Result<Array<bool>, NumPyError> {
+    DEFAULT_GENERATOR.with(|rng| rng.borrow_mut().random_bools(size))
+}
+
 // --- Legacy API Functions (for backward compatibility) ---
 
 /// Seed the legacy default RNG
@@ -484,7 +637,7 @@ pub fn legacy_randint<T: Clone + PartialOrd + SampleUniform + Default + 'static>
 /// This sub-module provides the modern Generator/BitGenerator API
 /// that matches NumPy's current random module structure.
 pub mod modern {
-    pub use super::bit_generator::{BitGenerator, PCG64};
+    pub use super::bit_generator::{BitGenerator, MT19937, PCG64, Philox, SFC64};
     pub use super::generator::Generator;
     pub use super::random_state::RandomState;
     pub use super::{default_rng, default_rng_with_seed};
