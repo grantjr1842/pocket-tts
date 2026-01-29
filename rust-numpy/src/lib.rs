@@ -268,9 +268,9 @@ pub use reductions::{
 };
 pub use set_ops::exports::*;
 pub use statistics::{
-    average, bincount, corrcoef, cov, digitize, histogram, histogram2d, histogramdd, median,
-    nanmax, nanmean, nanmedian, nanmin, nanpercentile, nanprod, nanquantile, nanstd, nansum,
-    nanvar, percentile, ptp, quantile, std, var,
+    amax, amin, average, bincount, corrcoef, cov, digitize, histogram, histogram2d, histogramdd,
+    max_reduce, median, min_reduce, nanmax, nanmean, nanmedian, nanmin, nanpercentile, nanprod,
+    nanquantile, nanstd, nansum, nanvar, percentile, ptp, quantile, std, var,
 };
 pub use random::{
     default_rng, default_rng_with_seed, beta, binomial, chisquare, dirichlet, exponential,
@@ -351,7 +351,6 @@ pub use math_ufuncs::{
     sin,
     sinc,
     sinh,
-    sqrt,
     tan,
     tanh,
     trunc,
@@ -382,8 +381,7 @@ pub use array_creation::{
     ascontiguousarray, asfortranarray, asmatrix, copy, copyto,
 };
 
-// Reduction functions
-pub use statistics::{amax, amin, max_reduce, min_reduce};
+// Reduction functions (merged into main statistics import above)
 
 // Utility functions
 pub use utils::{
