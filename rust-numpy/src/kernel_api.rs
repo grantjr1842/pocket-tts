@@ -1,11 +1,10 @@
 use crate::array::Array;
-use crate::dtype::Dtype;
 use crate::error::{NumPyError, Result};
 use crate::kernel_impls::{BinaryKernel, MemoryOptimizedKernel, SimdBinaryKernel, UnaryKernel};
 use crate::kernel_registry::{
-    find_kernel, get_registry_stats, list_kernels, register_kernel, PerformanceHint,
+    get_registry_stats, list_kernels, register_kernel, with_kernel, PerformanceHint,
 };
-use std::sync::Arc;
+use crate::kernels::UfuncType;
 
 /// Runtime API for dynamic kernel registration and execution
 
@@ -15,8 +14,9 @@ where
     T: Clone + Default + 'static + Send + Sync,
     F: Fn(T, T) -> T + Send + Sync + 'static,
 {
-    let kernel = Arc::new(BinaryKernel::new(name, operation));
-    register_kernel(kernel)
+    let ufunc: UfuncType = name.parse()?;
+    let kernel = BinaryKernel::new(name, operation);
+    register_kernel::<T>(kernel, ufunc)
 }
 
 /// Register a binary operation kernel with performance hint
@@ -29,8 +29,9 @@ where
     T: Clone + Default + 'static + Send + Sync,
     F: Fn(T, T) -> T + Send + Sync + 'static,
 {
-    let kernel = Arc::new(BinaryKernel::new(name, operation).with_performance_hint(hint));
-    register_kernel(kernel)
+    let ufunc: UfuncType = name.parse()?;
+    let kernel = BinaryKernel::new(name, operation).with_performance_hint(hint);
+    register_kernel::<T>(kernel, ufunc)
 }
 
 /// Register a unary operation kernel
@@ -39,8 +40,9 @@ where
     T: Clone + Default + 'static + Send + Sync,
     F: Fn(T) -> T + Send + Sync + 'static,
 {
-    let kernel = Arc::new(UnaryKernel::new(name, operation));
-    register_kernel(kernel)
+    let ufunc: UfuncType = name.parse()?;
+    let kernel = UnaryKernel::new(name, operation);
+    register_kernel::<T>(kernel, ufunc)
 }
 
 /// Register a unary operation kernel with performance hint
@@ -53,8 +55,9 @@ where
     T: Clone + Default + 'static + Send + Sync,
     F: Fn(T) -> T + Send + Sync + 'static,
 {
-    let kernel = Arc::new(UnaryKernel::new(name, operation).with_performance_hint(hint));
-    register_kernel(kernel)
+    let ufunc: UfuncType = name.parse()?;
+    let kernel = UnaryKernel::new(name, operation).with_performance_hint(hint);
+    register_kernel::<T>(kernel, ufunc)
 }
 
 /// Register a SIMD-optimized binary kernel
@@ -63,8 +66,9 @@ where
     T: Clone + Default + 'static + Send + Sync,
     F: Fn(T, T) -> T + Send + Sync + 'static,
 {
-    let kernel = Arc::new(SimdBinaryKernel::new(name, operation));
-    register_kernel(kernel)
+    let ufunc: UfuncType = name.parse()?;
+    let kernel = SimdBinaryKernel::new(name, operation);
+    register_kernel::<T>(kernel, ufunc)
 }
 
 /// Register a memory-optimized binary kernel
@@ -73,8 +77,9 @@ where
     T: Clone + Default + 'static + Send + Sync,
     F: Fn(T, T) -> T + Send + Sync + 'static,
 {
-    let kernel = Arc::new(MemoryOptimizedKernel::new(name, operation));
-    register_kernel(kernel)
+    let ufunc: UfuncType = name.parse()?;
+    let kernel = MemoryOptimizedKernel::new(name, operation);
+    register_kernel::<T>(kernel, ufunc)
 }
 
 /// Execute a binary operation using the dynamic kernel registry
@@ -82,9 +87,8 @@ pub fn execute_binary<T>(name: &str, a: &Array<T>, b: &Array<T>) -> Result<Array
 where
     T: Clone + Default + 'static,
 {
-    let input_dtypes = vec![a.dtype().clone(), b.dtype().clone()];
-    let kernel = find_kernel(name, &input_dtypes)?
-        .ok_or_else(|| NumPyError::ufunc_error(name, "No kernel found for input types"))?;
+    // Parse ufunc name
+    let ufunc: UfuncType = name.parse()?;
 
     // Create output array
     let output_shape = crate::broadcasting::compute_broadcast_shape(a.shape(), b.shape());
@@ -99,7 +103,10 @@ where
 
     let mut output_views: Vec<&mut dyn crate::ufunc::ArrayViewMut> = vec![&mut output];
 
-    kernel.execute(&input_views, &mut output_views)?;
+    with_kernel::<T, _, _>(ufunc, |kernel| {
+        kernel.execute(&input_views, &mut output_views)
+    })
+    .ok_or_else(|| NumPyError::ufunc_error(name, "No kernel found for input types"))??;
 
     Ok(output)
 }
@@ -109,9 +116,7 @@ pub fn execute_unary<T>(name: &str, a: &Array<T>) -> Result<Array<T>>
 where
     T: Clone + Default + 'static,
 {
-    let input_dtypes = vec![a.dtype().clone()];
-    let kernel = find_kernel(name, &input_dtypes)?
-        .ok_or_else(|| NumPyError::ufunc_error(name, "No kernel found for input type"))?;
+    let ufunc: UfuncType = name.parse()?;
 
     // Create output array
     let mut output = a.clone();
@@ -119,7 +124,10 @@ where
     let input_views: Vec<&dyn crate::ufunc::ArrayView> = vec![a];
     let mut output_views: Vec<&mut dyn crate::ufunc::ArrayViewMut> = vec![&mut output];
 
-    kernel.execute(&input_views, &mut output_views)?;
+    with_kernel::<T, _, _>(ufunc, |kernel| {
+        kernel.execute(&input_views, &mut output_views)
+    })
+    .ok_or_else(|| NumPyError::ufunc_error(name, "No kernel found for input type"))??;
 
     Ok(output)
 }
@@ -133,12 +141,12 @@ pub fn register_common_kernels() -> Result<()> {
     register_binary_kernel_with_hint("add", |a: i32, b: i32| a + b, PerformanceHint::General)?;
 
     // SIMD-optimized addition for large arrays
-    register_simd_binary_kernel("add_simd_f64", |a: f64, b: f64| a + b)?;
-    register_simd_binary_kernel("add_simd_f32", |a: f32, b: f32| a + b)?;
+    register_simd_binary_kernel("add", |a: f64, b: f64| a + b)?;
+    register_simd_binary_kernel("add", |a: f32, b: f32| a + b)?;
 
     // Memory-optimized addition for very large arrays
-    register_memory_optimized_kernel("add_mem_f64", |a: f64, b: f64| a + b)?;
-    register_memory_optimized_kernel("add_mem_f32", |a: f32, b: f32| a + b)?;
+    register_memory_optimized_kernel("add", |a: f64, b: f64| a + b)?;
+    register_memory_optimized_kernel("add", |a: f32, b: f32| a + b)?;
 
     // Subtraction kernels
     register_binary_kernel_with_hint(
@@ -217,7 +225,7 @@ impl KernelRegistryBuilder {
     pub fn with_binary_kernel<T, F>(self, name: &str, operation: F) -> Result<Self>
     where
         T: Clone + Default + 'static + Send + Sync,
-        F: Fn(T, T) -> T + Send + Sync,
+        F: Fn(T, T) -> T + Send + Sync + 'static,
     {
         register_binary_kernel(name, operation)?;
         Ok(self)
@@ -227,7 +235,7 @@ impl KernelRegistryBuilder {
     pub fn with_unary_kernel<T, F>(self, name: &str, operation: F) -> Result<Self>
     where
         T: Clone + Default + 'static + Send + Sync,
-        F: Fn(T) -> T + Send + Sync,
+        F: Fn(T) -> T + Send + Sync + 'static,
     {
         register_unary_kernel(name, operation)?;
         Ok(self)
@@ -253,8 +261,8 @@ pub fn init_kernel_registry() -> Result<()> {
 
 /// Get information about registered kernels
 pub fn get_kernel_info() -> Result<KernelInfo> {
-    let kernel_names = list_kernels()?;
-    let stats = get_registry_stats()?;
+    let kernel_names = list_kernels().into_iter().map(|(_, name)| name).collect();
+    let stats = get_registry_stats();
 
     Ok(KernelInfo {
         kernel_names,
@@ -277,24 +285,24 @@ mod tests {
     #[test]
     fn test_kernel_registration() {
         // Register a simple kernel
-        register_binary_kernel("test_add", |a: i32, b: i32| a + b).unwrap();
+        register_binary_kernel("add", |a: i32, b: i32| a + b).unwrap();
 
         // Verify it was registered
-        let kernel_names = list_kernels().unwrap();
-        assert!(kernel_names.contains(&"test_add".to_string()));
+        let kernel_names = list_kernels();
+        assert!(kernel_names.iter().any(|(_, name)| name == "add"));
     }
 
     #[test]
     fn test_kernel_execution() {
         // Register a kernel
-        register_binary_kernel("test_mul", |a: i32, b: i32| a * b).unwrap();
+        register_binary_kernel("multiply", |a: i32, b: i32| a * b).unwrap();
 
         // Create test arrays
         let a = Array::from_vec(vec![1, 2, 3]);
         let b = Array::from_vec(vec![4, 5, 6]);
 
         // Execute the kernel
-        let result = execute_binary("test_mul", &a, &b).unwrap();
+        let result = execute_binary("multiply", &a, &b).unwrap();
 
         // Verify result
         assert_eq!(result.get(0).unwrap(), &4);
@@ -303,16 +311,15 @@ mod tests {
     }
 
     #[test]
-    fn test_registry_builder() {
-        let builder = KernelRegistryBuilder::new()
-            .with_binary_kernel("builder_add", |a: f64, b: f64| a + b)
-            .with_unary_kernel("builder_neg", |a: f64| -a)
-            .build();
+    fn test_registry_builder() -> std::result::Result<(), Box<dyn std::error::Error>> {
+        KernelRegistryBuilder::new()
+            .with_binary_kernel("add", |a: f64, b: f64| a + b)?
+            .with_unary_kernel("negative", |a: f64| -a)?
+            .build()?;
 
-        assert!(builder.is_ok());
-
-        let kernel_names = list_kernels().unwrap();
-        assert!(kernel_names.contains(&"builder_add".to_string()));
-        assert!(kernel_names.contains(&"builder_neg".to_string()));
+        let kernel_names = list_kernels();
+        assert!(kernel_names.iter().any(|(_, name)| name == "add"));
+        assert!(kernel_names.iter().any(|(_, name)| name == "negative"));
+        Ok(())
     }
 }

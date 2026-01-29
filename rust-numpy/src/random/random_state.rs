@@ -8,7 +8,7 @@
 use crate::array::Array;
 use crate::dtype::Dtype;
 use crate::error::NumPyError;
-use crate::random::bit_generator::{BitGenerator, PCG64};
+use crate::random::bit_generator::PCG64;
 use crate::random::generator::Generator;
 use num_traits::NumCast;
 use rand::RngCore;

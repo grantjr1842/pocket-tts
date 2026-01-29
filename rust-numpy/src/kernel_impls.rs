@@ -1,7 +1,8 @@
 use crate::array::Array;
-use crate::dtype::{Dtype, DtypeKind};
+use crate::dtype::Dtype;
 use crate::error::{NumPyError, Result};
 use crate::kernel_registry::{Kernel, KernelSignature, PerformanceHint};
+use crate::ufunc::ArrayViewMut;
 use std::marker::PhantomData;
 
 /// Generic binary kernel implementation
@@ -50,7 +51,7 @@ where
     fn signature(&self) -> KernelSignature {
         KernelSignature::new(
             vec![Dtype::from_type::<T>(), Dtype::from_type::<T>()],
-            vec![Dtype::from_type::<T>()],
+            Dtype::from_type::<T>(),
         )
     }
 
@@ -158,7 +159,7 @@ where
     }
 
     fn signature(&self) -> KernelSignature {
-        KernelSignature::new(vec![Dtype::from_type::<T>()], vec![Dtype::from_type::<T>()])
+        KernelSignature::new(vec![Dtype::from_type::<T>()], Dtype::from_type::<T>())
     }
 
     fn execute(
@@ -244,7 +245,7 @@ where
     fn signature(&self) -> KernelSignature {
         KernelSignature::new(
             vec![Dtype::from_type::<T>(), Dtype::from_type::<T>()],
-            vec![Dtype::from_type::<T>()],
+            Dtype::from_type::<T>(),
         )
     }
 
@@ -323,7 +324,7 @@ where
     fn signature(&self) -> KernelSignature {
         KernelSignature::new(
             vec![Dtype::from_type::<T>(), Dtype::from_type::<T>()],
-            vec![Dtype::from_type::<T>()],
+            Dtype::from_type::<T>(),
         )
     }
 

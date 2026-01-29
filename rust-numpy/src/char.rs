@@ -122,6 +122,21 @@ pub fn lstrip(a: &crate::Array<String>) -> Result<crate::Array<String>, NumPyErr
     Ok(crate::Array::from_vec(result))
 }
 
+pub fn strip_chars(
+    a: &crate::Array<String>,
+    chars: &str,
+) -> Result<crate::Array<String>, NumPyError> {
+    let mut result = Vec::with_capacity(a.size());
+    for idx in 0..a.size() {
+        if let Some(s) = get_string(a, idx) {
+            result.push(s.trim_matches(|c| chars.contains(c)).to_string());
+        } else {
+            return Err(NumPyError::dtype_error("Not a string array"));
+        }
+    }
+    Ok(crate::Array::from_vec(result))
+}
+
 pub fn rstrip(a: &crate::Array<String>) -> Result<crate::Array<String>, NumPyError> {
     let mut result = Vec::with_capacity(a.size());
 
@@ -1000,9 +1015,7 @@ pub fn decode(
                     // Try decoding with the specified encoding
                     match encoding {
                         "utf-8" | "utf8" => {
-                            return Err(NumPyError::invalid_operation(
-                                "Invalid UTF-8 sequence",
-                            ))
+                            return Err(NumPyError::invalid_operation("Invalid UTF-8 sequence"))
                         }
                         "ascii" => {
                             // Try ASCII decoding
@@ -1062,11 +1075,10 @@ impl EncodeBytes for str {
 
 pub mod exports {
     pub use super::{
-        add, capitalize, center, count, decode, encode, endswith, equal, expandtabs, find,
-        greater, greater_equal, index, isalnum, isalpha, isdecimal, isdigit, islower, isnumeric,
-        isspace, istitle, isupper, join, less, less_equal, ljust, lower, lstrip, mod_impl,
-        multiply, not_equal, partition, replace, rfind, rindex, rjust, rpartition, rsplit,
-        rstrip, split, splitlines, startswith, str_len, strip, swapcase, title, translate, upper,
-        zfill,
+        add, capitalize, center, count, decode, encode, endswith, equal, expandtabs, find, greater,
+        greater_equal, index, isalnum, isalpha, isdecimal, isdigit, islower, isnumeric, isspace,
+        istitle, isupper, join, less, less_equal, ljust, lower, lstrip, mod_impl, multiply,
+        not_equal, partition, replace, rfind, rindex, rjust, rpartition, rsplit, rstrip, split,
+        splitlines, startswith, str_len, strip, swapcase, title, translate, upper, zfill,
     };
 }

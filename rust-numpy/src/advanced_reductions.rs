@@ -5,7 +5,6 @@
 
 use crate::array::Array;
 use crate::error::NumPyError;
-use num_complex::{Complex32, Complex64};
 
 /// Options for advanced reduction operations
 #[derive(Debug, Clone, Default)]
@@ -55,7 +54,10 @@ pub fn compute_output_shape(input_shape: &[usize], options: &ReductionOptions) -
         };
 
         if axis >= ndim {
-            panic!("Axis {} out of bounds for array with {} dimensions", axis, ndim);
+            panic!(
+                "Axis {} out of bounds for array with {} dimensions",
+                axis, ndim
+            );
         }
 
         let mut output_shape = input_shape.to_vec();
@@ -139,7 +141,10 @@ where
 }
 
 /// Advanced product reduction with axis, keepdims, and out support
-pub fn prod_advanced<T>(array: &Array<T>, options: &ReductionOptions) -> Result<Array<T>, NumPyError>
+pub fn prod_advanced<T>(
+    array: &Array<T>,
+    options: &ReductionOptions,
+) -> Result<Array<T>, NumPyError>
 where
     T: Clone + Default + std::ops::Mul<Output = T> + num_traits::One + 'static,
 {
@@ -237,7 +242,10 @@ where
     } else {
         // Minimum of all elements
         if input_data.is_empty() {
-            return Err(NumPyError::value_error("Cannot compute min of empty array", "value"));
+            return Err(NumPyError::value_error(
+                "Cannot compute min of empty array",
+                "value",
+            ));
         }
         let mut min = input_data[0].clone();
         for val in &input_data[1..] {
@@ -296,7 +304,10 @@ where
     } else {
         // Maximum of all elements
         if input_data.is_empty() {
-            return Err(NumPyError::value_error("Cannot compute max of empty array", "value"));
+            return Err(NumPyError::value_error(
+                "Cannot compute max of empty array",
+                "value",
+            ));
         }
         let mut max = input_data[0].clone();
         for val in &input_data[1..] {
@@ -309,7 +320,10 @@ where
 }
 
 /// Sum of complex numbers
-pub fn complex_sum<T>(array: &Array<num_complex::Complex<T>>, options: &ReductionOptions) -> Result<Array<num_complex::Complex<T>>, NumPyError>
+pub fn complex_sum<T>(
+    array: &Array<num_complex::Complex<T>>,
+    options: &ReductionOptions,
+) -> Result<Array<num_complex::Complex<T>>, NumPyError>
 where
     T: Clone + Default + num_traits::NumAssign + std::ops::Add<Output = T> + 'static,
     num_complex::Complex<T>: Clone + Default,
@@ -336,7 +350,10 @@ where
 }
 
 /// Product of complex numbers
-pub fn complex_prod<T>(array: &Array<num_complex::Complex<T>>, options: &ReductionOptions) -> Result<Array<num_complex::Complex<T>>, NumPyError>
+pub fn complex_prod<T>(
+    array: &Array<num_complex::Complex<T>>,
+    options: &ReductionOptions,
+) -> Result<Array<num_complex::Complex<T>>, NumPyError>
 where
     T: Clone + Default + num_traits::NumAssign + std::ops::Mul<Output = T> + 'static,
     num_complex::Complex<T>: Clone + Default,
@@ -363,7 +380,8 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-
+    use crate::Array;
+    use num_complex::Complex32;
     #[test]
     fn test_reduction_options_default() {
         let options = ReductionOptions::new();
@@ -389,7 +407,7 @@ mod tests {
         let options = ReductionOptions::new();
         let shape = vec![2, 3, 4];
         let output = compute_output_shape(&shape, &options);
-        assert_eq!(output, vec![]);
+        assert_eq!(output, Vec::<usize>::new());
     }
 
     #[test]
@@ -475,10 +493,7 @@ mod tests {
 
     #[test]
     fn test_complex_sum() {
-        let array = Array::from_vec(vec![
-            Complex32::new(1.0, 2.0),
-            Complex32::new(3.0, 4.0),
-        ]);
+        let array = Array::from_vec(vec![Complex32::new(1.0, 2.0), Complex32::new(3.0, 4.0)]);
         let options = ReductionOptions::new();
         let result = complex_sum(&array, &options).unwrap();
 

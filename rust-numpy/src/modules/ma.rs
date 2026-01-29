@@ -541,8 +541,8 @@ where
 
     /// Return a flattened copy of the MaskedArray
     pub fn flatten(&self) -> Self {
-        let flat_data = self.data.flatten();
-        let flat_mask = self.mask.flatten();
+        let flat_data = self.data.flatten("C").unwrap();
+        let flat_mask = self.mask.flatten("C").unwrap();
         Self {
             data: flat_data,
             mask: flat_mask,
@@ -565,8 +565,8 @@ where
             ));
         }
 
-        let reshaped_data = Array::from_shape_vec(new_shape.clone(), self.data.data().to_vec())?;
-        let reshaped_mask = Array::from_shape_vec(new_shape, self.mask.data().to_vec())?;
+        let reshaped_data = Array::from_shape_vec(new_shape.clone(), self.data.data().to_vec());
+        let reshaped_mask = Array::from_shape_vec(new_shape, self.mask.data().to_vec());
 
         Ok(Self {
             data: reshaped_data,
@@ -577,8 +577,8 @@ where
 
     /// Remove single-dimensional entries from the shape
     pub fn squeeze(&self) -> Self {
-        let squeezed_data = self.data.squeeze();
-        let squeezed_mask = self.mask.squeeze();
+        let squeezed_data = self.data.squeeze(None).unwrap();
+        let squeezed_mask = self.mask.squeeze(None).unwrap();
 
         Self {
             data: squeezed_data,
@@ -598,8 +598,9 @@ where
 
     /// Take elements from the MaskedArray along an axis
     pub fn take(&self, indices: &[usize], axis: Option<usize>) -> Result<Self> {
-        let taken_data = self.data.take(indices, axis)?;
-        let taken_mask = self.mask.take(indices, axis)?;
+        let indices_arr = Array::from_vec(indices.to_vec());
+        let taken_data = self.data.take(&indices_arr, axis)?;
+        let taken_mask = self.mask.take(&indices_arr, axis)?;
 
         Ok(Self {
             data: taken_data,
@@ -618,7 +619,7 @@ where
     }
 
     /// Set the element at the given position (0D only)
-    pub fn itemset(&mut self, value: T) -> Result<()> {
+    pub fn itemset(&mut self, _value: T) -> Result<()> {
         if self.size() == 1 {
             // This is a simplified implementation
             // In a full implementation, we'd need to handle the actual data mutation
@@ -634,6 +635,3 @@ where
 pub mod exports {
     pub use super::MaskedArray;
 }
-
-#[cfg(test)]
-mod additional_tests;

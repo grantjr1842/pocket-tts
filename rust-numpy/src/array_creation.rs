@@ -288,7 +288,7 @@ where
 {
     // Use to_vec() to get all elements (handles non-contiguous arrays)
     let data = a.to_vec();
-    Ok(Array::from_vec(data))
+    Ok(Array::from_shape_vec(a.shape().to_vec(), data))
 }
 
 /// Convert input to array (already exists as array, but adding asanyarray compatibility)

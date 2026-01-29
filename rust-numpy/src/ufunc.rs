@@ -235,8 +235,8 @@ where
         let output = unsafe { &mut *(outputs[0] as *mut _ as *mut Array<T>) };
 
         // Try kernel registry for type-specific optimization
-        if let (Some(kernel), _) = crate::kernel_registry::get_kernel_registry()
-            .and_then(|registry| registry.get::<T>(crate::kernels::UfuncType::Add))
+        if let Some(kernel) =
+            crate::kernel_registry::get_kernel_registry().get::<T>(crate::kernels::UfuncType::Add)
         {
             kernel.execute(&[in0, in1], &mut [output])?;
         } else {
@@ -257,7 +257,7 @@ where
             }
         }
 
-        Ok(());
+        Ok(())
     }
 }
 
@@ -448,12 +448,20 @@ impl UfuncRegistry {
         casting: crate::dtype::Casting,
     ) -> Option<(&dyn Ufunc, Vec<Dtype>)> {
         if let Some(candidates) = self.ufuncs.get(name) {
-            // Find first candidate where all inputs can be cast safely
-            // TODO: Implement better "common type" promotion logic if multiple match (e.g. smallest safe type)
-            // For now, linear search is acceptable as we register types in a reasonable order?
-            // Actually, we usually register f64, f32, i64...
-            // If we have i32 inputs, and i64 is registered, it triggers cast.
+            // First pass: look for exact match
+            for ufunc in candidates {
+                let target_dtypes = ufunc.input_dtypes();
+                if target_dtypes.len() == input_dtypes.len()
+                    && target_dtypes
+                        .iter()
+                        .zip(input_dtypes.iter())
+                        .all(|(t, i)| t == i)
+                {
+                    return Some((ufunc.as_ref(), target_dtypes));
+                }
+            }
 
+            // Second pass: look for match with casting
             for ufunc in candidates {
                 let target_dtypes = ufunc.input_dtypes();
 
@@ -1380,7 +1388,7 @@ impl CustomUfuncRegistry {
     {
         let name = ufunc.name().to_string();
         let metadata = ufunc.metadata();
-        let supported_dtypes = metadata.supported_dtypes.clone();
+        let _supported_dtypes = metadata.supported_dtypes.clone();
 
         self.custom_ufuncs.insert(name.clone(), Arc::new(ufunc));
         self.metrics.insert(
@@ -1389,7 +1397,7 @@ impl CustomUfuncRegistry {
         );
 
         // Store dtype info for validation
-        let mut metrics = self.metrics.get(&name).unwrap().write().unwrap();
+        let _metrics = self.metrics.get(&name).unwrap().write().unwrap();
         // Could add more metadata tracking here
     }
 
@@ -1538,7 +1546,7 @@ lazy_static::lazy_static! {
 }
 
 /// Register a custom ufunc globally
-pub fn register_custom_ufunc<T>(ufunc: T)
+pub fn register_custom_ufunc<T>(_ufunc: T)
 where
     T: CustomUfunc + 'static,
 {
@@ -1547,7 +1555,7 @@ where
 }
 
 /// Register a generalized ufunc globally
-pub fn register_gufunc<T>(gufunc: T)
+pub fn register_gufunc<T>(_gufunc: T)
 where
     T: GeneralizedUfunc + 'static,
 {

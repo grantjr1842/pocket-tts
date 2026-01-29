@@ -128,8 +128,6 @@ impl KernelEntry {
 pub struct DynamicKernelRegistry {
     /// Map from ufunc name to list of kernel entries
     kernels: HashMap<String, Vec<KernelEntry>>,
-    /// Global registry instance
-    instance: Arc<RwLock<Self>>,
 }
 
 impl DynamicKernelRegistry {
@@ -256,8 +254,8 @@ pub fn register_kernel(
     input_dtypes: Vec<Dtype>,
 ) -> Result<()> {
     let registry = DynamicKernelRegistry::instance();
-    let mut registry = registry.write().map_err(|_| {
-        NumPyError::InternalError("Failed to acquire write lock for kernel registry".to_string())
+    let mut registry = registry.write().map_err(|_| NumPyError::InternalError {
+        message: "Failed to acquire write lock for kernel registry".to_string(),
     })?;
 
     registry.register_kernel(ufunc_name, kernel, input_dtypes)

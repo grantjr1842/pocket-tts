@@ -112,6 +112,12 @@ impl<T: Clone + Default + 'static, const N: usize> ArrayLike<T> for [T; N] {
     }
 }
 
+impl<T: Clone + Default + 'static, const N: usize> ArrayLike<T> for &[T; N] {
+    fn to_array(&self) -> Result<Array<T>, crate::error::NumPyError> {
+        Ok(Array::from_data(self.to_vec(), vec![N]))
+    }
+}
+
 impl<T: Clone + Default + 'static> ArrayLike<T> for &[T] {
     fn to_array(&self) -> Result<Array<T>, crate::error::NumPyError> {
         Ok(Array::from_data(self.to_vec(), vec![self.len()]))
@@ -147,13 +153,13 @@ impl DtypeLike for Dtype {
 
 impl DtypeLike for &str {
     fn to_dtype(&self) -> Dtype {
-        Dtype::from_str(self).unwrap_or_else(|_| Dtype::Float64)
+        Dtype::from_str(self).unwrap_or_else(|_| Dtype::Float64 { byteorder: None })
     }
 }
 
 impl DtypeLike for String {
     fn to_dtype(&self) -> Dtype {
-        Dtype::from_str(self).unwrap_or_else(|_| Dtype::Float64)
+        Dtype::from_str(self).unwrap_or_else(|_| Dtype::Float64 { byteorder: None })
     }
 }
 
@@ -226,8 +232,8 @@ pub mod prelude {
 /// Additional type aliases matching NumPy's typing module
 /// These provide compatibility with NumPy's type annotations
 pub mod aliases {
-    use super::*;
-    use crate::dtype::Dtype;
+    
+    
 
     /// Shape-like type for array shapes
     /// Represents the shape parameter in NumPy arrays

@@ -17,6 +17,8 @@ pub mod random_state;
 use crate::array::Array;
 use crate::dtype::Dtype;
 use crate::error::NumPyError;
+pub use bit_generator::{BitGenerator, PCG64};
+pub use generator::Generator;
 use num_traits::NumCast;
 use rand_distr::uniform::SampleUniform;
 pub use random_state::RandomState;

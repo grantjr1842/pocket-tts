@@ -7,12 +7,11 @@
 //
 //! Type-based kernel dispatch system for ufunc operations
 
-use crate::array::Array;
-use crate::dtype::{Dtype, DtypeKind};
-use crate::error::{NumPyError, Result};
+use crate::dtype::Dtype;
+use crate::error::Result;
 use crate::kernels::UfuncType;
 use crate::ufunc::{ArrayView, ArrayViewMut};
-use std::any::{Any, TypeId};
+use std::any::TypeId;
 use std::collections::HashMap;
 
 /// Kernel signature describing input and output types
@@ -79,7 +78,7 @@ pub trait Kernel: Send + Sync {
 /// This registry stores and manages dtype-specific kernels using TypeId
 /// for efficient lookup and dispatch.
 pub struct KernelRegistry {
-    kernels: HashMap<(TypeId, UfuncType), Box<dyn Any + Send + Sync>>,
+    kernels: HashMap<(TypeId, UfuncType), Box<dyn Kernel + Send + Sync>>,
 }
 
 impl KernelRegistry {
@@ -111,7 +110,7 @@ impl KernelRegistry {
     pub fn get<T: 'static>(&self, ufunc: UfuncType) -> Option<&dyn Kernel> {
         self.kernels
             .get(&(TypeId::of::<T>(), ufunc))
-            .and_then(|k| k.downcast_ref::<dyn Kernel>())
+            .map(|k| k.as_ref() as &dyn Kernel)
     }
 
     /// Get all registered kernels for a ufunc type
@@ -125,7 +124,7 @@ impl KernelRegistry {
         self.kernels
             .iter()
             .filter(|((_, ufunc_type), _)| ufunc_type == &ufunc)
-            .map(|(_, kernel)| kernel.downcast_ref::<dyn Kernel>())
+            .map(|(_, kernel)| kernel.as_ref() as &dyn Kernel)
             .collect()
     }
 }
@@ -167,19 +166,20 @@ pub fn get_kernel_registry() -> std::sync::RwLockReadGuard<'static, KernelRegist
 }
 
 /// Register a kernel in the global registry
-pub fn register_kernel<T: 'static>(
-    kernel: impl Kernel + 'static,
-    ufunc: UfuncType,
-) -> Result<()> {
+pub fn register_kernel<T: 'static>(kernel: impl Kernel + 'static, ufunc: UfuncType) -> Result<()> {
     let mut registry = get_global_registry().write().unwrap();
     registry.register::<T>(ufunc, kernel);
     Ok(())
 }
 
-/// Find a kernel in the global registry
-pub fn find_kernel<T: 'static>(ufunc: UfuncType) -> Option<std::sync::RwLockReadGuard<'static, dyn Kernel>> {
+/// Execute a function with a kernel from the registry
+pub fn with_kernel<T: 'static, R, F>(ufunc: UfuncType, f: F) -> Option<R>
+where
+    F: FnOnce(&dyn Kernel) -> R,
+{
     let registry = get_global_registry().read().unwrap();
-    registry.get::<T>(ufunc).map(|k| std::sync::RwLockReadGuard::map(k, |kernel| *kernel))
+    let kernel = registry.get::<T>(ufunc)?;
+    Some(f(kernel))
 }
 
 /// Get statistics about the global registry
@@ -191,7 +191,10 @@ pub fn get_registry_stats() -> RegistryStats {
     };
     // Count kernels by type
     for ((_, ufunc_type), _) in &registry.kernels {
-        let count = stats.kernels_by_type.entry(ufunc_type.as_str().to_string()).or_insert(0);
+        let count = stats
+            .kernels_by_type
+            .entry(ufunc_type.as_str().to_string())
+            .or_insert(0);
         *count += 1;
     }
     stats.total_kernels = registry.kernels.len();
@@ -202,10 +205,8 @@ pub fn get_registry_stats() -> RegistryStats {
 pub fn list_kernels() -> Vec<(UfuncType, String)> {
     let registry = get_global_registry().read().unwrap();
     let mut kernels = Vec::new();
-    for ((_, ufunc_type), kernel_any) in &registry.kernels {
-        if let Some(kernel) = kernel_any.downcast_ref::<dyn Kernel>() {
-            kernels.push((*ufunc_type, kernel.name().to_string()));
-        }
+    for ((_, ufunc_type), kernel) in &registry.kernels {
+        kernels.push((*ufunc_type, kernel.name().to_string()));
     }
     kernels
 }
@@ -213,7 +214,9 @@ pub fn list_kernels() -> Vec<(UfuncType, String)> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::array::Array;
 
+    #[test]
     #[test]
     fn test_registry_creation() {
         let mut registry = KernelRegistry::new();
@@ -221,41 +224,49 @@ mod tests {
         // Test that we can register and retrieve kernels
         assert!(registry.get::<f64>(UfuncType::Add).is_none());
 
-        // Register a test kernel
-        struct TestAddKernel;
-        impl Kernel for TestAddKernel {
-            fn name(&self) -> &str {
-                "test_add"
-            }
-            fn execute(
-                &self,
-                input: &[&dyn ArrayView],
-                output: &mut [&mut dyn ArrayViewMut],
-            ) -> Result<()> {
-                // Simple addition for testing
-                let in0 = unsafe { &*(input[0] as *const Array<f64>) };
-                let in1 = unsafe { &*(input[1] as *const Array<f64>) };
-                let out = unsafe { &mut *(output[0] as *mut Array<f64>) };
-
-                if let (Some(a), Some(b)) = (in0.get(0), in1.get(0)) {
-                    out.set(0, a + b)?;
-                }
-                Ok(())
-            }
-            fn is_vectorized(&self) -> bool {
-                false
-            }
-            fn signature(&self) -> KernelSignature {
-                KernelSignature::new(vec![Dtype::from_type::<f64>()], Dtype::from_type::<f64>())
-            }
-        }
-
         registry.register::<f64>(UfuncType::Add, TestAddKernel);
 
         // Verify registration
         let kernel = registry.get::<f64>(UfuncType::Add);
         assert!(kernel.is_some());
         assert_eq!(kernel.unwrap().name(), "test_add");
+    }
+
+    struct TestAddKernel;
+    impl Kernel for TestAddKernel {
+        fn name(&self) -> &str {
+            "test_add"
+        }
+        fn execute(
+            &self,
+            input: &[&dyn ArrayView],
+            output: &mut [&mut dyn ArrayViewMut],
+        ) -> Result<()> {
+            // Simple addition for testing
+            let in0 = input[0]
+                .as_any()
+                .downcast_ref::<Array<f64>>()
+                .expect("Type mismatch");
+            let in1 = input[1]
+                .as_any()
+                .downcast_ref::<Array<f64>>()
+                .expect("Type mismatch");
+            let out_array = output[0]
+                .as_any_mut()
+                .downcast_mut::<Array<f64>>()
+                .expect("Type mismatch");
+
+            if let (Some(a), Some(b)) = (in0.get(0), in1.get(0)) {
+                out_array.set(0, a + b)?;
+            }
+            Ok(())
+        }
+        fn is_vectorized(&self) -> bool {
+            false
+        }
+        fn signature(&self) -> KernelSignature {
+            KernelSignature::new(vec![Dtype::from_type::<f64>()], Dtype::from_type::<f64>())
+        }
     }
 
     #[test]
@@ -275,7 +286,6 @@ mod tests {
         let f32_kernel = add_kernels[1];
 
         // Should be able to downcast to correct types
-        assert!(!std::any::TypeId::of::<f64>().eq(std::any::TypeId::of::<f32>()));
-        assert!(!std::any::TypeId::of::<f64>().eq(std::any::TypeId::of::<f32>()));
+        assert!(!std::any::TypeId::of::<f64>().eq(&std::any::TypeId::of::<f32>()));
     }
 }
